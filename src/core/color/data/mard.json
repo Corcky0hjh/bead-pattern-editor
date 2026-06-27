@@ -1,0 +1,1748 @@
+[
+  {
+    "hex": "#faf4c8",
+    "codes": {
+      "mard": "A01"
+    }
+  },
+  {
+    "hex": "#ffffd5",
+    "codes": {
+      "mard": "A02"
+    }
+  },
+  {
+    "hex": "#feff8b",
+    "codes": {
+      "mard": "A03"
+    }
+  },
+  {
+    "hex": "#fbed56",
+    "codes": {
+      "mard": "A04"
+    }
+  },
+  {
+    "hex": "#f4d738",
+    "codes": {
+      "mard": "A05"
+    }
+  },
+  {
+    "hex": "#feac4c",
+    "codes": {
+      "mard": "A06"
+    }
+  },
+  {
+    "hex": "#fe8b4c",
+    "codes": {
+      "mard": "A07"
+    }
+  },
+  {
+    "hex": "#ffda45",
+    "codes": {
+      "mard": "A08"
+    }
+  },
+  {
+    "hex": "#ff995b",
+    "codes": {
+      "mard": "A09"
+    }
+  },
+  {
+    "hex": "#f77c31",
+    "codes": {
+      "mard": "A10"
+    }
+  },
+  {
+    "hex": "#ffdd99",
+    "codes": {
+      "mard": "A11"
+    }
+  },
+  {
+    "hex": "#fe9f72",
+    "codes": {
+      "mard": "A12"
+    }
+  },
+  {
+    "hex": "#ffc365",
+    "codes": {
+      "mard": "A13"
+    }
+  },
+  {
+    "hex": "#fd543d",
+    "codes": {
+      "mard": "A14"
+    }
+  },
+  {
+    "hex": "#fff365",
+    "codes": {
+      "mard": "A15"
+    }
+  },
+  {
+    "hex": "#ffff9f",
+    "codes": {
+      "mard": "A16"
+    }
+  },
+  {
+    "hex": "#ffe36e",
+    "codes": {
+      "mard": "A17"
+    }
+  },
+  {
+    "hex": "#febe7d",
+    "codes": {
+      "mard": "A18"
+    }
+  },
+  {
+    "hex": "#fd7c72",
+    "codes": {
+      "mard": "A19"
+    }
+  },
+  {
+    "hex": "#ffd568",
+    "codes": {
+      "mard": "A20"
+    }
+  },
+  {
+    "hex": "#ffe395",
+    "codes": {
+      "mard": "A21"
+    }
+  },
+  {
+    "hex": "#f4f57d",
+    "codes": {
+      "mard": "A22"
+    }
+  },
+  {
+    "hex": "#e6c9b7",
+    "codes": {
+      "mard": "A23"
+    }
+  },
+  {
+    "hex": "#f7f8a2",
+    "codes": {
+      "mard": "A24"
+    }
+  },
+  {
+    "hex": "#ffd67d",
+    "codes": {
+      "mard": "A25"
+    }
+  },
+  {
+    "hex": "#ffc830",
+    "codes": {
+      "mard": "A26"
+    }
+  },
+  {
+    "hex": "#e6ee31",
+    "codes": {
+      "mard": "B01"
+    }
+  },
+  {
+    "hex": "#63f347",
+    "codes": {
+      "mard": "B02"
+    }
+  },
+  {
+    "hex": "#9ef780",
+    "codes": {
+      "mard": "B03"
+    }
+  },
+  {
+    "hex": "#5de035",
+    "codes": {
+      "mard": "B04"
+    }
+  },
+  {
+    "hex": "#35e352",
+    "codes": {
+      "mard": "B05"
+    }
+  },
+  {
+    "hex": "#65e2a6",
+    "codes": {
+      "mard": "B06"
+    }
+  },
+  {
+    "hex": "#3daf80",
+    "codes": {
+      "mard": "B07"
+    }
+  },
+  {
+    "hex": "#1c9c4f",
+    "codes": {
+      "mard": "B08"
+    }
+  },
+  {
+    "hex": "#27523a",
+    "codes": {
+      "mard": "B09"
+    }
+  },
+  {
+    "hex": "#95d3c2",
+    "codes": {
+      "mard": "B10"
+    }
+  },
+  {
+    "hex": "#5d722a",
+    "codes": {
+      "mard": "B11"
+    }
+  },
+  {
+    "hex": "#166f41",
+    "codes": {
+      "mard": "B12"
+    }
+  },
+  {
+    "hex": "#caeb7b",
+    "codes": {
+      "mard": "B13"
+    }
+  },
+  {
+    "hex": "#ade946",
+    "codes": {
+      "mard": "B14"
+    }
+  },
+  {
+    "hex": "#2e5132",
+    "codes": {
+      "mard": "B15"
+    }
+  },
+  {
+    "hex": "#c5ed9c",
+    "codes": {
+      "mard": "B16"
+    }
+  },
+  {
+    "hex": "#9bb13a",
+    "codes": {
+      "mard": "B17"
+    }
+  },
+  {
+    "hex": "#e6ee49",
+    "codes": {
+      "mard": "B18"
+    }
+  },
+  {
+    "hex": "#24b88c",
+    "codes": {
+      "mard": "B19"
+    }
+  },
+  {
+    "hex": "#c2f0cc",
+    "codes": {
+      "mard": "B20"
+    }
+  },
+  {
+    "hex": "#156a6b",
+    "codes": {
+      "mard": "B21"
+    }
+  },
+  {
+    "hex": "#0b3c43",
+    "codes": {
+      "mard": "B22"
+    }
+  },
+  {
+    "hex": "#303a21",
+    "codes": {
+      "mard": "B23"
+    }
+  },
+  {
+    "hex": "#eefca5",
+    "codes": {
+      "mard": "B24"
+    }
+  },
+  {
+    "hex": "#4e846d",
+    "codes": {
+      "mard": "B25"
+    }
+  },
+  {
+    "hex": "#8d7a35",
+    "codes": {
+      "mard": "B26"
+    }
+  },
+  {
+    "hex": "#cce1af",
+    "codes": {
+      "mard": "B27"
+    }
+  },
+  {
+    "hex": "#9ee5b9",
+    "codes": {
+      "mard": "B28"
+    }
+  },
+  {
+    "hex": "#c5e254",
+    "codes": {
+      "mard": "B29"
+    }
+  },
+  {
+    "hex": "#e2fcb1",
+    "codes": {
+      "mard": "B30"
+    }
+  },
+  {
+    "hex": "#b0e792",
+    "codes": {
+      "mard": "B31"
+    }
+  },
+  {
+    "hex": "#9cab5a",
+    "codes": {
+      "mard": "B32"
+    }
+  },
+  {
+    "hex": "#e8ffe7",
+    "codes": {
+      "mard": "C01"
+    }
+  },
+  {
+    "hex": "#a9f9fc",
+    "codes": {
+      "mard": "C02"
+    }
+  },
+  {
+    "hex": "#a0e2fb",
+    "codes": {
+      "mard": "C03"
+    }
+  },
+  {
+    "hex": "#41ccff",
+    "codes": {
+      "mard": "C04"
+    }
+  },
+  {
+    "hex": "#01aceb",
+    "codes": {
+      "mard": "C05"
+    }
+  },
+  {
+    "hex": "#50aaf0",
+    "codes": {
+      "mard": "C06"
+    }
+  },
+  {
+    "hex": "#3677d2",
+    "codes": {
+      "mard": "C07"
+    }
+  },
+  {
+    "hex": "#0f54c0",
+    "codes": {
+      "mard": "C08"
+    }
+  },
+  {
+    "hex": "#324bca",
+    "codes": {
+      "mard": "C09"
+    }
+  },
+  {
+    "hex": "#3ebce2",
+    "codes": {
+      "mard": "C10"
+    }
+  },
+  {
+    "hex": "#28ddde",
+    "codes": {
+      "mard": "C11"
+    }
+  },
+  {
+    "hex": "#1c334d",
+    "codes": {
+      "mard": "C12"
+    }
+  },
+  {
+    "hex": "#cde8ff",
+    "codes": {
+      "mard": "C13"
+    }
+  },
+  {
+    "hex": "#d5fdff",
+    "codes": {
+      "mard": "C14"
+    }
+  },
+  {
+    "hex": "#22c4c6",
+    "codes": {
+      "mard": "C15"
+    }
+  },
+  {
+    "hex": "#1557a8",
+    "codes": {
+      "mard": "C16"
+    }
+  },
+  {
+    "hex": "#04d1f6",
+    "codes": {
+      "mard": "C17"
+    }
+  },
+  {
+    "hex": "#1d3344",
+    "codes": {
+      "mard": "C18"
+    }
+  },
+  {
+    "hex": "#1887a2",
+    "codes": {
+      "mard": "C19"
+    }
+  },
+  {
+    "hex": "#176daf",
+    "codes": {
+      "mard": "C20"
+    }
+  },
+  {
+    "hex": "#beddff",
+    "codes": {
+      "mard": "C21"
+    }
+  },
+  {
+    "hex": "#67b4be",
+    "codes": {
+      "mard": "C22"
+    }
+  },
+  {
+    "hex": "#c8e2ff",
+    "codes": {
+      "mard": "C23"
+    }
+  },
+  {
+    "hex": "#7cc4ff",
+    "codes": {
+      "mard": "C24"
+    }
+  },
+  {
+    "hex": "#a9e5e5",
+    "codes": {
+      "mard": "C25"
+    }
+  },
+  {
+    "hex": "#3caed8",
+    "codes": {
+      "mard": "C26"
+    }
+  },
+  {
+    "hex": "#d3dffa",
+    "codes": {
+      "mard": "C27"
+    }
+  },
+  {
+    "hex": "#bbcfed",
+    "codes": {
+      "mard": "C28"
+    }
+  },
+  {
+    "hex": "#34488e",
+    "codes": {
+      "mard": "C29"
+    }
+  },
+  {
+    "hex": "#aeb4f2",
+    "codes": {
+      "mard": "D01"
+    }
+  },
+  {
+    "hex": "#858edd",
+    "codes": {
+      "mard": "D02"
+    }
+  },
+  {
+    "hex": "#2f54af",
+    "codes": {
+      "mard": "D03"
+    }
+  },
+  {
+    "hex": "#182a84",
+    "codes": {
+      "mard": "D04"
+    }
+  },
+  {
+    "hex": "#b843c5",
+    "codes": {
+      "mard": "D05"
+    }
+  },
+  {
+    "hex": "#ac7bde",
+    "codes": {
+      "mard": "D06"
+    }
+  },
+  {
+    "hex": "#8854b3",
+    "codes": {
+      "mard": "D07"
+    }
+  },
+  {
+    "hex": "#e2d3ff",
+    "codes": {
+      "mard": "D08"
+    }
+  },
+  {
+    "hex": "#d5b9f8",
+    "codes": {
+      "mard": "D09"
+    }
+  },
+  {
+    "hex": "#361851",
+    "codes": {
+      "mard": "D10"
+    }
+  },
+  {
+    "hex": "#b9bae1",
+    "codes": {
+      "mard": "D11"
+    }
+  },
+  {
+    "hex": "#de9ad4",
+    "codes": {
+      "mard": "D12"
+    }
+  },
+  {
+    "hex": "#b90095",
+    "codes": {
+      "mard": "D13"
+    }
+  },
+  {
+    "hex": "#8b279b",
+    "codes": {
+      "mard": "D14"
+    }
+  },
+  {
+    "hex": "#2f1f90",
+    "codes": {
+      "mard": "D15"
+    }
+  },
+  {
+    "hex": "#e3e1ee",
+    "codes": {
+      "mard": "D16"
+    }
+  },
+  {
+    "hex": "#c4d4f6",
+    "codes": {
+      "mard": "D17"
+    }
+  },
+  {
+    "hex": "#a45ec7",
+    "codes": {
+      "mard": "D18"
+    }
+  },
+  {
+    "hex": "#d8c3d7",
+    "codes": {
+      "mard": "D19"
+    }
+  },
+  {
+    "hex": "#9c32b2",
+    "codes": {
+      "mard": "D20"
+    }
+  },
+  {
+    "hex": "#9a009b",
+    "codes": {
+      "mard": "D21"
+    }
+  },
+  {
+    "hex": "#333a95",
+    "codes": {
+      "mard": "D22"
+    }
+  },
+  {
+    "hex": "#ebdafc",
+    "codes": {
+      "mard": "D23"
+    }
+  },
+  {
+    "hex": "#7786e5",
+    "codes": {
+      "mard": "D24"
+    }
+  },
+  {
+    "hex": "#494fc7",
+    "codes": {
+      "mard": "D25"
+    }
+  },
+  {
+    "hex": "#dfc2f8",
+    "codes": {
+      "mard": "D26"
+    }
+  },
+  {
+    "hex": "#fdd3cc",
+    "codes": {
+      "mard": "E01"
+    }
+  },
+  {
+    "hex": "#fec0df",
+    "codes": {
+      "mard": "E02"
+    }
+  },
+  {
+    "hex": "#ffb7e7",
+    "codes": {
+      "mard": "E03"
+    }
+  },
+  {
+    "hex": "#e8649e",
+    "codes": {
+      "mard": "E04"
+    }
+  },
+  {
+    "hex": "#f551a2",
+    "codes": {
+      "mard": "E05"
+    }
+  },
+  {
+    "hex": "#f13d74",
+    "codes": {
+      "mard": "E06"
+    }
+  },
+  {
+    "hex": "#c63478",
+    "codes": {
+      "mard": "E07"
+    }
+  },
+  {
+    "hex": "#ffdbe9",
+    "codes": {
+      "mard": "E08"
+    }
+  },
+  {
+    "hex": "#e970cc",
+    "codes": {
+      "mard": "E09"
+    }
+  },
+  {
+    "hex": "#d33793",
+    "codes": {
+      "mard": "E10"
+    }
+  },
+  {
+    "hex": "#fcddd2",
+    "codes": {
+      "mard": "E11"
+    }
+  },
+  {
+    "hex": "#f78fc3",
+    "codes": {
+      "mard": "E12"
+    }
+  },
+  {
+    "hex": "#b5006d",
+    "codes": {
+      "mard": "E13"
+    }
+  },
+  {
+    "hex": "#ffd1ba",
+    "codes": {
+      "mard": "E14"
+    }
+  },
+  {
+    "hex": "#f8c7c9",
+    "codes": {
+      "mard": "E15"
+    }
+  },
+  {
+    "hex": "#fff3eb",
+    "codes": {
+      "mard": "E16"
+    }
+  },
+  {
+    "hex": "#ffe2ea",
+    "codes": {
+      "mard": "E17"
+    }
+  },
+  {
+    "hex": "#ffc7db",
+    "codes": {
+      "mard": "E18"
+    }
+  },
+  {
+    "hex": "#febad5",
+    "codes": {
+      "mard": "E19"
+    }
+  },
+  {
+    "hex": "#d8c7d1",
+    "codes": {
+      "mard": "E20"
+    }
+  },
+  {
+    "hex": "#bd9da1",
+    "codes": {
+      "mard": "E21"
+    }
+  },
+  {
+    "hex": "#b785a1",
+    "codes": {
+      "mard": "E22"
+    }
+  },
+  {
+    "hex": "#937a8d",
+    "codes": {
+      "mard": "E23"
+    }
+  },
+  {
+    "hex": "#e1bce8",
+    "codes": {
+      "mard": "E24"
+    }
+  },
+  {
+    "hex": "#fd957b",
+    "codes": {
+      "mard": "F01"
+    }
+  },
+  {
+    "hex": "#fc3d46",
+    "codes": {
+      "mard": "F02"
+    }
+  },
+  {
+    "hex": "#f74941",
+    "codes": {
+      "mard": "F03"
+    }
+  },
+  {
+    "hex": "#fc283c",
+    "codes": {
+      "mard": "F04"
+    }
+  },
+  {
+    "hex": "#e7002f",
+    "codes": {
+      "mard": "F05"
+    }
+  },
+  {
+    "hex": "#943630",
+    "codes": {
+      "mard": "F06"
+    }
+  },
+  {
+    "hex": "#971937",
+    "codes": {
+      "mard": "F07"
+    }
+  },
+  {
+    "hex": "#bc0028",
+    "codes": {
+      "mard": "F08"
+    }
+  },
+  {
+    "hex": "#e2677a",
+    "codes": {
+      "mard": "F09"
+    }
+  },
+  {
+    "hex": "#8a4526",
+    "codes": {
+      "mard": "F10"
+    }
+  },
+  {
+    "hex": "#5a2121",
+    "codes": {
+      "mard": "F11"
+    }
+  },
+  {
+    "hex": "#fd4e6a",
+    "codes": {
+      "mard": "F12"
+    }
+  },
+  {
+    "hex": "#f35744",
+    "codes": {
+      "mard": "F13"
+    }
+  },
+  {
+    "hex": "#ffa9ad",
+    "codes": {
+      "mard": "F14"
+    }
+  },
+  {
+    "hex": "#d30022",
+    "codes": {
+      "mard": "F15"
+    }
+  },
+  {
+    "hex": "#fec2a6",
+    "codes": {
+      "mard": "F16"
+    }
+  },
+  {
+    "hex": "#e69c79",
+    "codes": {
+      "mard": "F17"
+    }
+  },
+  {
+    "hex": "#d37c46",
+    "codes": {
+      "mard": "F18"
+    }
+  },
+  {
+    "hex": "#c1444a",
+    "codes": {
+      "mard": "F19"
+    }
+  },
+  {
+    "hex": "#cd9391",
+    "codes": {
+      "mard": "F20"
+    }
+  },
+  {
+    "hex": "#f7b4c6",
+    "codes": {
+      "mard": "F21"
+    }
+  },
+  {
+    "hex": "#fdc0d0",
+    "codes": {
+      "mard": "F22"
+    }
+  },
+  {
+    "hex": "#f67e66",
+    "codes": {
+      "mard": "F23"
+    }
+  },
+  {
+    "hex": "#e698aa",
+    "codes": {
+      "mard": "F24"
+    }
+  },
+  {
+    "hex": "#e54b4f",
+    "codes": {
+      "mard": "F25"
+    }
+  },
+  {
+    "hex": "#ffe2ce",
+    "codes": {
+      "mard": "G01"
+    }
+  },
+  {
+    "hex": "#ffc4aa",
+    "codes": {
+      "mard": "G02"
+    }
+  },
+  {
+    "hex": "#f4c3a5",
+    "codes": {
+      "mard": "G03"
+    }
+  },
+  {
+    "hex": "#e1b383",
+    "codes": {
+      "mard": "G04"
+    }
+  },
+  {
+    "hex": "#edb045",
+    "codes": {
+      "mard": "G05"
+    }
+  },
+  {
+    "hex": "#e99c17",
+    "codes": {
+      "mard": "G06"
+    }
+  },
+  {
+    "hex": "#9d5b3e",
+    "codes": {
+      "mard": "G07"
+    }
+  },
+  {
+    "hex": "#753832",
+    "codes": {
+      "mard": "G08"
+    }
+  },
+  {
+    "hex": "#e6b483",
+    "codes": {
+      "mard": "G09"
+    }
+  },
+  {
+    "hex": "#d98c39",
+    "codes": {
+      "mard": "G10"
+    }
+  },
+  {
+    "hex": "#e0c593",
+    "codes": {
+      "mard": "G11"
+    }
+  },
+  {
+    "hex": "#ffc890",
+    "codes": {
+      "mard": "G12"
+    }
+  },
+  {
+    "hex": "#b7714a",
+    "codes": {
+      "mard": "G13"
+    }
+  },
+  {
+    "hex": "#8d614c",
+    "codes": {
+      "mard": "G14"
+    }
+  },
+  {
+    "hex": "#fcf9e0",
+    "codes": {
+      "mard": "G15"
+    }
+  },
+  {
+    "hex": "#f2d9ba",
+    "codes": {
+      "mard": "G16"
+    }
+  },
+  {
+    "hex": "#78524b",
+    "codes": {
+      "mard": "G17"
+    }
+  },
+  {
+    "hex": "#ffe4cc",
+    "codes": {
+      "mard": "G18"
+    }
+  },
+  {
+    "hex": "#e07935",
+    "codes": {
+      "mard": "G19"
+    }
+  },
+  {
+    "hex": "#a94023",
+    "codes": {
+      "mard": "G20"
+    }
+  },
+  {
+    "hex": "#b88558",
+    "codes": {
+      "mard": "G21"
+    }
+  },
+  {
+    "hex": "#fdfbff",
+    "codes": {
+      "mard": "H01"
+    }
+  },
+  {
+    "hex": "#feffff",
+    "codes": {
+      "mard": "H02"
+    }
+  },
+  {
+    "hex": "#b6b1ba",
+    "codes": {
+      "mard": "H03"
+    }
+  },
+  {
+    "hex": "#89858c",
+    "codes": {
+      "mard": "H04"
+    }
+  },
+  {
+    "hex": "#48464e",
+    "codes": {
+      "mard": "H05"
+    }
+  },
+  {
+    "hex": "#2f2b2f",
+    "codes": {
+      "mard": "H06"
+    }
+  },
+  {
+    "hex": "#000000",
+    "codes": {
+      "mard": "H07"
+    }
+  },
+  {
+    "hex": "#e7d6db",
+    "codes": {
+      "mard": "H08"
+    }
+  },
+  {
+    "hex": "#ededed",
+    "codes": {
+      "mard": "H09"
+    }
+  },
+  {
+    "hex": "#eee9ea",
+    "codes": {
+      "mard": "H10"
+    }
+  },
+  {
+    "hex": "#cecdd5",
+    "codes": {
+      "mard": "H11"
+    }
+  },
+  {
+    "hex": "#fff5ed",
+    "codes": {
+      "mard": "H12"
+    }
+  },
+  {
+    "hex": "#f5ecd2",
+    "codes": {
+      "mard": "H13"
+    }
+  },
+  {
+    "hex": "#cfd7d3",
+    "codes": {
+      "mard": "H14"
+    }
+  },
+  {
+    "hex": "#98a6a8",
+    "codes": {
+      "mard": "H15"
+    }
+  },
+  {
+    "hex": "#1d1414",
+    "codes": {
+      "mard": "H16"
+    }
+  },
+  {
+    "hex": "#f1eded",
+    "codes": {
+      "mard": "H17"
+    }
+  },
+  {
+    "hex": "#fffdf0",
+    "codes": {
+      "mard": "H18"
+    }
+  },
+  {
+    "hex": "#f6efe2",
+    "codes": {
+      "mard": "H19"
+    }
+  },
+  {
+    "hex": "#949fa3",
+    "codes": {
+      "mard": "H20"
+    }
+  },
+  {
+    "hex": "#fffbe1",
+    "codes": {
+      "mard": "H21"
+    }
+  },
+  {
+    "hex": "#cacad4",
+    "codes": {
+      "mard": "H22"
+    }
+  },
+  {
+    "hex": "#9a9d94",
+    "codes": {
+      "mard": "H23"
+    }
+  },
+  {
+    "hex": "#bcc6b8",
+    "codes": {
+      "mard": "M01"
+    }
+  },
+  {
+    "hex": "#8aa386",
+    "codes": {
+      "mard": "M02"
+    }
+  },
+  {
+    "hex": "#697d80",
+    "codes": {
+      "mard": "M03"
+    }
+  },
+  {
+    "hex": "#e3d2bc",
+    "codes": {
+      "mard": "M04"
+    }
+  },
+  {
+    "hex": "#d0ccaa",
+    "codes": {
+      "mard": "M05"
+    }
+  },
+  {
+    "hex": "#b0a782",
+    "codes": {
+      "mard": "M06"
+    }
+  },
+  {
+    "hex": "#b4a497",
+    "codes": {
+      "mard": "M07"
+    }
+  },
+  {
+    "hex": "#b38281",
+    "codes": {
+      "mard": "M08"
+    }
+  },
+  {
+    "hex": "#a58767",
+    "codes": {
+      "mard": "M09"
+    }
+  },
+  {
+    "hex": "#c5b2bc",
+    "codes": {
+      "mard": "M10"
+    }
+  },
+  {
+    "hex": "#9f7594",
+    "codes": {
+      "mard": "M11"
+    }
+  },
+  {
+    "hex": "#644749",
+    "codes": {
+      "mard": "M12"
+    }
+  },
+  {
+    "hex": "#d19066",
+    "codes": {
+      "mard": "M13"
+    }
+  },
+  {
+    "hex": "#c77362",
+    "codes": {
+      "mard": "M14"
+    }
+  },
+  {
+    "hex": "#757d78",
+    "codes": {
+      "mard": "M15"
+    }
+  },
+  {
+    "hex": "#fcf7f8",
+    "codes": {
+      "mard": "P01"
+    }
+  },
+  {
+    "hex": "#b0a9ac",
+    "codes": {
+      "mard": "P02"
+    }
+  },
+  {
+    "hex": "#afdcab",
+    "codes": {
+      "mard": "P03"
+    }
+  },
+  {
+    "hex": "#fea49f",
+    "codes": {
+      "mard": "P04"
+    }
+  },
+  {
+    "hex": "#ee8c3e",
+    "codes": {
+      "mard": "P05"
+    }
+  },
+  {
+    "hex": "#5fd0a7",
+    "codes": {
+      "mard": "P06"
+    }
+  },
+  {
+    "hex": "#eb9270",
+    "codes": {
+      "mard": "P07"
+    }
+  },
+  {
+    "hex": "#f0d958",
+    "codes": {
+      "mard": "P08"
+    }
+  },
+  {
+    "hex": "#d9d9d9",
+    "codes": {
+      "mard": "P09"
+    }
+  },
+  {
+    "hex": "#d9c7ea",
+    "codes": {
+      "mard": "P10"
+    }
+  },
+  {
+    "hex": "#f3ecc9",
+    "codes": {
+      "mard": "P11"
+    }
+  },
+  {
+    "hex": "#e6eef2",
+    "codes": {
+      "mard": "P12"
+    }
+  },
+  {
+    "hex": "#aacbef",
+    "codes": {
+      "mard": "P13"
+    }
+  },
+  {
+    "hex": "#337680",
+    "codes": {
+      "mard": "P14"
+    }
+  },
+  {
+    "hex": "#668575",
+    "codes": {
+      "mard": "P15"
+    }
+  },
+  {
+    "hex": "#febf45",
+    "codes": {
+      "mard": "P16"
+    }
+  },
+  {
+    "hex": "#fea324",
+    "codes": {
+      "mard": "P17"
+    }
+  },
+  {
+    "hex": "#feb89f",
+    "codes": {
+      "mard": "P18"
+    }
+  },
+  {
+    "hex": "#fffeec",
+    "codes": {
+      "mard": "P19"
+    }
+  },
+  {
+    "hex": "#febecf",
+    "codes": {
+      "mard": "P20"
+    }
+  },
+  {
+    "hex": "#ecbebf",
+    "codes": {
+      "mard": "P21"
+    }
+  },
+  {
+    "hex": "#e4a89f",
+    "codes": {
+      "mard": "P22"
+    }
+  },
+  {
+    "hex": "#a56268",
+    "codes": {
+      "mard": "P23"
+    }
+  },
+  {
+    "hex": "#f2a5e8",
+    "codes": {
+      "mard": "Q01"
+    }
+  },
+  {
+    "hex": "#e9ec91",
+    "codes": {
+      "mard": "Q02"
+    }
+  },
+  {
+    "hex": "#ffff00",
+    "codes": {
+      "mard": "Q03"
+    }
+  },
+  {
+    "hex": "#ffebfa",
+    "codes": {
+      "mard": "Q04"
+    }
+  },
+  {
+    "hex": "#76cede",
+    "codes": {
+      "mard": "Q05"
+    }
+  },
+  {
+    "hex": "#d50d21",
+    "codes": {
+      "mard": "R01"
+    }
+  },
+  {
+    "hex": "#f92f83",
+    "codes": {
+      "mard": "R02"
+    }
+  },
+  {
+    "hex": "#fd8324",
+    "codes": {
+      "mard": "R03"
+    }
+  },
+  {
+    "hex": "#f8ec31",
+    "codes": {
+      "mard": "R04"
+    }
+  },
+  {
+    "hex": "#35c75b",
+    "codes": {
+      "mard": "R05"
+    }
+  },
+  {
+    "hex": "#238891",
+    "codes": {
+      "mard": "R06"
+    }
+  },
+  {
+    "hex": "#19779d",
+    "codes": {
+      "mard": "R07"
+    }
+  },
+  {
+    "hex": "#1a60c3",
+    "codes": {
+      "mard": "R08"
+    }
+  },
+  {
+    "hex": "#9a56b4",
+    "codes": {
+      "mard": "R09"
+    }
+  },
+  {
+    "hex": "#ffdb4c",
+    "codes": {
+      "mard": "R10"
+    }
+  },
+  {
+    "hex": "#ffebfb",
+    "codes": {
+      "mard": "R11"
+    }
+  },
+  {
+    "hex": "#d8d5ce",
+    "codes": {
+      "mard": "R12"
+    }
+  },
+  {
+    "hex": "#55514c",
+    "codes": {
+      "mard": "R13"
+    }
+  },
+  {
+    "hex": "#9fe4df",
+    "codes": {
+      "mard": "R14"
+    }
+  },
+  {
+    "hex": "#77cee9",
+    "codes": {
+      "mard": "R15"
+    }
+  },
+  {
+    "hex": "#3ecfca",
+    "codes": {
+      "mard": "R16"
+    }
+  },
+  {
+    "hex": "#4a867a",
+    "codes": {
+      "mard": "R17"
+    }
+  },
+  {
+    "hex": "#7fcd9d",
+    "codes": {
+      "mard": "R18"
+    }
+  },
+  {
+    "hex": "#cde55d",
+    "codes": {
+      "mard": "R19"
+    }
+  },
+  {
+    "hex": "#e8c7b4",
+    "codes": {
+      "mard": "R20"
+    }
+  },
+  {
+    "hex": "#ad6f3c",
+    "codes": {
+      "mard": "R21"
+    }
+  },
+  {
+    "hex": "#6c372f",
+    "codes": {
+      "mard": "R22"
+    }
+  },
+  {
+    "hex": "#feb872",
+    "codes": {
+      "mard": "R23"
+    }
+  },
+  {
+    "hex": "#f3c1c0",
+    "codes": {
+      "mard": "R24"
+    }
+  },
+  {
+    "hex": "#c9675e",
+    "codes": {
+      "mard": "R25"
+    }
+  },
+  {
+    "hex": "#d293be",
+    "codes": {
+      "mard": "R26"
+    }
+  },
+  {
+    "hex": "#ea8cb1",
+    "codes": {
+      "mard": "R27"
+    }
+  },
+  {
+    "hex": "#9c87d6",
+    "codes": {
+      "mard": "R28"
+    }
+  },
+  {
+    "hex": "#ffffff",
+    "codes": {
+      "mard": "T01"
+    }
+  },
+  {
+    "hex": "#fd6fb4",
+    "codes": {
+      "mard": "Y01"
+    }
+  },
+  {
+    "hex": "#feb481",
+    "codes": {
+      "mard": "Y02"
+    }
+  },
+  {
+    "hex": "#d7faa0",
+    "codes": {
+      "mard": "Y03"
+    }
+  },
+  {
+    "hex": "#8bdbfa",
+    "codes": {
+      "mard": "Y04"
+    }
+  },
+  {
+    "hex": "#e987ea",
+    "codes": {
+      "mard": "Y05"
+    }
+  },
+  {
+    "hex": "#daabb3",
+    "codes": {
+      "mard": "ZG1"
+    }
+  },
+  {
+    "hex": "#d6aa87",
+    "codes": {
+      "mard": "ZG2"
+    }
+  },
+  {
+    "hex": "#c1bd8d",
+    "codes": {
+      "mard": "ZG3"
+    }
+  },
+  {
+    "hex": "#96869f",
+    "codes": {
+      "mard": "ZG4"
+    }
+  },
+  {
+    "hex": "#8490a6",
+    "codes": {
+      "mard": "ZG5"
+    }
+  },
+  {
+    "hex": "#94bfe2",
+    "codes": {
+      "mard": "ZG6"
+    }
+  },
+  {
+    "hex": "#e2a9d2",
+    "codes": {
+      "mard": "ZG7"
+    }
+  },
+  {
+    "hex": "#ab91c0",
+    "codes": {
+      "mard": "ZG8"
+    }
+  }
+]

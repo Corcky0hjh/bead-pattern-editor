@@ -1,5 +1,14 @@
+/** 画布展示用的米色底,纯视觉常量,**不参与任何判等**。空 cell 由 color===null 表达。 */
+export const CANVAS_BG_COLOR = '#fffdf8'
+
 export type PatternCell = {
-  color: string
+  /** 该格的颜色 hex(小写带 #);null = 空格,表示该位置没有珠子。 */
+  color: string | null
+  /**
+   * 是否为"外部背景"(图像处理时由边界 floodfill 识别得到的、与边界连通的背景色块)。
+   * 标了 true 的格不计入用色统计、导出图纸时留白。用户手动编辑该格会清除此标记。
+   */
+  isExternal?: boolean
 }
 
 export type PatternGrid = {
@@ -24,4 +33,37 @@ export function createPatternGrid({
   }))
 
   return { width, height, cells }
+}
+
+/** 创建一张纯色或全空(color=null)的图纸。 */
+export function createSolidPatternGrid({
+  width,
+  height,
+  color = null,
+}: {
+  width: number
+  height: number
+  color?: string | null
+}): PatternGrid {
+  return {
+    width,
+    height,
+    cells: Array.from({ length: width * height }, () => ({ color })),
+  }
+}
+
+/**
+ * 旧版工程文件(emptyColor 时代)迁移:cells 里 `color === '#fffdf8'` 全部转 null。
+ * 严格 hex 相等,避免误伤用户真的画的接近色。
+ */
+export function migrateLegacyCells(cells: PatternCell[]): PatternCell[] {
+  let mutated = false
+  const next = cells.map((cell) => {
+    if (cell.color === '#fffdf8') {
+      mutated = true
+      return { ...cell, color: null }
+    }
+    return cell
+  })
+  return mutated ? next : cells
 }

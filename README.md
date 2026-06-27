@@ -17,6 +17,12 @@ npm install
 npm run dev
 ```
 
+默认本地访问地址：
+
+```txt
+http://localhost:5333/
+```
+
 常用命令：
 
 ```bash
