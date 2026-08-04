@@ -16,9 +16,14 @@ import {
   type ImageFitMode,
   type ImagePlacement,
 } from '../../../core/image/conversion'
-import type { PatternGrid } from '../../../core/pattern/grid'
+import {
+  MAX_PATTERN_SIDE,
+  MIN_PATTERN_SIDE,
+  type PatternGrid,
+} from '../../../core/pattern/grid'
 import { Dropdown } from '../../../components/Dropdown'
 import { Slider } from '../../../components/Slider'
+import { useModalDialog } from '../../../components/useModalDialog'
 import {
   remapPatternColors,
   type EditorStateController,
@@ -48,8 +53,8 @@ const steps: Array<{ id: WorkbenchStepId; title: string }> = [
   { id: 3, title: '预览修正' },
 ]
 
-const boardSizeMin = 16
-const boardSizeMax = 2048
+const boardSizeMin = MIN_PATTERN_SIDE
+const boardSizeMax = MAX_PATTERN_SIDE
 const colorLimitDefault = 32
 const colorLimitMax = 128
 const boardSizePresets = [
@@ -66,24 +71,23 @@ const boardSizePresets = [
 export function ImagePanel({ editor }: ImagePanelProps) {
   const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const importTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  function closeImport() {
+    setImportOpen(false)
+    setImportFile(null)
+    window.requestAnimationFrame(() => importTriggerRef.current?.focus())
+  }
 
   return (
     <div className="grid gap-3">
-      <label
+      <button
+        ref={importTriggerRef}
+        type="button"
         className="group grid min-h-24 cursor-pointer gap-2 rounded-3xl border border-editor-border bg-editor-elevated/70 px-4 py-4 text-left transition hover:-translate-y-0.5 hover:bg-editor-elevated hover:shadow-sm active:translate-y-0"
+        onClick={() => fileInputRef.current?.click()}
       >
-        <input
-          className="hidden"
-          type="file"
-          accept="image/*"
-          onChange={(event) => {
-            const nextFile = event.target.files?.[0] ?? null
-            event.target.value = ''
-            if (!nextFile) return
-            setImportFile(nextFile)
-            setImportOpen(true)
-          }}
-        />
         <span className="flex items-center justify-between gap-3">
           <span className="text-sm font-black text-editor-strong">
             选择图片生成图纸
@@ -95,16 +99,26 @@ export function ImagePanel({ editor }: ImagePanelProps) {
         <span className="text-xs leading-5 text-editor-text">
           选图后直接进入构图和转色预览
         </span>
-      </label>
+      </button>
+      <input
+        ref={fileInputRef}
+        className="hidden"
+        type="file"
+        accept="image/*"
+        onChange={(event) => {
+          const nextFile = event.target.files?.[0] ?? null
+          event.target.value = ''
+          if (!nextFile) return
+          setImportFile(nextFile)
+          setImportOpen(true)
+        }}
+      />
 
       {importOpen ? (
         <ImageImportModal
           editor={editor}
           initialFile={importFile}
-          onClose={() => {
-            setImportOpen(false)
-            setImportFile(null)
-          }}
+          onClose={closeImport}
         />
       ) : null}
     </div>
@@ -120,11 +134,14 @@ function ImageImportModal({
   initialFile: File | null
   onClose: () => void
 }) {
+  const dialogRef = useModalDialog(onClose)
   const [file, setFile] = useState<File | null>(initialFile)
   const [activeStep, setActiveStep] = useState<WorkbenchStepId>(1)
   const [maxUnlockedStep, setMaxUnlockedStep] = useState<WorkbenchStepId>(1)
   const [paletteModalOpen, setPaletteModalOpen] = useState(false)
   const [previewing, setPreviewing] = useState(false)
+  const previewRequestIdRef = useRef(0)
+  const previewPendingRef = useRef(false)
   const [previewStatus, setPreviewStatus] = useState('先导入图片')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageSize, setImageSize] = useState<{
@@ -151,6 +168,8 @@ function ImageImportModal({
   const [basePattern, setBasePattern] = useState<PatternGrid | null>(null)
   const [previewPattern, setPreviewPattern] = useState<PatternGrid | null>(null)
   const [excludedColors, setExcludedColors] = useState<Set<string>>(new Set())
+  const excludedColorsRef = useRef(excludedColors)
+  excludedColorsRef.current = excludedColors
 
   const conversionOptions = useMemo<ImageConversionOptions>(() => {
     return {
@@ -165,6 +184,14 @@ function ImageImportModal({
     }
   }, [draft, placement])
   const canGenerate = Boolean(file) && editor.availablePalette.length > 0
+  const availablePaletteKey = useMemo(
+    () =>
+      editor.availablePalette
+        .map((color) => color.hex.toLowerCase())
+        .sort()
+        .join('|'),
+    [editor.availablePalette],
+  )
   const postprocessDisabled = draft.algorithm === 'atkinson'
   const paletteCountText = `${editor.availablePalette.length} / ${editor.palette.length}`
   const previewStats = useMemo(
@@ -173,11 +200,15 @@ function ImageImportModal({
   )
   useEffect(() => {
     if (!file) {
+      previewRequestIdRef.current += 1
+      previewPendingRef.current = false
+      setPreviewing(false)
       setImageUrl(null)
       setImageSize(null)
       setBasePattern(null)
       setPreviewPattern(null)
-      setExcludedColors(new Set())
+      excludedColorsRef.current = new Set()
+      setExcludedColors(excludedColorsRef.current)
       setPlacement({
         x: 0,
         y: 0,
@@ -191,11 +222,15 @@ function ImageImportModal({
     }
 
     const nextUrl = URL.createObjectURL(file)
+    previewRequestIdRef.current += 1
+    previewPendingRef.current = false
+    setPreviewing(false)
     setImageUrl(nextUrl)
     setImageSize(null)
     setBasePattern(null)
     setPreviewPattern(null)
-    setExcludedColors(new Set())
+    excludedColorsRef.current = new Set()
+    setExcludedColors(excludedColorsRef.current)
     setPlacement({
       x: 0,
       y: 0,
@@ -214,15 +249,33 @@ function ImageImportModal({
   }, [draft.cols, draft.rows, imageSize])
 
   useEffect(() => {
-    if (!file || !canGenerate || activeStep < 2) return
+    if (!file || !canGenerate || activeStep < 2) {
+      previewRequestIdRef.current += 1
+      previewPendingRef.current = false
+      setPreviewing(false)
+      return
+    }
+    previewRequestIdRef.current += 1
+    previewPendingRef.current = true
+    setPreviewing(true)
     const timer = window.setTimeout(() => {
       void generatePreview(file)
     }, 360)
     return () => window.clearTimeout(timer)
-  }, [activeStep, canGenerate, conversionOptions, editor.currentBrand, file])
+  }, [
+    activeStep,
+    availablePaletteKey,
+    canGenerate,
+    conversionOptions,
+    editor.currentBrand,
+    file,
+  ])
 
   async function generatePreview(sourceFile = file) {
     if (!sourceFile) return
+    const requestId = previewRequestIdRef.current + 1
+    previewRequestIdRef.current = requestId
+    previewPendingRef.current = true
     setPreviewing(true)
     setPreviewStatus('正在生成预览...')
     try {
@@ -230,19 +283,25 @@ function ImageImportModal({
         sourceFile,
         conversionOptions,
       )
-      const remapped = remapPatternColors(nextBase, excludedColors)
+      if (previewRequestIdRef.current !== requestId) return
+      const remapped = remapPatternColors(nextBase, excludedColorsRef.current)
       setBasePattern(nextBase)
+      excludedColorsRef.current = remapped.applied
       setExcludedColors(remapped.applied)
       setPreviewPattern(remapped.pattern)
       setPreviewStatus(
         `预览 ${nextBase.width} × ${nextBase.height}，${buildColorStats(remapped.pattern, editor).length} 色`,
       )
     } catch (error) {
+      if (previewRequestIdRef.current !== requestId) return
       console.error('[ImageImportModal] preview failed:', error)
       const message = error instanceof Error ? error.message : String(error)
       setPreviewStatus(`预览失败：${message}`)
     } finally {
-      setPreviewing(false)
+      if (previewRequestIdRef.current === requestId) {
+        previewPendingRef.current = false
+        setPreviewing(false)
+      }
     }
   }
 
@@ -252,6 +311,7 @@ function ImageImportModal({
     if (remapped.applied.size !== nextExcluded.size) {
       setPreviewStatus('部分颜色无法排除：没有其他已用颜色可替代')
     }
+    excludedColorsRef.current = remapped.applied
     setExcludedColors(remapped.applied)
     setPreviewPattern(remapped.pattern)
   }
@@ -276,17 +336,16 @@ function ImageImportModal({
   function continueStep() {
     if (activeStep === 1 && file) {
       unlockStep(2)
-      void generatePreview(file)
       return
     }
-    if (activeStep === 2 && previewPattern) {
+    if (activeStep === 2 && previewPattern && !previewPendingRef.current) {
       unlockStep(3)
       return
     }
   }
 
   function applyToEditor() {
-    if (!previewPattern) return
+    if (!previewPattern || previewPendingRef.current) return
     editor.applyImagePattern(previewPattern, conversionOptions, {
       file,
       excludedColors,
@@ -299,7 +358,7 @@ function ImageImportModal({
     activeStep === 1
       ? Boolean(file)
       : activeStep < 3
-        ? Boolean(previewPattern)
+        ? Boolean(previewPattern) && !previewing
         : false
 
   return (
@@ -309,7 +368,11 @@ function ImageImportModal({
       aria-modal="true"
       aria-label="源图转图纸"
     >
-      <div className="grid max-h-[min(920px,94svh)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(31,24,18,0.26)]">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="grid max-h-[min(920px,94svh)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(31,24,18,0.26)]"
+      >
         <header className="flex items-start justify-between gap-4 border-b border-editor-border px-5 py-4">
           <div>
             <h2 className="text-xl font-black text-editor-strong">
@@ -320,6 +383,7 @@ function ImageImportModal({
             </p>
           </div>
           <button
+            data-dialog-initial-focus
             className="grid h-9 w-9 place-items-center rounded-full bg-editor-surface-soft text-lg font-black text-editor-strong transition hover:bg-editor-elevated active:scale-95"
             type="button"
             onClick={onClose}
@@ -429,7 +493,7 @@ function ImageImportModal({
                   <button
                     className="h-10 rounded-full bg-editor-accent px-5 text-sm font-black text-white transition hover:brightness-105 active:scale-95 disabled:opacity-40"
                     type="button"
-                    disabled={!previewPattern}
+                    disabled={!previewPattern || previewing}
                     onClick={applyToEditor}
                   >
                     应用到编辑
@@ -771,9 +835,28 @@ function PlacementStage({
           ? (pointerVector.x * baseVector.x + pointerVector.y * baseVector.y) /
             baseLengthSq
           : 1
-      onPlacementChange({
+      const nextScale = Math.max(
+        0.05,
+        Math.min(6, drag.startPlacement.scale * ratio),
+      )
+      const nextPlacement = {
         ...drag.startPlacement,
-        scale: Math.max(0.05, Math.min(6, drag.startPlacement.scale * ratio)),
+        scale: nextScale,
+      }
+      const nextImageHeightRatio = imageSize
+        ? nextScale *
+          (imageSize.height / imageSize.width) *
+          (boardRect.width / boardRect.height)
+        : nextScale
+      const nextAnchor = rotatedImageCorner(
+        nextPlacement,
+        nextImageHeightRatio,
+        'nw',
+      )
+      onPlacementChange({
+        ...nextPlacement,
+        x: nextPlacement.x + anchor.x - nextAnchor.x,
+        y: nextPlacement.y + anchor.y - nextAnchor.y,
       })
       return
     }

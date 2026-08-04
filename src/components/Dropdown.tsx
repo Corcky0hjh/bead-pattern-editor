@@ -151,6 +151,9 @@ export function Dropdown<V extends string>({
           id={listId}
           role="listbox"
           tabIndex={-1}
+          aria-activedescendant={
+            focusIndex >= 0 ? `${listId}-option-${focusIndex}` : undefined
+          }
           onKeyDown={handleListKey}
           className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-72 overflow-auto rounded-2xl border border-editor-border bg-editor-elevated p-1 shadow-lg outline-none"
         >
@@ -160,6 +163,7 @@ export function Dropdown<V extends string>({
             return (
               <li
                 key={option.value}
+                id={`${listId}-option-${index}`}
                 role="option"
                 aria-selected={selectedItem}
                 aria-disabled={option.disabled}

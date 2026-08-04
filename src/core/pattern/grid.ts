@@ -1,5 +1,7 @@
 /** 画布展示用的米色底,纯视觉常量,**不参与任何判等**。空 cell 由 color===null 表达。 */
 export const CANVAS_BG_COLOR = '#fffdf8'
+export const MIN_PATTERN_SIDE = 16
+export const MAX_PATTERN_SIDE = 2048
 
 export type PatternCell = {
   /** 该格的颜色 hex(小写带 #);null = 空格,表示该位置没有珠子。 */
@@ -66,4 +68,47 @@ export function migrateLegacyCells(cells: PatternCell[]): PatternCell[] {
     return cell
   })
   return mutated ? next : cells
+}
+
+export function parsePatternGrid(value: unknown): PatternGrid | null {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value as Partial<PatternGrid>
+  if (
+    !Number.isInteger(candidate.width) ||
+    !Number.isInteger(candidate.height) ||
+    candidate.width! < MIN_PATTERN_SIDE ||
+    candidate.width! > MAX_PATTERN_SIDE ||
+    candidate.height! < MIN_PATTERN_SIDE ||
+    candidate.height! > MAX_PATTERN_SIDE ||
+    !Array.isArray(candidate.cells) ||
+    candidate.cells.length !== candidate.width! * candidate.height!
+  ) {
+    return null
+  }
+
+  const cells: PatternCell[] = []
+  for (const rawCell of candidate.cells) {
+    if (!rawCell || typeof rawCell !== 'object') return null
+    const cell = rawCell as Partial<PatternCell>
+    const color = cell.color
+    if (
+      color !== null &&
+      (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color))
+    ) {
+      return null
+    }
+    if (cell.isExternal !== undefined && typeof cell.isExternal !== 'boolean') {
+      return null
+    }
+    cells.push({
+      color: color === null ? null : color.toLowerCase(),
+      ...(cell.isExternal ? { isExternal: true } : {}),
+    })
+  }
+
+  return {
+    width: candidate.width!,
+    height: candidate.height!,
+    cells: migrateLegacyCells(cells),
+  }
 }

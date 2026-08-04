@@ -1,4 +1,8 @@
 import { canvasPresets } from '../../../core/pattern/presets'
+import {
+  MAX_PATTERN_SIDE,
+  MIN_PATTERN_SIDE,
+} from '../../../core/pattern/grid'
 import { MAJOR_GRID_OPTIONS } from '../../../core/canvas/settings'
 import { THEMES } from '../../../core/theme/themes'
 import { Dropdown } from '../../../components/Dropdown'
@@ -12,7 +16,12 @@ type CanvasPanelProps = {
 
 export function CanvasPanel({ editor }: CanvasPanelProps) {
   const currentPresetValue =
-    editor.rows === 104 && editor.cols === 104 ? '104x104' : '52x52'
+    canvasPresets.find(
+      (preset) =>
+        preset.value !== 'custom' &&
+        preset.rows === editor.rows &&
+        preset.cols === editor.cols,
+    )?.value ?? 'custom'
   const { canvasSettings: s, updateCanvasSettings: update } = editor
   return (
     <div className="grid gap-4">
@@ -22,6 +31,7 @@ export function CanvasPanel({ editor }: CanvasPanelProps) {
           ariaLabel="常用尺寸"
           value={currentPresetValue}
           onChange={(value) => {
+            if (value === 'custom') return
             const preset = canvasPresets.find((item) => item.value === value)
             if (!preset) return
             editor.setRows(preset.rows)
@@ -30,7 +40,6 @@ export function CanvasPanel({ editor }: CanvasPanelProps) {
           options={canvasPresets.map((preset) => ({
             value: preset.value,
             label: preset.label,
-            disabled: preset.value === 'custom',
           }))}
         />
       </div>
@@ -40,8 +49,8 @@ export function CanvasPanel({ editor }: CanvasPanelProps) {
           <span className="text-xs font-bold text-editor-text">高（行数）</span>
           <input
             className="h-11 rounded-2xl border border-editor-border bg-editor-elevated/70 px-3 text-sm text-editor-strong outline-none"
-            min={4}
-            max={120}
+            min={MIN_PATTERN_SIDE}
+            max={MAX_PATTERN_SIDE}
             type="number"
             value={editor.rows}
             onChange={(event) => editor.setRows(Number(event.target.value))}
@@ -51,8 +60,8 @@ export function CanvasPanel({ editor }: CanvasPanelProps) {
           <span className="text-xs font-bold text-editor-text">宽（列数）</span>
           <input
             className="h-11 rounded-2xl border border-editor-border bg-editor-elevated/70 px-3 text-sm text-editor-strong outline-none"
-            min={4}
-            max={120}
+            min={MIN_PATTERN_SIDE}
+            max={MAX_PATTERN_SIDE}
             type="number"
             value={editor.cols}
             onChange={(event) => editor.setCols(Number(event.target.value))}
@@ -67,23 +76,6 @@ export function CanvasPanel({ editor }: CanvasPanelProps) {
       >
         应用新尺寸
       </button>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          className="rounded-2xl border border-editor-border bg-editor-elevated/70 px-3 py-2 text-sm font-bold text-editor-strong"
-          type="button"
-          onClick={editor.clearCanvas}
-        >
-          清空图纸
-        </button>
-        <button
-          className="col-span-2 rounded-2xl border border-editor-border bg-editor-elevated/70 px-3 py-2 text-sm font-bold text-editor-strong"
-          type="button"
-          onClick={editor.removeIsolatedCells}
-        >
-          清理孤立珠
-        </button>
-      </div>
 
       {/* —— 外观 —— */}
       <section className="grid gap-3 rounded-2xl bg-editor-surface-soft p-3">

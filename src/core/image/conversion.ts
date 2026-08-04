@@ -103,6 +103,8 @@ export async function quantizeImage({
   const paletteRgb = palette.map(hexToRgb)
   const paletteHex = palette.map((color) => color.toLowerCase())
   const paletteOklab = paletteRgb.map(([r, g, b]) => rgbToOklab(r, g, b))
+  const nearestPaletteCache = new Int16Array(32 * 32 * 32)
+  nearestPaletteCache.fill(-1)
 
   if (algorithm === 'atkinson') {
     // 抖动模式保持原路径:downscale + Atkinson 误差扩散
@@ -122,6 +124,7 @@ export async function quantizeImage({
       paletteRgb,
       paletteOklab,
       paletteHex,
+      nearestPaletteCache,
     )
   }
 
@@ -135,6 +138,7 @@ export async function quantizeImage({
     placement,
     paletteOklab,
     paletteHex,
+    nearestPaletteCache,
     mode: algorithm,
   })
 }
@@ -193,6 +197,7 @@ function cellPoolQuantize({
   placement,
   paletteOklab,
   paletteHex,
+  nearestPaletteCache,
   mode,
 }: {
   image: HTMLImageElement
@@ -203,6 +208,7 @@ function cellPoolQuantize({
   placement?: ImagePlacement
   paletteOklab: OklabColor[]
   paletteHex: string[]
+  nearestPaletteCache: Int16Array
   mode: 'rgb-quant' | 'average'
 }): PatternCell[] {
   // 限制源 canvas 尺寸,避免极大原图(如 6000×4000)耗内存。
@@ -235,9 +241,10 @@ function cellPoolQuantize({
   if (mode === 'rgb-quant') {
     const bucketCount = 32 * 32 * 32
     const histogram = new Uint32Array(bucketCount)
+    const touchedBuckets: number[] = []
     for (let cy = 0; cy < height; cy += 1) {
       for (let cx = 0; cx < width; cx += 1) {
-        histogram.fill(0)
+        touchedBuckets.length = 0
         const x0 = Math.floor(cx * cellW)
         const y0 = Math.floor(cy * cellH)
         const x1 = Math.floor((cx + 1) * cellW)
@@ -247,21 +254,25 @@ function cellPoolQuantize({
           const rowOffset = y * sourceW * 4
           for (let x = x0; x < x1; x += 1) {
             const offset = rowOffset + x * 4
-            if (pixels[offset + 3] < 16) continue
+            const alpha = pixels[offset + 3]
+            if (alpha < 16) continue
             const r5 = pixels[offset] >> 3
             const g5 = pixels[offset + 1] >> 3
             const b5 = pixels[offset + 2] >> 3
-            histogram[(r5 << 10) | (g5 << 5) | b5] += 1
+            const bucket = (r5 << 10) | (g5 << 5) | b5
+            if (histogram[bucket] === 0) touchedBuckets.push(bucket)
+            histogram[bucket] += alpha
           }
         }
 
         let bestBucket = -1
         let bestCount = 0
-        for (let i = 0; i < bucketCount; i += 1) {
-          if (histogram[i] > bestCount) {
-            bestCount = histogram[i]
-            bestBucket = i
+        for (const bucket of touchedBuckets) {
+          if (histogram[bucket] > bestCount) {
+            bestCount = histogram[bucket]
+            bestBucket = bucket
           }
+          histogram[bucket] = 0
         }
 
         if (bestBucket < 0) {
@@ -272,7 +283,13 @@ function cellPoolQuantize({
         const r = ((bestBucket >> 10) & 0x1f) << 3
         const g = ((bestBucket >> 5) & 0x1f) << 3
         const b = (bestBucket & 0x1f) << 3
-        const paletteIndex = findNearestPaletteIndex(r, g, b, paletteOklab)
+        const paletteIndex = findNearestPaletteIndexCached(
+          r,
+          g,
+          b,
+          paletteOklab,
+          nearestPaletteCache,
+        )
         result[cy * width + cx] = { color: paletteHex[paletteIndex] }
       }
     }
@@ -288,27 +305,35 @@ function cellPoolQuantize({
         let sumR = 0,
           sumG = 0,
           sumB = 0,
-          count = 0
+          alphaTotal = 0
         for (let y = y0; y < y1; y += 1) {
           const rowOffset = y * sourceW * 4
           for (let x = x0; x < x1; x += 1) {
             const offset = rowOffset + x * 4
-            if (pixels[offset + 3] < 16) continue
-            sumR += pixels[offset]
-            sumG += pixels[offset + 1]
-            sumB += pixels[offset + 2]
-            count += 1
+            const alpha = pixels[offset + 3]
+            if (alpha < 16) continue
+            sumR += pixels[offset] * alpha
+            sumG += pixels[offset + 1] * alpha
+            sumB += pixels[offset + 2] * alpha
+            alphaTotal += alpha
           }
         }
 
-        if (count === 0) {
+        const sampleCount = Math.max(1, (x1 - x0) * (y1 - y0))
+        if (alphaTotal === 0 || alphaTotal / (sampleCount * 255) < 0.1) {
           result[cy * width + cx] = { color: null }
           continue
         }
-        const r = Math.round(sumR / count)
-        const g = Math.round(sumG / count)
-        const b = Math.round(sumB / count)
-        const paletteIndex = findNearestPaletteIndex(r, g, b, paletteOklab)
+        const r = Math.round(sumR / alphaTotal)
+        const g = Math.round(sumG / alphaTotal)
+        const b = Math.round(sumB / alphaTotal)
+        const paletteIndex = findNearestPaletteIndexCached(
+          r,
+          g,
+          b,
+          paletteOklab,
+          nearestPaletteCache,
+        )
         result[cy * width + cx] = { color: paletteHex[paletteIndex] }
       }
     }
@@ -437,6 +462,7 @@ function atkinsonQuantize(
   paletteRgb: Array<[number, number, number]>,
   paletteOklab: OklabColor[],
   paletteHex: string[],
+  nearestPaletteCache: Int16Array,
 ): PatternCell[] {
   const buffer = new Float32Array(width * height * 3)
   // alphaMask[i]=1 表示该像素来自原图(可量化),=0 表示透明留白(将得到 null cell)
@@ -447,7 +473,7 @@ function atkinsonQuantize(
     buffer[target] = pixels[offset]
     buffer[target + 1] = pixels[offset + 1]
     buffer[target + 2] = pixels[offset + 2]
-    if (pixels[offset + 3] >= 16) alphaMask[i] = 1
+    if (pixels[offset + 3] >= 128) alphaMask[i] = 1
   }
 
   const result: PatternCell[] = new Array(width * height)
@@ -471,7 +497,13 @@ function atkinsonQuantize(
       const r = clampChannel(buffer[target])
       const g = clampChannel(buffer[target + 1])
       const b = clampChannel(buffer[target + 2])
-      const paletteIndex = findNearestPaletteIndex(r, g, b, paletteOklab)
+      const paletteIndex = findNearestPaletteIndexCached(
+        r,
+        g,
+        b,
+        paletteOklab,
+        nearestPaletteCache,
+      )
       const chosen = paletteRgb[paletteIndex]
       result[index] = { color: paletteHex[paletteIndex] }
 
@@ -521,6 +553,30 @@ function findNearestPaletteIndex(
     }
   }
   return nearestIndex
+}
+
+function findNearestPaletteIndexCached(
+  r: number,
+  g: number,
+  b: number,
+  paletteOklab: OklabColor[],
+  cache: Int16Array,
+): number {
+  const r5 = Math.round(clampChannel(r)) >> 3
+  const g5 = Math.round(clampChannel(g)) >> 3
+  const b5 = Math.round(clampChannel(b)) >> 3
+  const bucket = (r5 << 10) | (g5 << 5) | b5
+  const cached = cache[bucket]
+  if (cached >= 0) return cached
+
+  const nearest = findNearestPaletteIndex(
+    (r5 << 3) + 4,
+    (g5 << 3) + 4,
+    (b5 << 3) + 4,
+    paletteOklab,
+  )
+  cache[bucket] = nearest
+  return nearest
 }
 
 function hexToRgb(hex: string): [number, number, number] {

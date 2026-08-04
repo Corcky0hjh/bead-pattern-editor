@@ -1,4 +1,10 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  Check,
+  PencilSimple,
+  Trash,
+  X,
+} from '@phosphor-icons/react'
 import {
   brands,
   findNearestBeadColors,
@@ -8,6 +14,7 @@ import {
   type BrandId,
 } from '../../../core/color'
 import { ColorPickerPopover } from '../../../components/ColorPickerPopover'
+import { useModalDialog } from '../../../components/useModalDialog'
 import type { EditorStateController } from '../useEditorState'
 
 type ColorPanelProps = {
@@ -21,14 +28,21 @@ export function ColorPanel({ editor }: ColorPanelProps) {
     editor.availablePalette,
     6,
   )
-  const sourceSuggestions = findNearestBeadColors(
-    editor.replaceSourceColor,
-    editor.availablePalette,
-    6,
-  )
-  const currentInPalette = editor.palette.some(
+  const currentInCustomPalette = editor.customPalette.some(
     (item) => item.hex.toLowerCase() === editor.currentColor.toLowerCase(),
   )
+  const currentPaletteColor =
+    editor.customPalette.find(
+      (item) => item.hex.toLowerCase() === editor.currentColor.toLowerCase(),
+    ) ??
+    editor.palette.find(
+      (item) => item.hex.toLowerCase() === editor.currentColor.toLowerCase(),
+    )
+  const currentColorName = currentPaletteColor
+    ? (currentPaletteColor.nameZh ??
+      currentPaletteColor.nameEn ??
+      getDisplayCode(currentPaletteColor, editor.currentBrand))
+    : null
   const stubBrand = !editor.brand.available
 
   return (
@@ -51,25 +65,31 @@ export function ColorPanel({ editor }: ColorPanelProps) {
             ariaLabel="当前颜色"
             color={editor.currentColor}
             onPreview={(value) => editor.previewCurrentColor(value)}
-            onCommit={(value) => editor.updateCurrentColor(value)}
+            onCommit={(value) => editor.selectDrawingColor(value)}
             suggestions={currentSuggestions}
           />
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold text-editor-text">当前颜色</p>
-            <p className="font-mono text-sm font-black text-editor-strong">
+            <p className="truncate text-xs font-black text-editor-strong">
+              {currentColorName ?? '当前颜色'}
+            </p>
+            <p className="truncate font-mono text-[10px] font-bold text-editor-text">
               {editor.currentColor}
             </p>
           </div>
           <button
             className="shrink-0 rounded-full bg-editor-elevated px-3 py-1.5 text-[11px] font-bold text-editor-strong disabled:opacity-40"
             type="button"
-            disabled={currentInPalette}
+            disabled={currentInCustomPalette}
             onClick={editor.addCurrentColorToPalette}
           >
-            {currentInPalette ? '已存' : '存入色板'}
+            {currentInCustomPalette ? '已存' : '存为自定义'}
           </button>
         </div>
       </section>
+
+      {editor.customPalette.length > 0 ? (
+        <CustomColorsSection editor={editor} />
+      ) : null}
 
       <section className="grid gap-3 rounded-2xl bg-editor-surface-soft p-3">
         <div className="flex items-center justify-between gap-3">
@@ -112,7 +132,7 @@ export function ColorPanel({ editor }: ColorPanelProps) {
                 selected={
                   color.hex.toLowerCase() === editor.currentColor.toLowerCase()
                 }
-                onClick={() => editor.updateCurrentColor(color.hex)}
+                onClick={() => editor.selectDrawingColor(color.hex)}
               />
             ))}
           </div>
@@ -133,44 +153,9 @@ export function ColorPanel({ editor }: ColorPanelProps) {
               label={`选择 ${color}`}
               selected={editor.currentColor === color}
               small
-              onClick={() => editor.updateCurrentColor(color)}
+              onClick={() => editor.selectDrawingColor(color)}
             />
           ))}
-        </div>
-      </section>
-
-      <section className="grid gap-2">
-        <span className="text-xs font-bold text-editor-text">批量换色</span>
-        <div className="flex items-center gap-2 rounded-2xl bg-editor-surface-soft px-3 py-2">
-          <ColorPickerPopover
-            ariaLabel="源颜色"
-            color={editor.replaceSourceColor}
-            onCommit={(value) =>
-              editor.setReplaceSourceColor(value.toLowerCase())
-            }
-            suggestions={sourceSuggestions}
-            size="sm"
-          />
-          <span className="font-mono text-[11px] font-bold text-editor-strong">
-            {editor.replaceSourceColor}
-          </span>
-          <span className="text-sm font-black text-editor-text">→</span>
-          <span
-            className="h-8 w-8 shrink-0 rounded-full border-2 border-white shadow-sm outline outline-1 outline-editor-border"
-            style={{ backgroundColor: editor.currentColor }}
-            aria-label="当前颜色"
-          />
-          <span className="font-mono text-[11px] font-bold text-editor-strong">
-            {editor.currentColor}
-          </span>
-          <button
-            className="ml-auto shrink-0 rounded-full bg-editor-accent px-3 py-1.5 text-[11px] font-black text-white disabled:opacity-40"
-            type="button"
-            disabled={editor.replaceSourceColor === editor.currentColor}
-            onClick={editor.replaceColor}
-          >
-            换色
-          </button>
         </div>
       </section>
 
@@ -182,19 +167,38 @@ export function ColorPanel({ editor }: ColorPanelProps) {
           </span>
         </div>
         {editor.colorStats.length > 0 ? (
-          <div className="grid max-h-72 gap-2 overflow-auto rounded-3xl bg-editor-surface-soft p-2">
-            {editor.colorStats.map((item) => (
-              <UsedColorRow
-                key={item.color}
-                color={item.color}
-                code={item.code}
-                count={item.count}
-                selected={editor.currentColor === item.color}
-                sourceSelected={editor.replaceSourceColor === item.color}
-                onPickCurrent={() => editor.updateCurrentColor(item.color)}
-                onPickSource={() => editor.setReplaceSourceColor(item.color)}
-              />
-            ))}
+          <div className="max-h-72 overflow-auto rounded-2xl bg-editor-surface-soft px-2">
+            {editor.colorStats.map((item) => {
+              const paletteColor =
+                editor.customPalette.find(
+                  (color) =>
+                    color.hex.toLowerCase() === item.color.toLowerCase(),
+                ) ??
+                editor.palette.find(
+                  (color) =>
+                    color.hex.toLowerCase() === item.color.toLowerCase(),
+                )
+              const label =
+                paletteColor?.nameZh ??
+                paletteColor?.nameEn ??
+                item.code ??
+                item.color
+
+              return (
+                <UsedColorRow
+                  key={item.color}
+                  color={item.color}
+                  label={label}
+                  code={item.code}
+                  count={item.count}
+                  selected={
+                    editor.currentColor.toLowerCase() ===
+                    item.color.toLowerCase()
+                  }
+                  onPickCurrent={() => editor.selectDrawingColor(item.color)}
+                />
+              )
+            })}
           </div>
         ) : (
           <p className="rounded-3xl bg-editor-surface-soft px-3 py-3 text-xs leading-5 text-editor-text">
@@ -257,6 +261,7 @@ export function PaletteManagerModal({
   editor: EditorStateController
   onClose: () => void
 }) {
+  const dialogRef = useModalDialog(onClose)
   const [query, setQuery] = useState('')
   const filteredPalette = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -280,7 +285,11 @@ export function PaletteManagerModal({
       aria-modal="true"
       aria-label="色卡管理"
     >
-      <div className="grid max-h-[min(760px,92svh)] w-full max-w-5xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(31,24,18,0.26)]">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="grid max-h-[min(760px,92svh)] w-full max-w-5xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(31,24,18,0.26)]"
+      >
         <header className="flex items-start justify-between gap-4 border-b border-editor-border px-5 py-4">
           <div>
             <h2 className="text-xl font-black text-editor-strong">色卡管理</h2>
@@ -301,6 +310,7 @@ export function PaletteManagerModal({
 
         <div className="grid gap-3 border-b border-editor-border px-5 py-4 md:grid-cols-[1fr_auto] md:items-center">
           <input
+            data-dialog-initial-focus
             className="h-11 rounded-2xl border border-editor-border bg-editor-elevated/70 px-3 text-sm font-bold text-editor-strong outline-none"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -484,9 +494,174 @@ function BeadColorPickCell({
         <span className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-white/45" />
       </span>
       <span className="w-full truncate text-center font-mono text-[8px] font-black leading-3">
-        {code ?? color.hex.slice(1)}
+        {code ?? color.nameZh ?? color.hex.slice(1)}
       </span>
     </button>
+  )
+}
+
+function CustomColorsSection({ editor }: { editor: EditorStateController }) {
+  const [editingHex, setEditingHex] = useState<string | null>(null)
+  const [pendingDeleteHex, setPendingDeleteHex] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const confirmDeleteRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    if (pendingDeleteHex) confirmDeleteRef.current?.focus()
+  }, [pendingDeleteHex])
+
+  function startEditing(color: BeadColor) {
+    setPendingDeleteHex(null)
+    setEditingHex(color.hex)
+    setNameDraft(color.nameZh ?? color.nameEn ?? color.hex)
+  }
+
+  function cancelEditing() {
+    setEditingHex(null)
+    setNameDraft('')
+  }
+
+  function commitName() {
+    if (!editingHex || !nameDraft.trim()) return
+    editor.renameCustomColor(editingHex, nameDraft)
+    cancelEditing()
+  }
+
+  return (
+    <section className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-bold text-editor-text">自定义颜色</span>
+        <span className="rounded-full bg-editor-surface-soft px-2 py-1 text-[11px] font-bold text-editor-text">
+          {editor.customPalette.length} 色
+        </span>
+      </div>
+      <div className="max-h-44 overflow-auto rounded-2xl bg-editor-surface-soft px-2">
+        {editor.customPalette.map((color) => {
+          const editing = editingHex === color.hex
+          const confirmingDelete = pendingDeleteHex === color.hex
+          const selected =
+            editor.currentColor.toLowerCase() === color.hex.toLowerCase()
+
+          return (
+            <div
+              key={color.hex}
+              className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-editor-border/70 py-1.5 last:border-b-0"
+            >
+              <button
+                type="button"
+                className={`h-7 w-7 rounded-full border-2 border-white shadow-sm outline ${
+                  selected
+                    ? 'outline-2 outline-editor-accent'
+                    : 'outline-1 outline-editor-border'
+                }`}
+                style={{ backgroundColor: color.hex }}
+                aria-label={`选择 ${color.nameZh ?? color.hex}`}
+                onClick={() => editor.selectDrawingColor(color.hex)}
+              />
+
+              {editing ? (
+                <input
+                  autoFocus
+                  className="h-8 min-w-0 rounded-xl border border-editor-accent/40 bg-editor-elevated px-2 text-xs font-bold text-editor-strong outline-none focus:border-editor-accent"
+                  value={nameDraft}
+                  maxLength={32}
+                  aria-label="自定义颜色名称"
+                  onChange={(event) => setNameDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') commitName()
+                    if (event.key === 'Escape') cancelEditing()
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="min-w-0 text-left"
+                  onClick={() => startEditing(color)}
+                >
+                  <span className="block truncate text-xs font-black text-editor-strong">
+                    {color.nameZh ?? color.nameEn ?? '自定义颜色'}
+                  </span>
+                  <span className="block truncate font-mono text-[10px] font-bold text-editor-text/70">
+                    {color.hex}
+                  </span>
+                </button>
+              )}
+
+              <div className="flex items-center gap-0.5">
+                {editing ? (
+                  <>
+                    <button
+                      type="button"
+                      className="grid h-8 w-8 place-items-center rounded-xl text-editor-strong transition hover:bg-editor-elevated disabled:opacity-35"
+                      aria-label="保存名称"
+                      disabled={!nameDraft.trim()}
+                      onClick={commitName}
+                    >
+                      <Check size={15} weight="bold" />
+                    </button>
+                    <button
+                      type="button"
+                      className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated"
+                      aria-label="取消修改"
+                      onClick={cancelEditing}
+                    >
+                      <X size={15} weight="bold" />
+                    </button>
+                  </>
+                ) : confirmingDelete ? (
+                  <>
+                    <button
+                      ref={confirmDeleteRef}
+                      type="button"
+                      className="grid h-8 w-8 place-items-center rounded-xl bg-red-500 text-white transition active:scale-95"
+                      aria-label={`确认删除 ${color.nameZh ?? color.hex}`}
+                      title="确认删除"
+                      onClick={() => {
+                        editor.removeCustomColor(color.hex)
+                        setPendingDeleteHex(null)
+                      }}
+                    >
+                      <Trash size={15} weight="bold" />
+                    </button>
+                    <button
+                      type="button"
+                      className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated"
+                      aria-label="取消删除"
+                      title="取消删除"
+                      onClick={() => setPendingDeleteHex(null)}
+                    >
+                      <X size={15} weight="bold" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated hover:text-editor-strong"
+                      aria-label={`修改 ${color.nameZh ?? color.hex} 的名称`}
+                      onClick={() => startEditing(color)}
+                    >
+                      <PencilSimple size={15} weight="regular" />
+                    </button>
+                    <button
+                      type="button"
+                      className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-red-500/10 hover:text-red-500"
+                      aria-label={`删除 ${color.nameZh ?? color.hex}`}
+                      onClick={() => {
+                        setEditingHex(null)
+                        setPendingDeleteHex(color.hex)
+                      }}
+                    >
+                      <Trash size={15} weight="regular" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -525,65 +700,52 @@ function ColorSwatch({
 
 function UsedColorRow({
   color,
+  label,
   code,
   count,
   selected,
-  sourceSelected,
   onPickCurrent,
-  onPickSource,
 }: {
   color: string
+  label: string
   code: string | null
   count: number
   selected: boolean
-  sourceSelected: boolean
   onPickCurrent: () => void
-  onPickSource: () => void
 }) {
   return (
     <div
-      className={`grid gap-2 rounded-2xl px-2 py-2 text-xs transition ${
+      className={`grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-editor-border/70 py-1.5 text-xs transition last:border-b-0 ${
         selected
-          ? 'bg-editor-elevated text-editor-strong shadow-sm'
-          : 'text-editor-text hover:bg-editor-elevated/60'
+          ? 'text-editor-strong'
+          : 'text-editor-text hover:text-editor-strong'
       }`}
     >
       <button
-        className="grid min-w-0 grid-cols-[auto_1fr_auto] items-center gap-2 text-left"
+        className="grid min-w-0 grid-cols-[auto_1fr] items-center gap-2 text-left"
         type="button"
         onClick={onPickCurrent}
       >
         <span
-          className="h-7 w-7 rounded-full border-2 border-white shadow-sm"
+          className={`h-7 w-7 rounded-full border-2 border-white shadow-sm outline ${
+            selected
+              ? 'outline-2 outline-editor-accent'
+              : 'outline-1 outline-editor-border'
+          }`}
           style={{ backgroundColor: color }}
         />
         <span className="min-w-0">
-          {code ? (
-            <span className="block truncate font-mono text-[11px] font-black text-editor-strong">
-              {code}
-            </span>
-          ) : null}
+          <span className="block truncate text-[11px] font-black text-editor-strong">
+            {label}
+          </span>
           <span className="block truncate font-mono text-[10px] font-bold opacity-70">
-            {color}
+            {code && code !== label ? `${code} · ${color}` : color}
           </span>
         </span>
-        <strong className="rounded-full bg-editor-surface px-2 py-1 text-editor-strong">
-          {count}
-        </strong>
       </button>
-      <div className="flex gap-2">
-        <button
-          className={`flex-1 rounded-full px-2 py-1 text-[11px] font-black ${
-            sourceSelected
-              ? 'bg-editor-accent text-white'
-              : 'bg-editor-elevated/80 text-editor-strong'
-          }`}
-          type="button"
-          onClick={onPickSource}
-        >
-          作为源色
-        </button>
-      </div>
+      <strong className="min-w-7 text-right text-[11px] tabular-nums text-editor-strong">
+        {count}
+      </strong>
     </div>
   )
 }

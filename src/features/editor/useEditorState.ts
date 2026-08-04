@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  brands,
   type BeadColor,
   type BrandId,
   defaultBrandId,
@@ -47,13 +48,26 @@ import {
 } from '../../platform/web/imageExport'
 import {
   createSolidPatternGrid,
-  migrateLegacyCells,
   CANVAS_BG_COLOR,
+  MAX_PATTERN_SIDE,
+  MIN_PATTERN_SIDE,
+  parsePatternGrid,
   type PatternGrid,
 } from '../../core/pattern/grid'
 
-export type EditorTool = 'pan' | 'brush' | 'eraser' | 'fill'
+export type EditorTool = 'pan' | 'select' | 'brush' | 'eraser' | 'fill' | 'shape'
 export type SymmetryMode = 'off' | 'vertical' | 'horizontal' | 'both' | 'center'
+export type FillMode = 'region' | 'global'
+export type ShapeKind = 'line' | 'rectangle' | 'ellipse'
+export type ShapeStyle = 'outline' | 'filled'
+export type SelectionRect = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+export type SelectionFlipAxis = 'horizontal' | 'vertical'
+export type SelectionLayerCell = { x: number; y: number; color: string }
 
 export type EditorStateController = ReturnType<typeof useEditorState>
 
@@ -80,6 +94,8 @@ type HistoryState = {
   past: PatternGrid[]
   present: PatternGrid
   future: PatternGrid[]
+  pastExcluded: Set<string>[]
+  futureExcluded: Set<string>[]
 }
 
 const initialPattern = createSolidPatternGrid({
@@ -94,13 +110,22 @@ export function useEditorState() {
     past: [],
     present: initialPattern,
     future: [],
+    pastExcluded: [],
+    futureExcluded: [],
   })
   const [currentTool, setCurrentTool] = useState<EditorTool>('brush')
-  const [symmetryMode, setSymmetryMode] = useState<SymmetryMode>('off')
+  const [brushSymmetryMode, setBrushSymmetryMode] =
+    useState<SymmetryMode>('off')
+  const [eraserSymmetryMode, setEraserSymmetryMode] =
+    useState<SymmetryMode>('off')
   const [brushSize, setBrushSize] = useState(1)
   const [eraserSize, setEraserSize] = useState(1)
+  const [fillMode, setFillMode] = useState<FillMode>('region')
+  const [shapeKind, setShapeKind] = useState<ShapeKind>('line')
+  const [shapeStyle, setShapeStyle] = useState<ShapeStyle>('outline')
+  const [protectedSelection, setProtectedSelection] =
+    useState<SelectionRect | null>(null)
   const [currentColor, setCurrentColor] = useState(initialColor)
-  const [replaceSourceColor, setReplaceSourceColor] = useState(initialColor)
   const [eyedropperActive, setEyedropperActive] = useState(false)
   const [paletteExpanded, setPaletteExpanded] = useState(false)
   const [recentColors, setRecentColors] = useState<string[]>([initialColor])
@@ -131,6 +156,9 @@ export function useEditorState() {
   const [detectBackground, setDetectBackground] = useState(true)
   const [imageFitMode, setImageFitMode] = useState<ImageFitMode>('contain')
   const [imageCrop, setImageCrop] = useState<ImageCropRect | undefined>()
+  const [imagePlacement, setImagePlacement] = useState<
+    ImagePlacement | undefined
+  >()
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imageStatus, setImageStatus] = useState('还没上传图片')
 
@@ -165,6 +193,10 @@ export function useEditorState() {
   }, [currentTheme])
 
   const pattern = history.present
+  useEffect(() => {
+    setRows(pattern.height)
+    setCols(pattern.width)
+  }, [pattern.height, pattern.width])
   const canUndo = history.past.length > 0
   const canRedo = history.future.length > 0
 
@@ -174,7 +206,7 @@ export function useEditorState() {
     [currentBrand],
   )
   const palette = useMemo<BeadColor[]>(
-    () => [...brandColors, ...customPalette],
+    () => mergePaletteWithCustomPriority(brandColors, customPalette),
     [brandColors, customPalette],
   )
   const availablePalette = useMemo<BeadColor[]>(
@@ -278,6 +310,14 @@ export function useEditorState() {
     rememberColor(normalized)
   }
 
+  function selectDrawingColor(color: string) {
+    updateCurrentColor(color)
+    setEyedropperActive(false)
+    if (currentTool !== 'fill' && currentTool !== 'shape') {
+      setCurrentTool('brush')
+    }
+  }
+
   /**
    * 只更新当前颜色,不记最近用过。
    * 给取色器拖动预览这类高频场景用——拖动中色变了就要画笔跟着变,
@@ -289,7 +329,11 @@ export function useEditorState() {
 
   function addCurrentColorToPalette() {
     const normalized = currentColor.toLowerCase()
-    if (palette.some((item) => item.hex.toLowerCase() === normalized)) return
+    if (
+      customPalette.some((item) => item.hex.toLowerCase() === normalized)
+    ) {
+      return
+    }
     setCustomPalette((previous) => [
       ...previous,
       {
@@ -301,12 +345,32 @@ export function useEditorState() {
   }
 
   function removeCustomColor(hex: string) {
-    const normalized = hex.toLowerCase()
+    const normalized = normalizeHex(hex)
+    const hasBrandFallback = brands.some((brandOption) =>
+      getBrandColors(brandOption.id).some(
+        (item) => normalizeHex(item.hex) === normalized,
+      ),
+    )
     setCustomPalette((previous) =>
       previous.filter((item) => item.hex.toLowerCase() !== normalized),
     )
-    setDisabledPaletteHexes((previous) => withoutHex(previous, normalized))
-    setExcludedColorHexes((previous) => withoutHex(previous, normalized))
+    if (!hasBrandFallback) {
+      setDisabledPaletteHexes((previous) => withoutHex(previous, normalized))
+      setExcludedColorHexes((previous) => withoutHex(previous, normalized))
+    }
+  }
+
+  function renameCustomColor(hex: string, name: string) {
+    const normalized = hex.toLowerCase()
+    const normalizedName = name.trim().slice(0, 32)
+    if (!normalizedName) return
+    setCustomPalette((previous) =>
+      previous.map((item) =>
+        item.hex.toLowerCase() === normalized
+          ? { ...item, nameZh: normalizedName }
+          : item,
+      ),
+    )
   }
 
   function setPaletteColorEnabled(hex: string, enabled: boolean) {
@@ -319,6 +383,13 @@ export function useEditorState() {
     })
     if (!enabled) {
       setExcludedColorHexes((previous) => withoutHex(previous, normalized))
+      if (normalizeHex(currentColor) === normalized) {
+        const fallback = palette.find((color) => {
+          const candidate = normalizeHex(color.hex)
+          return candidate !== normalized && !disabledPaletteHexes.has(candidate)
+        })
+        if (fallback) updateCurrentColor(fallback.hex)
+      }
     }
   }
 
@@ -337,46 +408,68 @@ export function useEditorState() {
     setDisabledPaletteHexes(new Set())
   }
 
-  function commitPattern(next: PatternGrid) {
+  function commitPattern(
+    next: PatternGrid,
+    nextExcluded = excludedColorHexes,
+  ) {
     setHistory((previous) => ({
       past: [...previous.past, previous.present].slice(-maxHistorySteps),
       present: next,
       future: [],
+      pastExcluded: [
+        ...previous.pastExcluded,
+        new Set(excludedColorHexes),
+      ].slice(-maxHistorySteps),
+      futureExcluded: [],
     }))
+    setExcludedColorHexes(new Set(nextExcluded))
   }
 
   function undo() {
-    setHistory((previous) => {
-      const nextPresent = previous.past.at(-1)
-      if (!nextPresent) return previous
-
-      return {
-        past: previous.past.slice(0, -1),
-        present: nextPresent,
-        future: [previous.present, ...previous.future].slice(
-          0,
-          maxHistorySteps,
-        ),
-      }
+    const nextPresent = history.past.at(-1)
+    if (!nextPresent) return
+    const nextExcluded = history.pastExcluded.at(-1)
+    setExcludedColorHexes(new Set(nextExcluded ?? []))
+    setHistory({
+      past: history.past.slice(0, -1),
+      present: nextPresent,
+      future: [history.present, ...history.future].slice(0, maxHistorySteps),
+      pastExcluded: history.pastExcluded.slice(0, -1),
+      futureExcluded: [
+        new Set(excludedColorHexes),
+        ...history.futureExcluded,
+      ].slice(0, maxHistorySteps),
     })
   }
 
   function redo() {
-    setHistory((previous) => {
-      const nextPresent = previous.future[0]
-      if (!nextPresent) return previous
-
-      return {
-        past: [...previous.past, previous.present].slice(-maxHistorySteps),
-        present: nextPresent,
-        future: previous.future.slice(1),
-      }
+    const nextPresent = history.future[0]
+    if (!nextPresent) return
+    const nextExcluded = history.futureExcluded[0]
+    setExcludedColorHexes(new Set(nextExcluded ?? []))
+    setHistory({
+      past: [...history.past, history.present].slice(-maxHistorySteps),
+      present: nextPresent,
+      future: history.future.slice(1),
+      pastExcluded: [
+        ...history.pastExcluded,
+        new Set(excludedColorHexes),
+      ].slice(-maxHistorySteps),
+      futureExcluded: history.futureExcluded.slice(1),
     })
   }
 
   function applyCanvasSize(nextRows = rows, nextCols = cols) {
-    const normalizedRows = clamp(Math.round(nextRows), 4, 120)
-    const normalizedCols = clamp(Math.round(nextCols), 4, 120)
+    const normalizedRows = clamp(
+      Math.round(nextRows),
+      MIN_PATTERN_SIDE,
+      MAX_PATTERN_SIDE,
+    )
+    const normalizedCols = clamp(
+      Math.round(nextCols),
+      MIN_PATTERN_SIDE,
+      MAX_PATTERN_SIDE,
+    )
     setRows(normalizedRows)
     setCols(normalizedCols)
     commitPattern(
@@ -384,8 +477,8 @@ export function useEditorState() {
         width: normalizedCols,
         height: normalizedRows,
       }),
+      new Set(),
     )
-    setExcludedColorHexes(new Set())
   }
 
   function clearCanvas() {
@@ -394,8 +487,8 @@ export function useEditorState() {
         width: pattern.width,
         height: pattern.height,
       }),
+      new Set(),
     )
-    setExcludedColorHexes(new Set())
   }
 
   function beginStroke() {
@@ -416,6 +509,11 @@ export function useEditorState() {
       past: [...previous.past, baseline].slice(-maxHistorySteps),
       present: draft,
       future: [],
+      pastExcluded: [
+        ...previous.pastExcluded,
+        new Set(excludedColorHexes),
+      ].slice(-maxHistorySteps),
+      futureExcluded: [],
     }))
   }
 
@@ -425,7 +523,6 @@ export function useEditorState() {
       if (sampledColor) {
         // 吸管:只有点到实色才更新当前色;点到空 cell 无意义,保持原色
         updateCurrentColor(sampledColor)
-        setReplaceSourceColor(sampledColor)
       }
       setEyedropperActive(false)
       return
@@ -433,24 +530,24 @@ export function useEditorState() {
 
     if (currentTool === 'pan') return
     if (currentTool === 'fill') {
-      for (const targetIndex of getSymmetryIndexes(
-        index,
-        pattern.width,
-        pattern.height,
-        symmetryMode,
-      )) {
-        fillFrom(targetIndex)
+      if (fillMode === 'global') {
+        fillAllMatching(index)
+      } else {
+        fillFrom(index)
       }
       return
     }
 
     const color = currentTool === 'eraser' ? null : currentColor
     const size = currentTool === 'eraser' ? eraserSize : brushSize
+    const symmetryMode =
+      currentTool === 'eraser' ? eraserSymmetryMode : brushSymmetryMode
     for (const targetIndex of getSymmetryIndexes(
       index,
       pattern.width,
       pattern.height,
       symmetryMode,
+      protectedSelection,
     )) {
       paintArea(targetIndex, size, color)
     }
@@ -460,17 +557,26 @@ export function useEditorState() {
     const draftBase = strokeDraftRef.current ?? pattern
     const centerX = index % draftBase.width
     const centerY = Math.floor(index / draftBase.width)
-    const radius = Math.floor(size / 2)
+    const startX = centerX - Math.floor(size / 2)
+    const startY = centerY - Math.floor(size / 2)
     const nextCells = draftBase.cells.slice()
     let changed = false
 
-    for (let y = centerY - radius; y <= centerY + radius; y += 1) {
-      for (let x = centerX - radius; x <= centerX + radius; x += 1) {
+    for (let y = startY; y < startY + size; y += 1) {
+      for (let x = startX; x < startX + size; x += 1) {
         if (x < 0 || y < 0 || x >= draftBase.width || y >= draftBase.height) {
           continue
         }
         const cellIndex = y * draftBase.width + x
-        if (nextCells[cellIndex].color === color) continue
+        if (!isIndexInsideSelection(cellIndex, draftBase.width, protectedSelection)) {
+          continue
+        }
+        if (
+          nextCells[cellIndex].color === color &&
+          !nextCells[cellIndex].isExternal
+        ) {
+          continue
+        }
         nextCells[cellIndex] = { color }
         changed = true
       }
@@ -488,10 +594,12 @@ export function useEditorState() {
   }
 
   function fillFrom(index: number) {
+    if (!isIndexInsideSelection(index, pattern.width, protectedSelection)) return
     const startCell = pattern.cells[index]
     if (!startCell) return
     const targetColor = startCell.color
-    if (targetColor === currentColor) return
+    const targetExternal = Boolean(startCell.isExternal)
+    if (targetColor === currentColor && !targetExternal) return
 
     const nextCells = pattern.cells.map((cell) => ({ ...cell }))
     const queue = [index]
@@ -500,7 +608,16 @@ export function useEditorState() {
     while (queue.length > 0) {
       const currentIndex = queue.shift()
       if (currentIndex === undefined || visited.has(currentIndex)) continue
-      if (nextCells[currentIndex]?.color !== targetColor) continue
+      const currentCell = nextCells[currentIndex]
+      if (!isIndexInsideSelection(currentIndex, pattern.width, protectedSelection)) {
+        continue
+      }
+      if (
+        currentCell?.color !== targetColor ||
+        Boolean(currentCell.isExternal) !== targetExternal
+      ) {
+        continue
+      }
 
       visited.add(currentIndex)
       nextCells[currentIndex] = { color: currentColor }
@@ -516,14 +633,183 @@ export function useEditorState() {
     commitPattern({ ...pattern, cells: nextCells })
   }
 
-  function replaceColor() {
-    if (replaceSourceColor === currentColor) return
+  function fillAllMatching(index: number) {
+    if (!isIndexInsideSelection(index, pattern.width, protectedSelection)) return
+    const sourceColor = pattern.cells[index]?.color
+    if (!sourceColor) return
+    const normalizedSource = normalizeHex(sourceColor)
+    const normalizedCurrent = normalizeHex(currentColor)
+    if (normalizedSource === normalizedCurrent) return
     commitPattern({
       ...pattern,
-      cells: pattern.cells.map((cell) =>
-        cell.color === replaceSourceColor ? { color: currentColor } : cell,
+      cells: pattern.cells.map((cell, index) =>
+        isIndexInsideSelection(
+          index,
+          pattern.width,
+          protectedSelection,
+        ) &&
+        !cell.isExternal &&
+        cell.color &&
+        normalizeHex(cell.color) === normalizedSource
+          ? { ...cell, color: normalizedCurrent }
+          : cell,
       ),
     })
+  }
+
+  function drawShape(startIndex: number, endIndex: number) {
+    const indexes = getShapeCellIndexes(
+      startIndex,
+      endIndex,
+      pattern.width,
+      pattern.height,
+      shapeKind,
+      shapeStyle,
+      brushSize,
+    ).filter((index) =>
+      isIndexInsideSelection(index, pattern.width, protectedSelection),
+    )
+    if (indexes.length === 0) return
+    const nextCells = pattern.cells.slice()
+    let changed = false
+    indexes.forEach((index) => {
+      if (
+        nextCells[index].color === currentColor &&
+        !nextCells[index].isExternal
+      ) {
+        return
+      }
+      nextCells[index] = { color: currentColor }
+      changed = true
+    })
+    if (changed) commitPattern({ ...pattern, cells: nextCells })
+  }
+
+  function deleteSelection(selection: SelectionRect) {
+    let changed = false
+    const nextCells = pattern.cells.map((cell, index) => {
+      const x = index % pattern.width
+      const y = Math.floor(index / pattern.width)
+      const selected =
+        x >= selection.x &&
+        x < selection.x + selection.width &&
+        y >= selection.y &&
+        y < selection.y + selection.height
+      if (!selected || cell.color === null || cell.isExternal) return cell
+      changed = true
+      return { color: null }
+    })
+    if (changed) commitPattern({ ...pattern, cells: nextCells })
+  }
+
+  function moveSelection(selection: SelectionRect, dx: number, dy: number) {
+    if (dx === 0 && dy === 0) return
+    const selectedCells: Array<{ x: number; y: number; color: string }> = []
+    const nextCells = pattern.cells.slice()
+
+    for (let y = selection.y; y < selection.y + selection.height; y += 1) {
+      for (let x = selection.x; x < selection.x + selection.width; x += 1) {
+        const index = y * pattern.width + x
+        const cell = pattern.cells[index]
+        const color = cell?.color
+        if (!color || cell.isExternal) continue
+        selectedCells.push({ x, y, color })
+        nextCells[index] = { color: null }
+      }
+    }
+
+    if (selectedCells.length === 0) return
+    selectedCells.forEach(({ x, y, color }) => {
+      const targetX = x + dx
+      const targetY = y + dy
+      if (
+        targetX < 0 ||
+        targetY < 0 ||
+        targetX >= pattern.width ||
+        targetY >= pattern.height
+      ) {
+        return
+      }
+      nextCells[targetY * pattern.width + targetX] = { color }
+    })
+    commitPattern({ ...pattern, cells: nextCells })
+  }
+
+  function flipSelection(selection: SelectionRect, axis: SelectionFlipAxis) {
+    const selectedCells: Array<{ x: number; y: number; color: string }> = []
+    const nextCells = pattern.cells.slice()
+
+    for (let y = selection.y; y < selection.y + selection.height; y += 1) {
+      for (let x = selection.x; x < selection.x + selection.width; x += 1) {
+        const index = y * pattern.width + x
+        const cell = pattern.cells[index]
+        if (!cell?.color || cell.isExternal) continue
+        selectedCells.push({ x, y, color: cell.color })
+        nextCells[index] = { color: null }
+      }
+    }
+    if (selectedCells.length === 0) return
+
+    selectedCells.forEach(({ x, y, color }) => {
+      const targetX =
+        axis === 'horizontal'
+          ? selection.x + selection.width - 1 - (x - selection.x)
+          : x
+      const targetY =
+        axis === 'vertical'
+          ? selection.y + selection.height - 1 - (y - selection.y)
+          : y
+      nextCells[targetY * pattern.width + targetX] = { color }
+    })
+    commitPattern({ ...pattern, cells: nextCells })
+  }
+
+  function copySelectionToOrigin(selection: SelectionRect) {
+    const nextCells = pattern.cells.slice()
+    let changed = false
+    for (let y = 0; y < selection.height; y += 1) {
+      for (let x = 0; x < selection.width; x += 1) {
+        const source = pattern.cells[
+          (selection.y + y) * pattern.width + selection.x + x
+        ]
+        if (!source?.color || source.isExternal) continue
+        nextCells[y * pattern.width + x] = { color: source.color }
+        changed = true
+      }
+    }
+    if (changed) commitPattern({ ...pattern, cells: nextCells })
+  }
+
+  function commitSelectionLayer(
+    source: SelectionRect,
+    target: SelectionRect,
+    cells: SelectionLayerCell[],
+    clearSource: boolean,
+  ) {
+    const nextCells = pattern.cells.slice()
+    let changed = false
+
+    if (clearSource) {
+      for (let y = source.y; y < source.y + source.height; y += 1) {
+        for (let x = source.x; x < source.x + source.width; x += 1) {
+          const index = y * pattern.width + x
+          const cell = nextCells[index]
+          if (!cell?.color || cell.isExternal) continue
+          nextCells[index] = { color: null }
+          changed = true
+        }
+      }
+    }
+
+    cells.forEach((cell) => {
+      const x = target.x + cell.x
+      const y = target.y + cell.y
+      if (x < 0 || y < 0 || x >= pattern.width || y >= pattern.height) return
+      nextCells[y * pattern.width + x] = { color: cell.color }
+      changed = true
+    })
+
+    if (changed) commitPattern({ ...pattern, cells: nextCells })
   }
 
   function removeIsolatedCells() {
@@ -581,13 +867,13 @@ export function useEditorState() {
     const shouldResetExcluded = options.resetExcluded ?? file !== imageFile
     const targetWidth = clamp(
       Math.round(options.width ?? pattern.width),
-      4,
-      120,
+      MIN_PATTERN_SIDE,
+      MAX_PATTERN_SIDE,
     )
     const targetHeight = clamp(
       Math.round(options.height ?? pattern.height),
-      4,
-      120,
+      MIN_PATTERN_SIDE,
+      MAX_PATTERN_SIDE,
     )
 
     try {
@@ -616,7 +902,7 @@ export function useEditorState() {
       )
       setRows(targetHeight)
       setCols(targetWidth)
-      commitPattern(nextPattern)
+      commitPattern(nextPattern, normalizedExcluded)
       setImageStatus(
         `已把 ${file.name} 转成 ${targetWidth} × ${targetHeight} 颗`,
       )
@@ -694,12 +980,13 @@ export function useEditorState() {
     setMergeThreshold(options.mergeThreshold)
     setDetectBackground(options.detectBackground)
     setImageCrop(options.crop)
+    setImagePlacement(options.placement)
     setRows(nextPattern.height)
     setCols(nextPattern.width)
-    setExcludedColorHexes(
-      new Set([...(metadata.excludedColors ?? new Set())].map(normalizeHex)),
+    const nextExcluded = new Set(
+      [...(metadata.excludedColors ?? new Set())].map(normalizeHex),
     )
-    commitPattern(nextPattern)
+    commitPattern(nextPattern, nextExcluded)
     setImageStatus(
       metadata.status ??
         `已应用 ${nextPattern.width} × ${nextPattern.height} 图纸`,
@@ -716,8 +1003,10 @@ export function useEditorState() {
       return
     }
 
-    commitPattern(remapped.pattern)
-    setExcludedColorHexes((previous) => withHex(previous, normalized))
+    commitPattern(
+      remapped.pattern,
+      withHex(excludedColorHexes, normalized),
+    )
     setImageStatus(`已排除 ${normalized}，并重映射到 ${remapped.replacement}`)
   }
 
@@ -752,14 +1041,14 @@ export function useEditorState() {
           mergeThreshold,
           detectBackground,
           crop: imageCrop,
+          placement: imagePlacement,
         },
         new Set(),
       )
       const remapped = remapPatternColors(basePattern, normalizedExcluded)
       setRows(basePattern.height)
       setCols(basePattern.width)
-      commitPattern(remapped.pattern)
-      setExcludedColorHexes(remapped.applied)
+      commitPattern(remapped.pattern, remapped.applied)
       setImageStatus(
         remapped.applied.size > 0
           ? `已恢复并保留 ${remapped.applied.size} 个排除颜色`
@@ -773,7 +1062,7 @@ export function useEditorState() {
   }
 
   function exportPng() {
-    const cellSize = 12
+    const cellSize = getBoundedCellSize(pattern, 12)
     const canvas = document.createElement('canvas')
     canvas.width = pattern.width * cellSize
     canvas.height = pattern.height * cellSize
@@ -784,7 +1073,7 @@ export function useEditorState() {
     context.fillRect(0, 0, canvas.width, canvas.height)
 
     pattern.cells.forEach((cell, index) => {
-      if (cell.color === null) return
+      if (cell.color === null || cell.isExternal) return
       const x = (index % pattern.width) * cellSize
       const y = Math.floor(index / pattern.width) * cellSize
       context.fillStyle = cell.color
@@ -808,6 +1097,7 @@ export function useEditorState() {
       pattern,
       labelByHex: buildLabelByHex(),
       title: `${brand.shortLabel} · ${pattern.width}×${pattern.height} · 共 ${usedCount} 颗 · ${colorStats.length} 色`,
+      cellSize: getBoundedCellSize(pattern, 28, 3800),
     })
     downloadCanvas(canvas, 'bead-pattern-keys.png')
   }
@@ -823,7 +1113,16 @@ export function useEditorState() {
   }
 
   function exportJson() {
-    const payload = JSON.stringify({ rows, cols, pattern }, null, 2)
+    const payload = JSON.stringify(
+      {
+        schemaVersion: 1,
+        rows: pattern.height,
+        cols: pattern.width,
+        pattern,
+      },
+      null,
+      2,
+    )
     const blob = new Blob([payload], { type: 'application/json' })
     downloadUrl(URL.createObjectURL(blob), 'bead-pattern.json', true)
   }
@@ -851,25 +1150,29 @@ export function useEditorState() {
   }
 
   async function importJson(file: File) {
-    const text = await file.text()
-    const payload = JSON.parse(text) as {
-      pattern?: PatternGrid
-      rows?: number
-      cols?: number
+    try {
+      const text = await file.text()
+      const payload = JSON.parse(text) as { pattern?: unknown }
+      const nextPattern = parsePatternGrid(payload.pattern)
+      if (!nextPattern) throw new Error('图纸结构或尺寸无效')
+      setRows(nextPattern.height)
+      setCols(nextPattern.width)
+      commitPattern(nextPattern, new Set())
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setImageStatus(`导入失败：${message}`)
     }
-    if (!payload.pattern) return
-    setRows(payload.rows ?? payload.pattern.height)
-    setCols(payload.cols ?? payload.pattern.width)
-    commitPattern({
-      ...payload.pattern,
-      cells: migrateLegacyCells(payload.pattern.cells),
-    })
   }
 
   function saveLocal() {
     localStorage.setItem(
       'bead-pattern-editor',
-      JSON.stringify({ rows, cols, pattern }),
+      JSON.stringify({
+        schemaVersion: 1,
+        rows: pattern.height,
+        cols: pattern.width,
+        pattern,
+      }),
     )
     setImageStatus('已保存到当前浏览器')
   }
@@ -881,19 +1184,18 @@ export function useEditorState() {
       return
     }
 
-    const payload = JSON.parse(saved) as {
-      rows?: number
-      cols?: number
-      pattern?: PatternGrid
+    try {
+      const payload = JSON.parse(saved) as { pattern?: unknown }
+      const nextPattern = parsePatternGrid(payload.pattern)
+      if (!nextPattern) throw new Error('保存的图纸结构或尺寸无效')
+      setRows(nextPattern.height)
+      setCols(nextPattern.width)
+      commitPattern(nextPattern, new Set())
+      setImageStatus('已恢复上次的图纸')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setImageStatus(`恢复失败：${message}`)
     }
-    if (!payload.pattern) return
-    setRows(payload.rows ?? payload.pattern.height)
-    setCols(payload.cols ?? payload.pattern.width)
-    commitPattern({
-      ...payload.pattern,
-      cells: migrateLegacyCells(payload.pattern.cells),
-    })
-    setImageStatus('已恢复上次的图纸')
   }
 
   return {
@@ -904,17 +1206,26 @@ export function useEditorState() {
     pattern,
     currentTool,
     setCurrentTool,
-    symmetryMode,
-    setSymmetryMode,
+    brushSymmetryMode,
+    setBrushSymmetryMode,
+    eraserSymmetryMode,
+    setEraserSymmetryMode,
     brushSize,
     setBrushSize,
     eraserSize,
     setEraserSize,
+    fillMode,
+    setFillMode,
+    shapeKind,
+    setShapeKind,
+    shapeStyle,
+    setShapeStyle,
+    protectedSelection,
+    setProtectedSelection,
     currentColor,
     updateCurrentColor,
+    selectDrawingColor,
     previewCurrentColor,
-    replaceSourceColor,
-    setReplaceSourceColor,
     eyedropperActive,
     setEyedropperActive,
     paletteExpanded,
@@ -922,6 +1233,7 @@ export function useEditorState() {
     recentColors,
     customPalette,
     addCurrentColorToPalette,
+    renameCustomColor,
     removeCustomColor,
     disabledPaletteHexes,
     availablePalette,
@@ -971,7 +1283,12 @@ export function useEditorState() {
     beginStroke,
     endStroke,
     paintCell,
-    replaceColor,
+    drawShape,
+    deleteSelection,
+    moveSelection,
+    flipSelection,
+    copySelectionToOrigin,
+    commitSelectionLayer,
     removeIsolatedCells,
     convertImage,
     generateImagePattern,
@@ -987,8 +1304,38 @@ export function useEditorState() {
   }
 }
 
+function isIndexInsideSelection(
+  index: number,
+  width: number,
+  selection: SelectionRect | null,
+) {
+  if (!selection) return true
+  const x = index % width
+  const y = Math.floor(index / width)
+  return (
+    x >= selection.x &&
+    x < selection.x + selection.width &&
+    y >= selection.y &&
+    y < selection.y + selection.height
+  )
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function getBoundedCellSize(
+  pattern: PatternGrid,
+  preferred: number,
+  maxBitmapSide = 4096,
+): number {
+  return Math.max(
+    1,
+    Math.min(
+      preferred,
+      Math.floor(maxBitmapSide / Math.max(pattern.width, pattern.height)),
+    ),
+  )
 }
 
 function getSymmetryIndexes(
@@ -996,32 +1343,176 @@ function getSymmetryIndexes(
   width: number,
   height: number,
   mode: SymmetryMode,
+  selection: SelectionRect | null,
 ): number[] {
   const x = index % width
   const y = Math.floor(index / width)
+  const bounds = selection ?? { x: 0, y: 0, width, height }
+  const mirroredX = bounds.x + bounds.width - 1 - (x - bounds.x)
+  const mirroredY = bounds.y + bounds.height - 1 - (y - bounds.y)
   const points: Array<[number, number]> = [[x, y]]
 
   if (mode === 'vertical' || mode === 'both') {
-    points.push([width - 1 - x, y])
+    points.push([mirroredX, y])
   }
   if (mode === 'horizontal' || mode === 'both') {
-    points.push([x, height - 1 - y])
+    points.push([x, mirroredY])
   }
   if (mode === 'both' || mode === 'center') {
-    points.push([width - 1 - x, height - 1 - y])
+    points.push([mirroredX, mirroredY])
   }
 
   return [
     ...new Set(
       points
-        .filter(([px, py]) => px >= 0 && py >= 0 && px < width && py < height)
+        .filter(
+          ([px, py]) =>
+            px >= bounds.x &&
+            py >= bounds.y &&
+            px < bounds.x + bounds.width &&
+            py < bounds.y + bounds.height,
+        )
         .map(([px, py]) => py * width + px),
     ),
   ]
 }
 
+export function getShapeCellIndexes(
+  startIndex: number,
+  endIndex: number,
+  width: number,
+  height: number,
+  kind: ShapeKind,
+  style: ShapeStyle,
+  strokeSize = 1,
+): number[] {
+  const startX = startIndex % width
+  const startY = Math.floor(startIndex / width)
+  const endX = endIndex % width
+  const endY = Math.floor(endIndex / width)
+  const minX = Math.min(startX, endX)
+  const maxX = Math.max(startX, endX)
+  const minY = Math.min(startY, endY)
+  const maxY = Math.max(startY, endY)
+  const points = new Set<number>()
+  const add = (x: number, y: number) => {
+    if (x >= 0 && y >= 0 && x < width && y < height) {
+      points.add(y * width + x)
+    }
+  }
+  const thicken = () => {
+    if (strokeSize <= 1) return [...points]
+    const source = [...points]
+    const offset = Math.floor(strokeSize / 2)
+    source.forEach((index) => {
+      const centerX = index % width
+      const centerY = Math.floor(index / width)
+      for (let y = centerY - offset; y < centerY - offset + strokeSize; y += 1) {
+        for (let x = centerX - offset; x < centerX - offset + strokeSize; x += 1) {
+          add(x, y)
+        }
+      }
+    })
+    return [...points]
+  }
+
+  if (kind === 'line') {
+    let x = startX
+    let y = startY
+    const dx = Math.abs(endX - startX)
+    const dy = Math.abs(endY - startY)
+    const sx = startX < endX ? 1 : -1
+    const sy = startY < endY ? 1 : -1
+    let error = dx - dy
+    while (true) {
+      add(x, y)
+      if (x === endX && y === endY) break
+      const doubled = error * 2
+      if (doubled > -dy) {
+        error -= dy
+        x += sx
+      }
+      if (doubled < dx) {
+        error += dx
+        y += sy
+      }
+    }
+    return thicken()
+  }
+
+  if (kind === 'rectangle') {
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        if (
+          style === 'filled' ||
+          x === minX ||
+          x === maxX ||
+          y === minY ||
+          y === maxY
+        ) {
+          add(x, y)
+        }
+      }
+    }
+    return style === 'filled' ? [...points] : thicken()
+  }
+
+  const centerX = (minX + maxX) / 2
+  const centerY = (minY + maxY) / 2
+  const radiusX = (maxX - minX) / 2
+  const radiusY = (maxY - minY) / 2
+  if (radiusX === 0 || radiusY === 0) {
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) add(x, y)
+    }
+    return style === 'filled' ? [...points] : thicken()
+  }
+
+  if (style === 'filled') {
+    for (let y = minY; y <= maxY; y += 1) {
+      const normalizedY = (y - centerY) / radiusY
+      const span = radiusX * Math.sqrt(Math.max(0, 1 - normalizedY ** 2))
+      const left = Math.ceil(centerX - span)
+      const right = Math.floor(centerX + span)
+      for (let x = left; x <= right; x += 1) add(x, y)
+    }
+  } else {
+    const samples = Math.max(24, Math.max(maxX - minX, maxY - minY) * 12)
+    for (let step = 0; step < samples; step += 1) {
+      const angle = (step / samples) * Math.PI * 2
+      add(
+        Math.round(centerX + Math.cos(angle) * radiusX),
+        Math.round(centerY + Math.sin(angle) * radiusY),
+      )
+    }
+  }
+  return style === 'filled' ? [...points] : thicken()
+}
+
 function normalizeHex(hex: string): string {
   return hex.trim().toLowerCase()
+}
+
+function mergePaletteWithCustomPriority(
+  brandColors: BeadColor[],
+  customColors: BeadColor[],
+): BeadColor[] {
+  const colorsByHex = new Map<string, BeadColor>()
+  brandColors.forEach((color) => colorsByHex.set(normalizeHex(color.hex), color))
+  customColors.forEach((color) => {
+    const normalized = normalizeHex(color.hex)
+    const brandColor = colorsByHex.get(normalized)
+    colorsByHex.set(normalized, {
+      ...brandColor,
+      ...color,
+      hex: normalized,
+      codes: {
+        ...brandColor?.codes,
+        ...color.codes,
+      },
+    })
+  })
+  return [...colorsByHex.values()]
 }
 
 function withHex(source: Set<string>, hex: string): Set<string> {
@@ -1150,7 +1641,7 @@ function loadCustomPalette(): BeadColor[] {
       BeadColor | { hex: string; name?: string }
     >
     if (!Array.isArray(parsed)) return []
-    return parsed.map((item) => {
+    const upgraded = parsed.map((item) => {
       if ('codes' in item && item.codes) return item as BeadColor
       const legacy = item as { hex: string; name?: string }
       return {
@@ -1159,6 +1650,7 @@ function loadCustomPalette(): BeadColor[] {
         nameZh: legacy.name,
       }
     })
+    return mergePaletteWithCustomPriority([], upgraded)
   } catch {
     return []
   }

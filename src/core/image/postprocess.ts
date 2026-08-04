@@ -177,14 +177,56 @@ export function markExternalBackground(
   backgroundHexes: Set<string> = BACKGROUND_FILL_HEXES,
 ): PatternCell[] {
   const next = cells.map((c) => ({ ...c, isExternal: false }))
+  const inferredBackgroundHexes = new Set(
+    [...backgroundHexes].map((hex) => hex.toLowerCase()),
+  )
   const total = width * height
   const visited = new Uint8Array(total)
   const queue: number[] = []
 
+  if (inferredBackgroundHexes.size === 0) {
+    const edgeCounts = new Map<string, number>()
+    const edgeIndexes = new Set<number>()
+    let minX = width
+    let minY = height
+    let maxX = -1
+    let maxY = -1
+    for (let index = 0; index < next.length; index += 1) {
+      if (next[index].color === null) continue
+      const x = index % width
+      const y = Math.floor(index / width)
+      minX = Math.min(minX, x)
+      maxX = Math.max(maxX, x)
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
+    }
+    if (maxX >= minX && maxY >= minY) {
+      for (let x = minX; x <= maxX; x += 1) {
+        edgeIndexes.add(minY * width + x)
+        edgeIndexes.add(maxY * width + x)
+      }
+      for (let y = minY; y <= maxY; y += 1) {
+        edgeIndexes.add(y * width + minX)
+        edgeIndexes.add(y * width + maxX)
+      }
+    }
+    let coloredEdgeCount = 0
+    for (const index of edgeIndexes) {
+      const color = next[index].color?.toLowerCase()
+      if (!color) continue
+      coloredEdgeCount += 1
+      edgeCounts.set(color, (edgeCounts.get(color) ?? 0) + 1)
+    }
+    const dominant = [...edgeCounts.entries()].sort((a, b) => b[1] - a[1])[0]
+    if (dominant && dominant[1] / coloredEdgeCount >= 0.35) {
+      inferredBackgroundHexes.add(dominant[0])
+    }
+  }
+
   function isBackground(idx: number): boolean {
     const color = next[idx].color
     if (color === null) return true
-    return backgroundHexes.has(color.toLowerCase())
+    return inferredBackgroundHexes.has(color.toLowerCase())
   }
 
   // 种子:4 条边上所有"算背景"的格

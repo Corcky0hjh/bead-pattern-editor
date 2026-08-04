@@ -7,8 +7,8 @@ import { ExportPanel } from './panels/ExportPanel'
 import { ImagePanel } from './panels/ImagePanel'
 import { useEditorState, type EditorTool } from './useEditorState'
 
-const brushSizes = [1, 2, 3, 5]
-const zoomMin = 50
+const brushSizes = [1, 2, 3, 4, 5]
+const zoomMin = 1
 const zoomMax = 220
 const zoomStep = 10
 
@@ -37,9 +37,9 @@ export function EditorShell() {
 
       // 按住 Alt 临时激活吸管(松开恢复)。要在 meta/alt 早返回之前处理。
       // preventDefault 避免 Windows Chrome/Edge 把单按 Alt 解释成"聚焦菜单栏"
-      if (event.altKey && !meta) {
+      if (key === 'Alt' && !meta) {
         event.preventDefault()
-        if (!altEyedropperRef.current) {
+        if (!editor.eyedropperActive && !altEyedropperRef.current) {
           altEyedropperRef.current = true
           editor.setEyedropperActive(true)
         }
@@ -108,6 +108,10 @@ export function EditorShell() {
           editor.setCurrentTool('fill')
           editor.setEyedropperActive(false)
           break
+        case 'u':
+          editor.setCurrentTool('shape')
+          editor.setEyedropperActive(false)
+          break
         case 'v':
           editor.setCurrentTool('pan')
           editor.setEyedropperActive(false)
@@ -145,11 +149,30 @@ export function EditorShell() {
       previousToolRef.current = null
     }
 
+    function restoreTemporaryTools() {
+      if (altEyedropperRef.current) {
+        altEyedropperRef.current = false
+        editor.setEyedropperActive(false)
+      }
+      if (previousToolRef.current !== null) {
+        editor.setCurrentTool(previousToolRef.current)
+        previousToolRef.current = null
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) restoreTemporaryTools()
+    }
+
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', restoreTemporaryTools)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', restoreTemporaryTools)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [editor])
 
