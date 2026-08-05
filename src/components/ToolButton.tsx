@@ -46,7 +46,7 @@ export function ToolButton({
       aria-expanded={hasOptions ? optionsOpen : undefined}
       aria-label={label}
       title={title}
-      className={`group relative shrink-0 ${
+      className={`group relative shrink-0 focus-visible:outline-none ${
         hasPresetMeta
           ? vertical
             ? 'h-[56px] w-10'

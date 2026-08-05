@@ -14,6 +14,7 @@ import {
   Broom,
   Circle,
   Copy,
+  Crosshair,
   DotsSixVertical,
   Eyedropper,
   Eraser,
@@ -43,6 +44,12 @@ import {
   getToolbarDockEdge,
   measureToolbarNaturalExtent,
 } from './toolbarDrag'
+import {
+  getAnchoredViewPosition,
+  getCenteredViewPosition,
+  getFitZoom,
+  normalizeWheelDelta,
+} from './viewportCamera'
 import {
   ToolButton,
   type ToolButtonIcon,
@@ -232,8 +239,11 @@ function getShapeKindIcon(kind: ShapeKind): ToolButtonIcon {
 function getShapeStyleIcon(style: ShapeStyle): ToolButtonIcon {
   return shapeStyleOptions.find((option) => option.value === style)?.icon ?? Square
 }
-const baseCellSize = 12
+const semanticCellSize = 10
 const maxCanvasBitmapSide = 4096
+const minViewportZoom = 5
+const maxViewportZoom = 500
+const worldPaddingAt100 = 32
 const toolbarDragPuckSize = 56
 const toolbarDockDelay = 400
 
@@ -259,6 +269,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     useState<ToolbarDragSession | null>(null)
   const [toolbarRevealOrientation, setToolbarRevealOrientation] =
     useState<ToolbarOrientation | null>(null)
+  const [viewPosition, setViewPosition] = useState({ x: 0, y: 0 })
   const [shapeDraft, setShapeDraft] = useState<{
     start: number
     end: number
@@ -301,6 +312,13 @@ export function CanvasStage({ editor }: CanvasStageProps) {
   const toolbarResizeGuardRef = useRef(false)
   const toolbarDragIdRef = useRef(0)
   const toolbarRevealOrientationRef = useRef<ToolbarOrientation | null>(null)
+  const viewPositionRef = useRef(viewPosition)
+  const zoomRef = useRef(editor.zoom)
+  const viewportSizeRef = useRef({ width: 0, height: 0 })
+  const initialFitDoneRef = useRef(false)
+  const zoomInputRef = useRef<HTMLInputElement | null>(null)
+  const zoomHoldDelayRef = useRef<number | null>(null)
+  const zoomHoldIntervalRef = useRef<number | null>(null)
   const toolbarDragHandlersRef = useRef({
     start: startToolbarDrag,
     move: moveToolbar,
@@ -321,30 +339,49 @@ export function CanvasStage({ editor }: CanvasStageProps) {
   const panStartRef = useRef({
     x: 0,
     y: 0,
-    scrollLeft: 0,
-    scrollTop: 0,
+    positionX: 0,
+    positionY: 0,
   })
   const pattern = editor.pattern
-  const zoomScale = editor.zoom / 100
   const cellSize = Math.max(
     1,
     Math.min(
-      baseCellSize,
+      semanticCellSize,
       Math.floor(maxCanvasBitmapSide / Math.max(pattern.width, pattern.height)),
     ),
   )
+  const zoomScale = (semanticCellSize * (editor.zoom / 100)) / cellSize
+  const visualCellSize = cellSize * zoomScale
   const canvasWidth = pattern.width * cellSize
   const canvasHeight = pattern.height * cellSize
-  const scaledCanvasWidth = Math.round(canvasWidth * zoomScale)
-  const scaledCanvasHeight = Math.round(canvasHeight * zoomScale)
+  const worldPadding = (worldPaddingAt100 * cellSize) / semanticCellSize
+  const worldWidth = canvasWidth + worldPadding
+  const worldHeight = canvasHeight + worldPadding
+  const worldInset = worldPadding / 2
   const settings = editor.canvasSettings
   editorRef.current = editor
+  zoomRef.current = editor.zoom
   floatingSelectionRef.current = floatingSelection
   selectionRef.current = selection
   const toolbarLayoutRef = useRef(toolbarLayout)
   toolbarLayoutRef.current = toolbarLayout
   toolbarDragSessionRef.current = toolbarDragSession
+
+  useEffect(() => {
+    if (document.activeElement !== zoomInputRef.current && zoomInputRef.current) {
+      zoomInputRef.current.value = String(Math.round(editor.zoom))
+    }
+  }, [editor.zoom])
+
+  useEffect(() => stopContinuousZoom, [])
+
+  useLayoutEffect(() => {
+    toolbarRef.current
+      ?.querySelectorAll('button')
+      .forEach((button) => (button.tabIndex = -1))
+  })
   toolbarRevealOrientationRef.current = toolbarRevealOrientation
+  viewPositionRef.current = viewPosition
   const displayedToolbarLayout = toolbarDragSession
     ? {
         placement: 'floating' as const,
@@ -451,6 +488,25 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     function handleKeyDown(event: KeyboardEvent) {
       const meta = event.ctrlKey || event.metaKey
       const lower = event.key.toLowerCase()
+      const target = event.target as HTMLElement | null
+      const editingText = target?.matches(
+        'input, textarea, select, [contenteditable="true"]',
+      )
+      if (meta && !editingText && (event.key === '+' || event.key === '=')) {
+        event.preventDefault()
+        zoomViewportAt(Math.min(maxViewportZoom, zoomRef.current + 10))
+        return
+      }
+      if (meta && !editingText && event.key === '-') {
+        event.preventDefault()
+        zoomViewportAt(Math.max(minViewportZoom, zoomRef.current - 10))
+        return
+      }
+      if (meta && !editingText && event.key === '0') {
+        event.preventDefault()
+        fitCanvasToViewport()
+        return
+      }
       const undoShortcut = meta && lower === 'z' && !event.shiftKey
       const redoShortcut =
         meta && (lower === 'y' || (lower === 'z' && event.shiftKey))
@@ -548,6 +604,44 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     )
     observer.observe(stage)
     observer.observe(toolbar)
+    return () => observer.disconnect()
+  }, [])
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport || canvasWidth === 0 || canvasHeight === 0) return
+    viewportSizeRef.current = {
+      width: viewport.clientWidth,
+      height: viewport.clientHeight,
+    }
+    if (
+      !initialFitDoneRef.current &&
+      viewport.clientWidth > 0 &&
+      viewport.clientHeight > 0
+    ) {
+      initialFitDoneRef.current = true
+      fitCanvasToViewport()
+    }
+  }, [canvasHeight, canvasWidth])
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return
+      const next = {
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      }
+      const previous = viewportSizeRef.current
+      viewportSizeRef.current = next
+      if (previous.width === 0 || previous.height === 0) return
+      updateViewPosition({
+        x: viewPositionRef.current.x + (next.width - previous.width) / 2,
+        y: viewPositionRef.current.y + (next.height - previous.height) / 2,
+      })
+    })
+    observer.observe(viewport)
     return () => observer.disconnect()
   }, [])
 
@@ -750,21 +844,45 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     shapeDraft,
   ])
 
-  // Ctrl/Cmd + 滚轮缩放（必须 native 监听，React onWheel 是 passive）
+  // Ctrl/Cmd + wheel zooms around the pointer anchor.
   useEffect(() => {
     const viewport = viewportRef.current
     if (!viewport) return
 
     function handleWheel(event: WheelEvent) {
-      if (!event.ctrlKey && !event.metaKey) return
       event.preventDefault()
-      const delta = event.deltaY > 0 ? -10 : 10
-      editor.setZoom((current) => Math.min(220, Math.max(1, current + delta)))
+      const deltaX = normalizeWheelDelta(
+        event.deltaX,
+        event.deltaMode,
+        viewport.clientWidth,
+      )
+      const deltaY = normalizeWheelDelta(
+        event.deltaY,
+        event.deltaMode,
+        viewport.clientHeight,
+      )
+      if (!event.ctrlKey && !event.metaKey) {
+        const current = viewPositionRef.current
+        const horizontalDelta = event.shiftKey ? deltaY : deltaX
+        const verticalDelta = event.shiftKey ? 0 : deltaY
+        updateViewPosition({
+          x: current.x - horizontalDelta,
+          y: current.y - verticalDelta,
+        })
+        return
+      }
+      const current = zoomRef.current
+      const factor = Math.exp(-deltaY * 0.001)
+      const next = Math.min(
+        maxViewportZoom,
+        Math.max(minViewportZoom, Math.round(current * factor * 10) / 10),
+      )
+      zoomViewportAt(next, event.clientX, event.clientY)
     }
 
     viewport.addEventListener('wheel', handleWheel, { passive: false })
     return () => viewport.removeEventListener('wheel', handleWheel)
-  }, [editor])
+  }, [])
 
   function paintFromPointer(
     event: PointerEvent<HTMLCanvasElement>,
@@ -998,16 +1116,113 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     editor.setCurrentTool('brush')
   }
 
+  function updateViewPosition(position: { x: number; y: number }) {
+    viewPositionRef.current = position
+    setViewPosition(position)
+  }
+
+  function centerCanvasInViewport(zoom: number) {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const scale = (semanticCellSize * (zoom / 100)) / cellSize
+    updateViewPosition(
+      getCenteredViewPosition(
+        { width: viewport.clientWidth, height: viewport.clientHeight },
+        { width: worldWidth, height: worldHeight },
+        scale,
+      ),
+    )
+  }
+
+  function zoomViewportAt(
+    nextZoom: number,
+    clientX?: number,
+    clientY?: number,
+  ) {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const currentZoom = zoomRef.current
+    const normalizedZoom = Math.min(
+      maxViewportZoom,
+      Math.max(minViewportZoom, nextZoom),
+    )
+    if (normalizedZoom === currentZoom) return
+
+    const rect = viewport.getBoundingClientRect()
+    const anchorX = clientX === undefined ? rect.width / 2 : clientX - rect.left
+    const anchorY = clientY === undefined ? rect.height / 2 : clientY - rect.top
+    const currentScale = (semanticCellSize * (currentZoom / 100)) / cellSize
+    const nextScale = (semanticCellSize * (normalizedZoom / 100)) / cellSize
+    const currentPosition = viewPositionRef.current
+    updateViewPosition(
+      getAnchoredViewPosition({
+        position: currentPosition,
+        anchor: { x: anchorX, y: anchorY },
+        currentScale,
+        nextScale,
+      }),
+    )
+    zoomRef.current = normalizedZoom
+    editorRef.current.setZoom(normalizedZoom)
+  }
+
+  function stepZoom(direction: -1 | 1) {
+    zoomViewportAt(zoomRef.current + direction * 10)
+  }
+
+  function stopContinuousZoom() {
+    if (zoomHoldDelayRef.current !== null) {
+      window.clearTimeout(zoomHoldDelayRef.current)
+      zoomHoldDelayRef.current = null
+    }
+    if (zoomHoldIntervalRef.current !== null) {
+      window.clearInterval(zoomHoldIntervalRef.current)
+      zoomHoldIntervalRef.current = null
+    }
+  }
+
+  function startContinuousZoom(direction: -1 | 1) {
+    stopContinuousZoom()
+    stepZoom(direction)
+    zoomHoldDelayRef.current = window.setTimeout(() => {
+      zoomHoldIntervalRef.current = window.setInterval(() => {
+        const zoom = zoomRef.current
+        if (
+          (direction < 0 && zoom <= minViewportZoom) ||
+          (direction > 0 && zoom >= maxViewportZoom)
+        ) {
+          stopContinuousZoom()
+          return
+        }
+        stepZoom(direction)
+      }, 80)
+    }, 320)
+  }
+
+  function commitZoomInput() {
+    const input = zoomInputRef.current
+    if (!input) return
+    const value = Number(input.value)
+    if (Number.isFinite(value)) zoomViewportAt(value)
+    input.value = String(Math.round(zoomRef.current))
+  }
+
   function fitCanvasToViewport() {
     const viewport = viewportRef.current
     if (!viewport || canvasWidth === 0 || canvasHeight === 0) return
-    const availableWidth = Math.max(1, viewport.clientWidth - 112)
-    const availableHeight = Math.max(1, viewport.clientHeight - 112)
-    const fitZoom = Math.floor(
-      Math.min(availableWidth / canvasWidth, availableHeight / canvasHeight) *
-        100,
+    const nextZoom = getFitZoom(
+      { width: viewport.clientWidth, height: viewport.clientHeight },
+      {
+        width: pattern.width * semanticCellSize + worldPaddingAt100,
+        height: pattern.height * semanticCellSize + worldPaddingAt100,
+      },
+      24,
+      minViewportZoom,
+      maxViewportZoom,
     )
-    editor.setZoom(Math.min(220, Math.max(1, fitZoom)))
+    zoomRef.current = nextZoom
+    editor.setZoom(nextZoom)
+    centerCanvasInViewport(nextZoom)
   }
 
   function changeSelectionMode(mode: SelectionMode) {
@@ -1140,8 +1355,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     panStartRef.current = {
       x: event.clientX,
       y: event.clientY,
-      scrollLeft: viewport.scrollLeft,
-      scrollTop: viewport.scrollTop,
+      positionX: viewPositionRef.current.x,
+      positionY: viewPositionRef.current.y,
     }
     panningRef.current = true
     activePointerIdRef.current = event.pointerId
@@ -1583,6 +1798,9 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       </div>
       <div
         ref={toolbarRef}
+        onMouseDownCapture={(event) => {
+          if ((event.target as HTMLElement).closest('button')) event.preventDefault()
+        }}
         className={`max-w-full ${
           displayedToolbarLayout.placement === 'floating' && !stageViewportOrigin
             ? 'invisible '
@@ -1962,28 +2180,78 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                   className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
                   type="button"
                   aria-label="缩小"
-                  disabled={editor.zoom <= 1}
-                  onClick={() => editor.setZoom(Math.max(1, editor.zoom - 10))}
+                  disabled={editor.zoom <= minViewportZoom}
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    startContinuousZoom(-1)
+                  }}
+                  onPointerUp={stopContinuousZoom}
+                  onPointerCancel={stopContinuousZoom}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    stepZoom(-1)
+                  }}
                 >
                   <Minus size={15} weight="bold" />
                 </button>
-                <button
-                  type="button"
-                  className="h-8 w-8 rounded-xl text-center text-[11px] font-bold tabular-nums text-editor-strong transition hover:bg-editor-elevated"
-                  aria-label="适应画布"
-                  title="适应画布"
-                  onClick={fitCanvasToViewport}
-                >
-                  {editor.zoom}
-                </button>
+                <input
+                  ref={zoomInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={3}
+                  defaultValue={Math.round(editor.zoom)}
+                  aria-label="缩放比例"
+                  title={`缩放比例，${minViewportZoom} 至 ${maxViewportZoom}`}
+                  className="h-8 w-8 appearance-none rounded-xl bg-transparent text-center text-[10px] font-bold tabular-nums text-editor-strong outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  onFocus={(event) => event.currentTarget.select()}
+                  onInput={(event) => {
+                    event.currentTarget.value = event.currentTarget.value
+                      .replace(/\D/g, '')
+                      .slice(0, 3)
+                  }}
+                  onBlur={commitZoomInput}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      commitZoomInput()
+                      event.currentTarget.blur()
+                    }
+                    if (event.key === 'Escape') {
+                      event.currentTarget.value = String(Math.round(zoomRef.current))
+                      event.currentTarget.blur()
+                    }
+                  }}
+                />
                 <button
                   className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
                   type="button"
                   aria-label="放大"
-                  disabled={editor.zoom >= 220}
-                  onClick={() => editor.setZoom(Math.min(220, editor.zoom + 10))}
+                  disabled={editor.zoom >= maxViewportZoom}
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    startContinuousZoom(1)
+                  }}
+                  onPointerUp={stopContinuousZoom}
+                  onPointerCancel={stopContinuousZoom}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    stepZoom(1)
+                  }}
                 >
                   <Plus size={15} weight="bold" />
+                </button>
+                <button
+                  type="button"
+                  className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated"
+                  aria-label="定位画布"
+                  title="适应并定位画布"
+                  onClick={fitCanvasToViewport}
+                >
+                  <Crosshair size={15} weight="bold" />
                 </button>
               </div>
             </div>
@@ -1994,7 +2262,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
       <div
         ref={viewportRef}
-        className={`col-start-2 row-start-2 grid min-h-0 min-w-0 place-items-center overflow-auto rounded-[18px] p-10 [clip-path:inset(0_round_18px)] [touch-action:none] [overscroll-behavior:contain] ${cursorClass}`}
+        className={`relative col-start-2 row-start-2 min-h-0 min-w-0 overflow-hidden rounded-[18px] [clip-path:inset(0_round_18px)] [touch-action:none] [overscroll-behavior:contain] ${cursorClass}`}
         style={{ backgroundColor: settings.bgColor }}
         onPointerDown={(event) => {
           setOpenToolOptions(null)
@@ -2039,13 +2307,14 @@ export function CanvasStage({ editor }: CanvasStageProps) {
           event.preventDefault()
           const deltaX = event.clientX - panStartRef.current.x
           const deltaY = event.clientY - panStartRef.current.y
-          viewport.scrollLeft = panStartRef.current.scrollLeft - deltaX
-          viewport.scrollTop = panStartRef.current.scrollTop - deltaY
+          updateViewPosition({
+            x: panStartRef.current.positionX + deltaX,
+            y: panStartRef.current.positionY + deltaY,
+          })
         }}
         onPointerLeave={() => {
           endStroke()
           setPointerOutsideSelection(false)
-          panningRef.current = false
         }}
         onPointerUp={(event) => {
           endStroke()
@@ -2068,17 +2337,20 @@ export function CanvasStage({ editor }: CanvasStageProps) {
         }}
       >
         <div
-          className="shrink-0 rounded-xl p-4"
+          className="absolute left-0 top-0 rounded-xl will-change-transform"
           style={{
-            width: `${scaledCanvasWidth + 32}px`,
-            height: `${scaledCanvasHeight + 32}px`,
+            width: `${worldWidth}px`,
+            height: `${worldHeight}px`,
+            padding: `${worldInset}px`,
+            transform: `translate3d(${viewPosition.x}px, ${viewPosition.y}px, 0) scale(${zoomScale})`,
+            transformOrigin: '0 0',
           }}
         >
           <div
             className="relative overflow-visible"
             style={{
-              width: `${scaledCanvasWidth}px`,
-              height: `${scaledCanvasHeight}px`,
+              width: `${canvasWidth}px`,
+              height: `${canvasHeight}px`,
             }}
           >
             <div
@@ -2086,7 +2358,6 @@ export function CanvasStage({ editor }: CanvasStageProps) {
               style={{
                 width: `${canvasWidth}px`,
                 height: `${canvasHeight}px`,
-                transform: `scale(${zoomScale})`,
               }}
             >
               <canvas
@@ -2230,7 +2501,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                   />
                 </div>
               ) : null}
-              {settings.showGrid ? (
+              {settings.showGrid && visualCellSize >= 3 ? (
                 <svg
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 z-20"
@@ -2249,7 +2520,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                     stroke={settings.gridColor}
                     strokeLinecap="square"
                     strokeLinejoin="miter"
-                    strokeWidth={settings.gridWidth}
+                    strokeWidth={settings.gridWidth / zoomScale}
                   />
                   {majorGridPath ? (
                     <path
@@ -2260,7 +2531,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                       stroke={settings.gridColor}
                       strokeLinecap="square"
                       strokeLinejoin="miter"
-                      strokeWidth={settings.gridWidth * 1.6}
+                      strokeWidth={(settings.gridWidth * 1.6) / zoomScale}
                     />
                   ) : null}
                 </svg>

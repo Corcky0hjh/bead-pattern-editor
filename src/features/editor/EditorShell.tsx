@@ -8,9 +8,6 @@ import { ImagePanel } from './panels/ImagePanel'
 import { useEditorState, type EditorTool } from './useEditorState'
 
 const brushSizes = [1, 2, 3, 4, 5]
-const zoomMin = 1
-const zoomMax = 220
-const zoomStep = 10
 
 export function EditorShell() {
   const editor = useEditorState()
@@ -54,34 +51,6 @@ export function EditorShell() {
         event.preventDefault()
         editor.redo()
         return
-      }
-
-      // Ctrl/Cmd + +/-/0  缩放
-      if (meta && (key === '+' || key === '=' || key === '-' || key === '0')) {
-        event.preventDefault()
-        if (key === '0') editor.setZoom(100)
-        else if (key === '-') adjustZoom(editor, -zoomStep)
-        else adjustZoom(editor, zoomStep)
-        return
-      }
-
-      // 无修饰键的 +/-/0 也支持
-      if (!meta && !event.altKey && !event.shiftKey) {
-        if (key === '+' || key === '=') {
-          adjustZoom(editor, zoomStep)
-          event.preventDefault()
-          return
-        }
-        if (key === '-') {
-          adjustZoom(editor, -zoomStep)
-          event.preventDefault()
-          return
-        }
-        if (key === '0') {
-          editor.setZoom(100)
-          event.preventDefault()
-          return
-        }
       }
 
       if (meta || event.altKey) return
@@ -234,12 +203,4 @@ function adjustBrushSize(
   const next = brushSizes[nextIndex]
   if (tool === 'brush') editor.setBrushSize(next)
   else editor.setEraserSize(next)
-}
-
-function adjustZoom(
-  editor: ReturnType<typeof useEditorState>,
-  delta: number,
-) {
-  const next = Math.min(zoomMax, Math.max(zoomMin, editor.zoom + delta))
-  editor.setZoom(next)
 }
