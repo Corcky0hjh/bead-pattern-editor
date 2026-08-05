@@ -1,0 +1,135 @@
+export type ToolbarAxis = 'horizontal' | 'vertical'
+export type ToolbarDockEdge = 'top' | 'right' | 'bottom' | 'left'
+
+export type ContentBounds = {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  width: number
+  height: number
+}
+
+export function getElementContentBounds(element: HTMLElement): ContentBounds {
+  const style = window.getComputedStyle(element)
+  const left = element.clientLeft + Number.parseFloat(style.paddingLeft)
+  const top = element.clientTop + Number.parseFloat(style.paddingTop)
+  const right =
+    element.clientLeft +
+    element.clientWidth -
+    Number.parseFloat(style.paddingRight)
+  const bottom =
+    element.clientTop +
+    element.clientHeight -
+    Number.parseFloat(style.paddingBottom)
+
+  return { left, top, right, bottom, width: right - left, height: bottom - top }
+}
+
+export function clampToolbarPosition(
+  bounds: ContentBounds,
+  size: { width: number; height: number },
+  position: { x: number; y: number },
+) {
+  const maxX = Math.max(bounds.left, bounds.right - size.width)
+  const maxY = Math.max(bounds.top, bounds.bottom - size.height)
+  return {
+    x: Math.min(maxX, Math.max(bounds.left, position.x)),
+    y: Math.min(maxY, Math.max(bounds.top, position.y)),
+  }
+}
+
+export function getToolbarDockEdge({
+  pointerX,
+  pointerY,
+  bounds,
+  currentEdge,
+  entryDistance = 64,
+  retentionDistance = 80,
+}: {
+  pointerX: number
+  pointerY: number
+  bounds: ContentBounds
+  currentEdge: ToolbarDockEdge | null
+  entryDistance?: number
+  retentionDistance?: number
+}): ToolbarDockEdge | null {
+  if (currentEdge === 'top' && pointerY <= bounds.top + retentionDistance) {
+    return 'top'
+  }
+  if (
+    currentEdge === 'bottom' &&
+    pointerY >= bounds.bottom - retentionDistance
+  ) {
+    return 'bottom'
+  }
+  if (currentEdge === 'left' && pointerX <= bounds.left + retentionDistance) {
+    return 'left'
+  }
+  if (
+    currentEdge === 'right' &&
+    pointerX >= bounds.right - retentionDistance
+  ) {
+    return 'right'
+  }
+
+  const edges: Array<{ edge: ToolbarDockEdge; distance: number }> = [
+    { edge: 'top', distance: Math.max(0, pointerY - bounds.top) },
+    { edge: 'right', distance: Math.max(0, bounds.right - pointerX) },
+    { edge: 'bottom', distance: Math.max(0, bounds.bottom - pointerY) },
+    { edge: 'left', distance: Math.max(0, pointerX - bounds.left) },
+  ]
+  const nearest = edges.reduce((best, edge) =>
+    edge.distance < best.distance ? edge : best,
+  )
+  return nearest.distance <= entryDistance ? nearest.edge : null
+}
+
+export function measureToolbarNaturalExtent(
+  content: HTMLElement,
+  axis: ToolbarAxis,
+  availableExtent: number,
+) {
+  const handle = content.querySelector<HTMLElement>('[data-toolbar-drag-handle]')
+  const operations = content.querySelector<HTMLElement>(
+    '[data-toolbar-operations]',
+  )
+  const dimension = axis === 'horizontal' ? 'width' : 'height'
+  const gapProperty = axis === 'horizontal' ? 'columnGap' : 'rowGap'
+  const contentStyle = window.getComputedStyle(content)
+  const contentGap = Number.parseFloat(contentStyle[gapProperty]) || 0
+  const operationChildren = operations
+    ? (Array.from(operations.children) as HTMLElement[])
+    : []
+  const operationsStyle = operations
+    ? window.getComputedStyle(operations)
+    : null
+  const operationsGap = operationsStyle
+    ? Number.parseFloat(operationsStyle[gapProperty]) || 0
+    : 0
+  const operationsExtent =
+    operationChildren.reduce(
+      (total, child) => total + child.getBoundingClientRect()[dimension],
+      0,
+    ) + Math.max(0, operationChildren.length - 1) * operationsGap
+  const childrenExtent =
+    (handle?.getBoundingClientRect()[dimension] ?? 0) + operationsExtent
+  const surface = content.parentElement
+  const style = surface ? window.getComputedStyle(surface) : null
+  const chrome = style
+    ? axis === 'horizontal'
+      ? Number.parseFloat(style.paddingLeft) +
+        Number.parseFloat(style.paddingRight) +
+        Number.parseFloat(style.borderLeftWidth) +
+        Number.parseFloat(style.borderRightWidth)
+      : Number.parseFloat(style.paddingTop) +
+        Number.parseFloat(style.paddingBottom) +
+        Number.parseFloat(style.borderTopWidth) +
+        Number.parseFloat(style.borderBottomWidth)
+    : 0
+
+  return Math.min(
+    availableExtent,
+    Math.ceil(childrenExtent + contentGap + chrome),
+  )
+}

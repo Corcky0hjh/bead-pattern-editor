@@ -440,9 +440,53 @@
     }
   }
 
+  .toolbar-surface {
+    interpolate-size: allow-keywords;
+  }
+
+  .toolbar-operation-group {
+    interpolate-size: allow-keywords;
+  }
+
+  .toolbar-dock-hint {
+    animation: toolbar-dock-hint-blink 360ms ease-in-out infinite alternate;
+  }
+
+  .toolbar-drag-handle-active .toolbar-drag-grip-icon {
+    animation: toolbar-drag-grip-color 560ms ease-in-out infinite alternate;
+  }
+
+  @keyframes toolbar-drag-grip-color {
+    from {
+      color: var(--color-editor-text);
+    }
+    to {
+      color: var(--color-editor-accent);
+    }
+  }
+
+  @keyframes toolbar-dock-hint-blink {
+    from {
+      opacity: 0.25;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .tool-options-popover {
       animation: none;
     }
+
+    .toolbar-dock-hint {
+      animation: none;
+    }
+
+    .toolbar-drag-handle-active .toolbar-drag-grip-icon {
+      animation: none;
+    }
+
+
   }
 }

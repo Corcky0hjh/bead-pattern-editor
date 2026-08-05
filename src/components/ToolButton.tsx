@@ -13,6 +13,7 @@ type ToolButtonProps = {
   presetValue?: ReactNode
   presetIcon?: ToolButtonIcon | null
   colorIndicator?: string | null
+  vertical?: boolean
   onClick: () => void
 }
 
@@ -26,6 +27,7 @@ export function ToolButton({
   presetValue,
   presetIcon: PresetIcon,
   colorIndicator = null,
+  vertical = false,
   onClick,
 }: ToolButtonProps) {
   const hasPresetValue = presetValue !== null && presetValue !== undefined
@@ -38,12 +40,18 @@ export function ToolButton({
 
   return (
     <button
+      data-tool-button
+      data-has-preset={hasPresetMeta ? 'true' : 'false'}
       aria-pressed={active}
       aria-expanded={hasOptions ? optionsOpen : undefined}
       aria-label={label}
       title={title}
-      className={`group relative h-10 shrink-0 ${
-        hasPresetMeta ? 'w-[56px]' : 'w-10'
+      className={`group relative shrink-0 ${
+        hasPresetMeta
+          ? vertical
+            ? 'h-[56px] w-10'
+            : 'h-10 w-[56px]'
+          : 'h-10 w-10'
       }`}
       type="button"
       onClick={onClick}
@@ -51,8 +59,14 @@ export function ToolButton({
       {hasPresetMeta ? (
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-y-0 right-0 z-0 grid w-7 rounded-r-2xl border pl-3 pr-0.5 transition duration-150 ${
-            hasPresetValue ? 'grid-rows-2 py-1' : 'place-items-center'
+          className={`pointer-events-none absolute z-0 grid border transition duration-150 ${
+            vertical
+              ? `inset-x-0 bottom-0 h-7 rounded-b-2xl px-1 pt-3 ${
+                  hasPresetValue ? 'grid-cols-2' : 'place-items-center'
+                }`
+              : `inset-y-0 right-0 w-7 rounded-r-2xl pl-3 pr-0.5 ${
+                  hasPresetValue ? 'grid-rows-2 py-1' : 'place-items-center'
+                }`
           } ${
             optionsOpen
               ? 'border-editor-accent/45 bg-editor-accent-soft text-editor-accent'
@@ -68,7 +82,11 @@ export function ToolButton({
           ) : null}
           <span
             className={`grid place-items-center ${
-              hasPresetValue ? 'border-t border-editor-border/70 pt-0.5' : ''
+              hasPresetValue
+                ? vertical
+                  ? 'border-l border-editor-border/70 pl-0.5'
+                  : 'border-t border-editor-border/70 pt-0.5'
+                : ''
             }`}
           >
             {PresetIcon ? (
@@ -80,12 +98,10 @@ export function ToolButton({
 
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute left-0 top-0 z-10 grid h-10 w-10 place-items-center rounded-2xl border border-transparent text-sm font-bold transition duration-150 group-hover:scale-[1.02] group-hover:border-editor-accent/25 group-active:scale-95 ${
-          active
+        className={`pointer-events-none absolute left-0 top-0 z-10 grid h-10 w-10 place-items-center rounded-2xl border border-transparent text-sm font-bold transition duration-150 group-hover:border-editor-accent/25 group-active:scale-95 ${
+          active || statusActive
             ? 'bg-editor-accent text-white shadow-sm'
-            : statusActive
-              ? 'border-editor-accent/40 bg-editor-accent-soft text-editor-accent shadow-sm group-hover:bg-editor-accent-soft'
-              : 'bg-editor-surface-soft text-editor-strong group-hover:bg-editor-elevated'
+            : 'bg-editor-surface-soft text-editor-strong group-hover:bg-editor-elevated'
         }`}
       >
         <Icon size={18} weight="regular" />
