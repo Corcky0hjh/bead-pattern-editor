@@ -100,6 +100,175 @@
     outline-offset: 2px;
   }
 
+  .tool-options-popover[data-drawer-direction='down'] {
+    transform-origin: center top;
+    animation: toolbar-drawer-down 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .tool-options-popover[data-drawer-direction='up'] {
+    transform-origin: center bottom;
+    animation: toolbar-drawer-up 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .tool-options-popover[data-drawer-direction='right'] {
+    transform-origin: left center;
+    animation: toolbar-drawer-right 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .tool-options-popover[data-drawer-direction='left'] {
+    transform-origin: right center;
+    animation: toolbar-drawer-left 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .tool-options-popover[data-closing='true'] {
+    pointer-events: none;
+  }
+
+  .canvas-settings-backdrop {
+    animation: settings-backdrop-enter 180ms ease-out;
+  }
+
+  .canvas-settings-dialog {
+    transform-origin: center;
+    animation: settings-dialog-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .app-toast {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: min(360px, calc(100vw - 32px));
+    min-height: 52px;
+    padding: 10px 14px;
+    border: 1px solid var(--color-editor-border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--color-editor-surface) 94%, transparent);
+    color: var(--color-editor-strong);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(16px);
+  }
+
+  .app-toast__content {
+    min-width: 0;
+  }
+
+  .app-toast__title {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .app-toast__description {
+    margin-top: 2px;
+    color: var(--color-editor-text);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .app-toast__icon {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    color: var(--color-editor-accent);
+  }
+
+  .app-toast__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .app-toast--error .app-toast__icon {
+    color: #dc4c4c;
+  }
+
+  .app-toast--warning .app-toast__icon {
+    color: #d58a24;
+  }
+
+  @media (max-height: 800px) {
+    .toolbar-surface[data-toolbar-orientation='vertical']
+      [data-tool-button][data-has-preset='true'] {
+      height: 40px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='vertical']
+      [data-tool-button][data-has-preset='true']
+      > span:first-child {
+      display: none !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='vertical']
+      .toolbar-operation-group {
+      gap: 2px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='vertical']
+      [data-toolbar-content] {
+      gap: 2px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='vertical']
+      [data-toolbar-row] {
+      gap: 2px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='vertical']
+      [data-toolbar-divider] {
+      display: none !important;
+    }
+  }
+
+  @media (max-width: 960px) {
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-tool-button][data-has-preset='true'] {
+      width: 40px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-tool-button][data-has-preset='true']
+      > span:first-child {
+      display: none !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      .toolbar-operation-group {
+      gap: 2px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-toolbar-content] {
+      gap: 2px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-toolbar-row] {
+      gap: 2px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-toolbar-divider] {
+      display: none !important;
+    }
+  }
+
+  .tool-options-popover[data-drawer-direction='down'][data-closing='true'] {
+    animation: toolbar-drawer-down-out 180ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  }
+
+  .tool-options-popover[data-drawer-direction='up'][data-closing='true'] {
+    animation: toolbar-drawer-up-out 180ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  }
+
+  .tool-options-popover[data-drawer-direction='right'][data-closing='true'] {
+    animation: toolbar-drawer-right-out 180ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  }
+
+  .tool-options-popover[data-drawer-direction='left'][data-closing='true'] {
+    animation: toolbar-drawer-left-out 180ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  }
+
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -374,13 +543,13 @@
     mix-blend-mode: soft-light;
   }
 
-  .number-input-clean::-webkit-outer-spin-button,
-  .number-input-clean::-webkit-inner-spin-button {
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
     margin: 0;
     -webkit-appearance: none;
   }
 
-  .number-input-clean {
+  input[type='number'] {
     -moz-appearance: textfield;
     appearance: textfield;
   }
@@ -437,6 +606,62 @@
     100% {
       transform: translateY(0) scale(1);
       opacity: 1;
+    }
+  }
+
+  @keyframes toolbar-drawer-down {
+    from { opacity: 0; scale: 0.84; }
+    to { opacity: 1; scale: 1; }
+  }
+
+  @keyframes toolbar-drawer-up {
+    from { opacity: 0; scale: 0.84; }
+    to { opacity: 1; scale: 1; }
+  }
+
+  @keyframes toolbar-drawer-right {
+    from { opacity: 0; scale: 0.84; }
+    to { opacity: 1; scale: 1; }
+  }
+
+  @keyframes toolbar-drawer-left {
+    from { opacity: 0; scale: 0.84; }
+    to { opacity: 1; scale: 1; }
+  }
+
+  @keyframes toolbar-drawer-down-out {
+    from { opacity: 1; scale: 1; }
+    to { opacity: 0; scale: 0.84; }
+  }
+
+  @keyframes toolbar-drawer-up-out {
+    from { opacity: 1; scale: 1; }
+    to { opacity: 0; scale: 0.84; }
+  }
+
+  @keyframes toolbar-drawer-right-out {
+    from { opacity: 1; scale: 1; }
+    to { opacity: 0; scale: 0.84; }
+  }
+
+  @keyframes toolbar-drawer-left-out {
+    from { opacity: 1; scale: 1; }
+    to { opacity: 0; scale: 0.84; }
+  }
+
+  @keyframes settings-backdrop-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes settings-dialog-enter {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 

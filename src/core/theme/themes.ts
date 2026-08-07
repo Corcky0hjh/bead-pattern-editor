@@ -22,7 +22,6 @@ export type ThemeCanvasDefaults = {
   bgColor: string
   paperColor: string
   paperAlpha: number
-  externalColor: string
   gridColor: string
 }
 
@@ -54,7 +53,6 @@ export const THEMES: Theme[] = [
       bgColor: '#eadcc7',
       paperColor: '#ffffff',
       paperAlpha: 0.4,
-      externalColor: '#ececec',
       gridColor: '#9f9485',
     },
   },
@@ -77,7 +75,6 @@ export const THEMES: Theme[] = [
       bgColor: '#e2e8f0',
       paperColor: '#ffffff',
       paperAlpha: 0.6,
-      externalColor: '#cbd5e1',
       gridColor: '#64748b',
     },
   },
@@ -100,7 +97,6 @@ export const THEMES: Theme[] = [
       bgColor: '#1f2530',
       paperColor: '#0f1115',
       paperAlpha: 0.55,
-      externalColor: '#2d3340',
       gridColor: '#5b6370',
     },
   },
@@ -123,7 +119,6 @@ export const THEMES: Theme[] = [
       bgColor: '#cce5d6',
       paperColor: '#f7fbf8',
       paperAlpha: 0.5,
-      externalColor: '#bcd5c5',
       gridColor: '#5e8a72',
     },
   },
@@ -146,7 +141,6 @@ export const THEMES: Theme[] = [
       bgColor: '#dccdb4',
       paperColor: '#fdf6e7',
       paperAlpha: 0.45,
-      externalColor: '#ccc0a8',
       gridColor: '#8b6f4e',
     },
   },
@@ -169,7 +163,6 @@ export const THEMES: Theme[] = [
       bgColor: '#c8d4e0',
       paperColor: '#f4f8fb',
       paperAlpha: 0.5,
-      externalColor: '#b8c4d2',
       gridColor: '#5b7390',
     },
   },
@@ -192,7 +185,6 @@ export const THEMES: Theme[] = [
       bgColor: '#f6d2da',
       paperColor: '#fff7f8',
       paperAlpha: 0.5,
-      externalColor: '#eebcc6',
       gridColor: '#a8657a',
     },
   },
@@ -215,7 +207,6 @@ export const THEMES: Theme[] = [
       bgColor: '#e5e5e5',
       paperColor: '#ffffff',
       paperAlpha: 0.6,
-      externalColor: '#d4d4d4',
       gridColor: '#525252',
     },
   },
@@ -238,7 +229,6 @@ export const THEMES: Theme[] = [
       bgColor: '#2b2933',
       paperColor: '#1c1b22',
       paperAlpha: 0.55,
-      externalColor: '#3d3b48',
       gridColor: '#706a5a',
     },
   },
@@ -261,7 +251,6 @@ export const THEMES: Theme[] = [
       bgColor: '#f8d8a8',
       paperColor: '#fff9ef',
       paperAlpha: 0.5,
-      externalColor: '#ecc695',
       gridColor: '#9a6f3e',
     },
   },

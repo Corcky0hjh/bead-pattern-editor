@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ComponentType, MouseEventHandler, ReactNode } from 'react'
 import type { IconProps } from '@phosphor-icons/react'
 
 export type ToolButtonIcon = ComponentType<IconProps>
@@ -14,7 +14,7 @@ type ToolButtonProps = {
   presetIcon?: ToolButtonIcon | null
   colorIndicator?: string | null
   vertical?: boolean
-  onClick: () => void
+  onClick: MouseEventHandler<HTMLButtonElement>
 }
 
 export function ToolButton({

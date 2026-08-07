@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CanvasStage } from '../../platform/web/CanvasStage'
 import { CollapsibleSection } from './components/CollapsibleSection'
-import { CanvasPanel } from './panels/CanvasPanel'
+import { CanvasSettingsModal } from './panels/CanvasSettingsModal'
 import { ColorPanel } from './panels/ColorPanel'
-import { ExportPanel } from './panels/ExportPanel'
 import { ImagePanel } from './panels/ImagePanel'
 import { useEditorState, type EditorTool } from './useEditorState'
 
@@ -11,6 +10,7 @@ const brushSizes = [1, 2, 3, 4, 5]
 
 export function EditorShell() {
   const editor = useEditorState()
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const previousToolRef = useRef<EditorTool | null>(null)
   // 记录"是否因为按住 Alt 而激活了临时吸管"。松开 Alt 时只关掉我们自己开的那次,
   // 不影响用户主动开/关的吸管状态。
@@ -146,8 +146,9 @@ export function EditorShell() {
   }, [editor])
 
   return (
-    <div className="mx-auto grid max-w-[1760px] grid-cols-1 gap-5 2xl:h-full 2xl:grid-cols-[320px_minmax(0,1fr)_340px]">
-      <aside className="order-2 grid overflow-visible gap-3 2xl:order-1 2xl:min-h-0 2xl:max-h-full 2xl:grid-rows-[auto_minmax(0,1fr)]">
+    <>
+      <div className="mx-auto grid max-w-[1760px] grid-cols-1 gap-5 2xl:h-full 2xl:grid-cols-[320px_minmax(0,1fr)_340px]">
+        <aside className="order-2 grid overflow-visible gap-3 2xl:order-1 2xl:min-h-0 2xl:max-h-full 2xl:grid-rows-[auto_minmax(0,1fr)]">
         <div className="shrink-0 rounded-3xl border border-editor-border bg-editor-surface p-5">
           <p className="text-xs font-bold tracking-[0.16em] text-editor-accent uppercase">
             Bead Pattern Editor
@@ -157,33 +158,35 @@ export function EditorShell() {
           </h1>
         </div>
 
-        <div className="flex min-h-0 flex-col gap-3 overflow-visible 2xl:overflow-y-auto">
-          <CollapsibleSection title="画布设置" defaultOpen>
-            <CanvasPanel editor={editor} />
-          </CollapsibleSection>
+          <div className="flex min-h-0 flex-col gap-3 overflow-visible 2xl:overflow-y-auto">
+            <CollapsibleSection title="照片转图纸">
+              <ImagePanel editor={editor} />
+            </CollapsibleSection>
+          </div>
+        </aside>
 
-          <CollapsibleSection title="照片转图纸">
-            <ImagePanel editor={editor} />
-          </CollapsibleSection>
+        <section className="order-1 min-w-0 2xl:order-2 2xl:min-h-0">
+          <CanvasStage
+            editor={editor}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
+        </section>
 
-          <CollapsibleSection title="导出与存档">
-            <ExportPanel editor={editor} />
-          </CollapsibleSection>
-        </div>
-      </aside>
-
-      <section className="order-1 min-w-0 2xl:order-2 2xl:min-h-0">
-        <CanvasStage editor={editor} />
-      </section>
-
-      <aside className="order-3 overflow-visible 2xl:min-h-0 2xl:max-h-full">
-        <div className="grid max-h-full content-start gap-3 overflow-visible 2xl:overflow-y-auto">
-          <CollapsibleSection title="颜色" defaultOpen>
-            <ColorPanel editor={editor} />
-          </CollapsibleSection>
-        </div>
-      </aside>
-    </div>
+        <aside className="order-3 overflow-visible 2xl:min-h-0 2xl:max-h-full">
+          <div className="grid max-h-full content-start gap-3 overflow-visible 2xl:overflow-y-auto">
+            <CollapsibleSection title="颜色" defaultOpen>
+              <ColorPanel editor={editor} />
+            </CollapsibleSection>
+          </div>
+        </aside>
+      </div>
+      {settingsOpen ? (
+        <CanvasSettingsModal
+          editor={editor}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
+    </>
   )
 }
 

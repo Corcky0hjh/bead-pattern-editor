@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
 
 const focusableSelector = [
   'button:not([disabled])',
@@ -11,8 +11,7 @@ const focusableSelector = [
 
 export function useModalDialog(onClose: () => void) {
   const dialogRef = useRef<HTMLDivElement | null>(null)
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  const closeDialog = useEffectEvent(onClose)
 
   useEffect(() => {
     const previousFocus =
@@ -24,8 +23,11 @@ export function useModalDialog(onClose: () => void) {
 
     const dialog = dialogRef.current
     const initialFocus =
-      dialog?.querySelector<HTMLElement>('[data-dialog-initial-focus]') ?? dialog
-    window.requestAnimationFrame(() => initialFocus?.focus())
+      dialog?.querySelector<HTMLElement>('[data-dialog-initial-focus]') ??
+      dialog
+    const initialFocusFrame = window.requestAnimationFrame(() =>
+      initialFocus?.focus(),
+    )
 
     function handleKeyDown(event: KeyboardEvent) {
       const topmostDialog = [
@@ -35,12 +37,14 @@ export function useModalDialog(onClose: () => void) {
 
       if (event.key === 'Escape') {
         event.preventDefault()
-        onCloseRef.current()
+        closeDialog()
         return
       }
       if (event.key !== 'Tab' || !dialog) return
 
-      const focusable = [...dialog.querySelectorAll<HTMLElement>(focusableSelector)]
+      const focusable = [
+        ...dialog.querySelectorAll<HTMLElement>(focusableSelector),
+      ]
       if (focusable.length === 0) {
         event.preventDefault()
         dialog.focus()
@@ -59,6 +63,7 @@ export function useModalDialog(onClose: () => void) {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => {
+      window.cancelAnimationFrame(initialFocusFrame)
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = previousOverflow
       window.requestAnimationFrame(() => previousFocus?.focus())

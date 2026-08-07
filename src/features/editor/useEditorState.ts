@@ -48,14 +48,30 @@ import {
 } from '../../platform/web/imageExport'
 import {
   createSolidPatternGrid,
+  createUniformPatternCells,
+  ensureChunkedPatternGrid,
+  floodFillPatternGrid,
+  getPatternCellChunks,
+  getUniformPatternCell,
+  mapPatternCells,
+  replacePatternColor,
+  resizePatternGrid,
+  serializePatternGrid,
   CANVAS_BG_COLOR,
   MAX_PATTERN_SIDE,
   MIN_PATTERN_SIDE,
   parsePatternGrid,
+  type PatternCellChunkView,
   type PatternGrid,
 } from '../../core/pattern/grid'
 
-export type EditorTool = 'pan' | 'select' | 'brush' | 'eraser' | 'fill' | 'shape'
+export type EditorTool =
+  | 'pan'
+  | 'select'
+  | 'brush'
+  | 'eraser'
+  | 'fill'
+  | 'shape'
 export type SymmetryMode = 'off' | 'vertical' | 'horizontal' | 'both' | 'center'
 export type FillMode = 'region' | 'global'
 export type ShapeKind = 'line' | 'rectangle' | 'ellipse'
@@ -98,6 +114,132 @@ type HistoryState = {
   futureExcluded: Set<string>[]
 }
 
+type PatternSummary = {
+  counts: Map<string, number>
+  paintChunks: Array<{
+    token: object
+    x: number
+    y: number
+    width: number
+    height: number
+    isUniform: boolean
+    solidColor: string | null
+    get: PatternCellChunkView['get']
+  }>
+}
+
+const patternSummaryCache = new WeakMap<PatternGrid, PatternSummary>()
+type ChunkSummary = {
+  counts: Map<string, number>
+  isUniform: boolean
+  solidColor: string | null
+}
+const chunkSummaryCache = new WeakMap<object, Map<string, ChunkSummary>>()
+
+function summarizeChunk(
+  chunk: NonNullable<ReturnType<typeof getPatternCellChunks>>[number],
+) {
+  const cacheKey = `${chunk.width}:${chunk.height}`
+  const tokenCache = chunkSummaryCache.get(chunk.token)
+  const cached = tokenCache?.get(cacheKey)
+  if (cached) return cached
+
+  if (chunk.uniformCell) {
+    const color = chunk.uniformCell.isExternal
+      ? null
+      : chunk.uniformCell.color
+    const counts = new Map<string, number>()
+    if (color !== null) counts.set(color, chunk.width * chunk.height)
+    const summary = {
+      counts,
+      isUniform: true,
+      solidColor: color,
+    }
+    const nextTokenCache = tokenCache ?? new Map<string, ChunkSummary>()
+    nextTokenCache.set(cacheKey, summary)
+    if (!tokenCache) chunkSummaryCache.set(chunk.token, nextTokenCache)
+    return summary
+  }
+
+  const counts = new Map<string, number>()
+  for (let y = 0; y < chunk.height; y += 1) {
+    for (let x = 0; x < chunk.width; x += 1) {
+      const cell = chunk.get(x, y)
+      const color = !cell.isExternal ? cell.color : null
+      if (color !== null) counts.set(color, (counts.get(color) ?? 0) + 1)
+    }
+  }
+
+  const summary = {
+    counts,
+    isUniform: false,
+    solidColor: null,
+  }
+  const nextTokenCache = tokenCache ?? new Map<string, ChunkSummary>()
+  nextTokenCache.set(cacheKey, summary)
+  if (!tokenCache) chunkSummaryCache.set(chunk.token, nextTokenCache)
+  return summary
+}
+
+function summarizePattern(pattern: PatternGrid): PatternSummary {
+  const cached = patternSummaryCache.get(pattern)
+  if (cached) return cached
+
+  const chunks = getPatternCellChunks(pattern.cells)
+  if (chunks) {
+    const counts = new Map<string, number>()
+    const paintChunks: PatternSummary['paintChunks'] = []
+    for (const chunk of chunks) {
+      const summary = summarizeChunk(chunk)
+      summary.counts.forEach((count, color) => {
+        counts.set(color, (counts.get(color) ?? 0) + count)
+      })
+      paintChunks.push({
+        token: chunk.token,
+        x: chunk.x,
+        y: chunk.y,
+        width: chunk.width,
+        height: chunk.height,
+        isUniform: summary.isUniform,
+        solidColor: summary.solidColor,
+        get: chunk.get,
+      })
+    }
+    const summary = { counts, paintChunks }
+    patternSummaryCache.set(pattern, summary)
+    return summary
+  }
+
+  const counts = new Map<string, number>()
+  for (let y = 0; y < pattern.height; y += 1) {
+    for (let x = 0; x < pattern.width; x += 1) {
+      const index = y * pattern.width + x
+      const cell = pattern.cells[index]
+      const color = !cell.isExternal ? cell.color : null
+      if (color !== null) counts.set(color, (counts.get(color) ?? 0) + 1)
+    }
+  }
+  const summary = {
+    counts,
+    paintChunks: [
+      {
+        token: pattern,
+        x: 0,
+        y: 0,
+        width: pattern.width,
+        height: pattern.height,
+        isUniform: false,
+        solidColor: null,
+        get(localX: number, localY: number) {
+          return pattern.cells[localY * pattern.width + localX]
+        },
+      },
+    ],
+  }
+  patternSummaryCache.set(pattern, summary)
+  return summary
+}
+
 const initialPattern = createSolidPatternGrid({
   width: defaultConversionPreset.size,
   height: defaultConversionPreset.size,
@@ -106,6 +248,7 @@ const initialPattern = createSolidPatternGrid({
 export function useEditorState() {
   const [rows, setRows] = useState<number>(defaultConversionPreset.size)
   const [cols, setCols] = useState<number>(defaultConversionPreset.size)
+  const [viewportFitRequest, setViewportFitRequest] = useState(0)
   const [history, setHistory] = useState<HistoryState>({
     past: [],
     present: initialPattern,
@@ -164,24 +307,28 @@ export function useEditorState() {
 
   const strokeBaselineRef = useRef<PatternGrid | null>(null)
   const strokeDraftRef = useRef<PatternGrid | null>(null)
+  const strokeChangedRef = useRef(false)
+  const strokePreviewListenerRef = useRef<
+    ((changes: Array<{ index: number; color: string | null }>) => void) | null
+  >(null)
 
   useEffect(() => {
-    localStorage.setItem(customPaletteStorageKey, JSON.stringify(customPalette))
+    writeLocalStorage(customPaletteStorageKey, JSON.stringify(customPalette))
   }, [customPalette])
 
   useEffect(() => {
-    localStorage.setItem(
+    writeLocalStorage(
       disabledPaletteStorageKey,
       JSON.stringify([...disabledPaletteHexes]),
     )
   }, [disabledPaletteHexes])
 
   useEffect(() => {
-    localStorage.setItem(currentBrandStorageKey, currentBrand)
+    writeLocalStorage(currentBrandStorageKey, currentBrand)
   }, [currentBrand])
 
   useEffect(() => {
-    localStorage.setItem(
+    writeLocalStorage(
       canvasSettingsStorageKey,
       JSON.stringify(canvasSettings),
     )
@@ -189,14 +336,10 @@ export function useEditorState() {
 
   useEffect(() => {
     applyTheme(currentTheme)
-    localStorage.setItem(themeStorageKey, currentTheme)
+    writeLocalStorage(themeStorageKey, currentTheme)
   }, [currentTheme])
 
   const pattern = history.present
-  useEffect(() => {
-    setRows(pattern.height)
-    setCols(pattern.width)
-  }, [pattern.height, pattern.width])
   const canUndo = history.past.length > 0
   const canRedo = history.future.length > 0
 
@@ -229,13 +372,7 @@ export function useEditorState() {
   }
 
   function updateCanvasSettings(partial: Partial<CanvasSettings>) {
-    setCanvasSettings((previous) => {
-      const next = { ...previous, ...partial }
-      if (partial.paperColor) {
-        next.externalColor = partial.paperColor
-      }
-      return next
-    })
+    setCanvasSettings((previous) => ({ ...previous, ...partial }))
   }
 
   function resetCanvasSettings() {
@@ -244,7 +381,6 @@ export function useEditorState() {
     setCanvasSettings({
       ...DEFAULT_CANVAS_SETTINGS,
       ...themeCanvas,
-      externalColor: themeCanvas.paperColor,
     })
   }
 
@@ -262,17 +398,12 @@ export function useEditorState() {
     setCanvasSettings((previous) => ({
       ...previous,
       ...themeCanvas,
-      externalColor: themeCanvas.paperColor,
     }))
   }
 
+  const patternSummary = useMemo(() => summarizePattern(pattern), [pattern])
+
   const colorStats = useMemo(() => {
-    const counts = new Map<string, number>()
-    pattern.cells.forEach((cell) => {
-      if (cell.isExternal) return
-      if (cell.color === null) return
-      counts.set(cell.color, (counts.get(cell.color) ?? 0) + 1)
-    })
     const codeByHex = new Map<string, string | null>()
     palette.forEach((color) => {
       codeByHex.set(
@@ -280,14 +411,14 @@ export function useEditorState() {
         getDisplayCode(color, currentBrand),
       )
     })
-    return [...counts.entries()]
+    return [...patternSummary.counts.entries()]
       .map(([color, count]) => ({
         color,
         count,
         code: codeByHex.get(color.toLowerCase()) ?? null,
       }))
       .sort((left, right) => right.count - left.count)
-  }, [pattern, palette, currentBrand])
+  }, [patternSummary, palette, currentBrand])
 
   const usedCount = useMemo(
     () => colorStats.reduce((total, item) => total + item.count, 0),
@@ -329,9 +460,7 @@ export function useEditorState() {
 
   function addCurrentColorToPalette() {
     const normalized = currentColor.toLowerCase()
-    if (
-      customPalette.some((item) => item.hex.toLowerCase() === normalized)
-    ) {
+    if (customPalette.some((item) => item.hex.toLowerCase() === normalized)) {
       return
     }
     setCustomPalette((previous) => [
@@ -386,7 +515,9 @@ export function useEditorState() {
       if (normalizeHex(currentColor) === normalized) {
         const fallback = palette.find((color) => {
           const candidate = normalizeHex(color.hex)
-          return candidate !== normalized && !disabledPaletteHexes.has(candidate)
+          return (
+            candidate !== normalized && !disabledPaletteHexes.has(candidate)
+          )
         })
         if (fallback) updateCurrentColor(fallback.hex)
       }
@@ -408,13 +539,11 @@ export function useEditorState() {
     setDisabledPaletteHexes(new Set())
   }
 
-  function commitPattern(
-    next: PatternGrid,
-    nextExcluded = excludedColorHexes,
-  ) {
+  function commitPattern(next: PatternGrid, nextExcluded = excludedColorHexes) {
+    const normalizedNext = ensureChunkedPatternGrid(next)
     setHistory((previous) => ({
       past: [...previous.past, previous.present].slice(-maxHistorySteps),
-      present: next,
+      present: normalizedNext,
       future: [],
       pastExcluded: [
         ...previous.pastExcluded,
@@ -428,6 +557,8 @@ export function useEditorState() {
   function undo() {
     const nextPresent = history.past.at(-1)
     if (!nextPresent) return
+    setRows(nextPresent.height)
+    setCols(nextPresent.width)
     const nextExcluded = history.pastExcluded.at(-1)
     setExcludedColorHexes(new Set(nextExcluded ?? []))
     setHistory({
@@ -445,6 +576,8 @@ export function useEditorState() {
   function redo() {
     const nextPresent = history.future[0]
     if (!nextPresent) return
+    setRows(nextPresent.height)
+    setCols(nextPresent.width)
     const nextExcluded = history.futureExcluded[0]
     setExcludedColorHexes(new Set(nextExcluded ?? []))
     setHistory({
@@ -472,42 +605,54 @@ export function useEditorState() {
     )
     setRows(normalizedRows)
     setCols(normalizedCols)
-    commitPattern(
-      createSolidPatternGrid({
-        width: normalizedCols,
-        height: normalizedRows,
-      }),
-      new Set(),
-    )
+    const current = history.present
+    const uniformCell = getUniformPatternCell(current.cells)
+    const nextPattern = uniformCell
+      ? {
+          width: normalizedCols,
+          height: normalizedRows,
+          cells: createUniformPatternCells(
+            normalizedCols,
+            normalizedRows,
+            uniformCell,
+          ),
+        }
+      : resizePatternGrid(current, normalizedCols, normalizedRows)
+    commitPattern(nextPattern, new Set())
+  }
+
+  function requestViewportFit() {
+    setViewportFitRequest((request) => request + 1)
   }
 
   function clearCanvas() {
-    commitPattern(
-      createSolidPatternGrid({
-        width: pattern.width,
-        height: pattern.height,
-      }),
-      new Set(),
-    )
+    const nextPattern = createSolidPatternGrid({
+      width: pattern.width,
+      height: pattern.height,
+    })
+    commitPattern(nextPattern, new Set())
   }
 
   function beginStroke() {
     strokeBaselineRef.current = pattern
-    strokeDraftRef.current = pattern
+    strokeDraftRef.current = { ...pattern, cells: pattern.cells.slice() }
+    strokeChangedRef.current = false
   }
 
   function endStroke() {
     const baseline = strokeBaselineRef.current
     const draft = strokeDraftRef.current
+    const changed = strokeChangedRef.current
     strokeBaselineRef.current = null
     strokeDraftRef.current = null
+    strokeChangedRef.current = false
 
-    if (!baseline || !draft) return
-    if (draft === baseline) return
+    if (!baseline || !draft || !changed) return
+    const finalizedDraft = ensureChunkedPatternGrid(draft)
 
     setHistory((previous) => ({
       past: [...previous.past, baseline].slice(-maxHistorySteps),
-      present: draft,
+      present: finalizedDraft,
       future: [],
       pastExcluded: [
         ...previous.pastExcluded,
@@ -515,6 +660,14 @@ export function useEditorState() {
       ].slice(-maxHistorySteps),
       futureExcluded: [],
     }))
+  }
+
+  function setStrokePreviewListener(
+    listener:
+      | ((changes: Array<{ index: number; color: string | null }>) => void)
+      | null,
+  ) {
+    strokePreviewListenerRef.current = listener
   }
 
   function paintCell(index: number) {
@@ -555,11 +708,13 @@ export function useEditorState() {
 
   function paintArea(index: number, size: number, color: string | null) {
     const draftBase = strokeDraftRef.current ?? pattern
+    const isActiveStroke = strokeBaselineRef.current !== null
     const centerX = index % draftBase.width
     const centerY = Math.floor(index / draftBase.width)
     const startX = centerX - Math.floor(size / 2)
     const startY = centerY - Math.floor(size / 2)
-    const nextCells = draftBase.cells.slice()
+    const nextCells = isActiveStroke ? draftBase.cells : draftBase.cells.slice()
+    const previewChanges: Array<{ index: number; color: string | null }> = []
     let changed = false
 
     for (let y = startY; y < startY + size; y += 1) {
@@ -568,7 +723,13 @@ export function useEditorState() {
           continue
         }
         const cellIndex = y * draftBase.width + x
-        if (!isIndexInsideSelection(cellIndex, draftBase.width, protectedSelection)) {
+        if (
+          !isIndexInsideSelection(
+            cellIndex,
+            draftBase.width,
+            protectedSelection,
+          )
+        ) {
           continue
         }
         if (
@@ -578,83 +739,55 @@ export function useEditorState() {
           continue
         }
         nextCells[cellIndex] = { color }
+        if (isActiveStroke) {
+          strokeChangedRef.current = true
+          previewChanges.push({ index: cellIndex, color })
+        }
         changed = true
       }
     }
 
     if (!changed) return
-    const nextPattern = { ...draftBase, cells: nextCells }
-
-    if (strokeBaselineRef.current) {
-      strokeDraftRef.current = nextPattern
-      setHistory((previous) => ({ ...previous, present: nextPattern }))
+    if (isActiveStroke) {
+      strokePreviewListenerRef.current?.(previewChanges)
     } else {
+      const nextPattern = { ...draftBase, cells: nextCells }
       commitPattern(nextPattern)
     }
   }
 
   function fillFrom(index: number) {
-    if (!isIndexInsideSelection(index, pattern.width, protectedSelection)) return
-    const startCell = pattern.cells[index]
-    if (!startCell) return
-    const targetColor = startCell.color
-    const targetExternal = Boolean(startCell.isExternal)
-    if (targetColor === currentColor && !targetExternal) return
-
-    const nextCells = pattern.cells.map((cell) => ({ ...cell }))
-    const queue = [index]
-    const visited = new Set<number>()
-
-    while (queue.length > 0) {
-      const currentIndex = queue.shift()
-      if (currentIndex === undefined || visited.has(currentIndex)) continue
-      const currentCell = nextCells[currentIndex]
-      if (!isIndexInsideSelection(currentIndex, pattern.width, protectedSelection)) {
-        continue
-      }
-      if (
-        currentCell?.color !== targetColor ||
-        Boolean(currentCell.isExternal) !== targetExternal
-      ) {
-        continue
-      }
-
-      visited.add(currentIndex)
-      nextCells[currentIndex] = { color: currentColor }
-
-      const x = currentIndex % pattern.width
-      const y = Math.floor(currentIndex / pattern.width)
-      if (x > 0) queue.push(currentIndex - 1)
-      if (x < pattern.width - 1) queue.push(currentIndex + 1)
-      if (y > 0) queue.push(currentIndex - pattern.width)
-      if (y < pattern.height - 1) queue.push(currentIndex + pattern.width)
-    }
-
-    commitPattern({ ...pattern, cells: nextCells })
+    const nextPattern = floodFillPatternGrid(
+      pattern,
+      index,
+      Object.freeze({ color: currentColor }),
+      protectedSelection ?? undefined,
+    )
+    if (nextPattern !== pattern) commitPattern(nextPattern)
   }
 
   function fillAllMatching(index: number) {
-    if (!isIndexInsideSelection(index, pattern.width, protectedSelection)) return
+    if (!isIndexInsideSelection(index, pattern.width, protectedSelection))
+      return
     const sourceColor = pattern.cells[index]?.color
     if (!sourceColor) return
     const normalizedSource = normalizeHex(sourceColor)
     const normalizedCurrent = normalizeHex(currentColor)
     if (normalizedSource === normalizedCurrent) return
-    commitPattern({
-      ...pattern,
-      cells: pattern.cells.map((cell, index) =>
-        isIndexInsideSelection(
-          index,
-          pattern.width,
+    const nextCells = protectedSelection
+      ? mapPatternCells(
+          pattern.cells,
+          (cell) =>
+            !cell.isExternal &&
+          cell.color &&
+          normalizeHex(cell.color) === normalizedSource
+            ? { ...cell, color: normalizedCurrent }
+            : cell,
           protectedSelection,
-        ) &&
-        !cell.isExternal &&
-        cell.color &&
-        normalizeHex(cell.color) === normalizedSource
-          ? { ...cell, color: normalizedCurrent }
-          : cell,
-      ),
-    })
+        )
+      : replacePatternColor(pattern.cells, normalizedSource, normalizedCurrent)
+    if (nextCells !== pattern.cells)
+      commitPattern({ ...pattern, cells: nextCells })
   }
 
   function drawShape(startIndex: number, endIndex: number) {
@@ -687,18 +820,16 @@ export function useEditorState() {
 
   function deleteSelection(selection: SelectionRect) {
     let changed = false
-    const nextCells = pattern.cells.map((cell, index) => {
-      const x = index % pattern.width
-      const y = Math.floor(index / pattern.width)
-      const selected =
-        x >= selection.x &&
-        x < selection.x + selection.width &&
-        y >= selection.y &&
-        y < selection.y + selection.height
-      if (!selected || cell.color === null || cell.isExternal) return cell
-      changed = true
-      return { color: null }
-    })
+    const nextCells = pattern.cells.slice()
+    for (let y = selection.y; y < selection.y + selection.height; y += 1) {
+      for (let x = selection.x; x < selection.x + selection.width; x += 1) {
+        const index = y * pattern.width + x
+        const cell = nextCells[index]
+        if (cell.color === null || cell.isExternal) continue
+        nextCells[index] = { color: null }
+        changed = true
+      }
+    }
     if (changed) commitPattern({ ...pattern, cells: nextCells })
   }
 
@@ -769,9 +900,8 @@ export function useEditorState() {
     let changed = false
     for (let y = 0; y < selection.height; y += 1) {
       for (let x = 0; x < selection.width; x += 1) {
-        const source = pattern.cells[
-          (selection.y + y) * pattern.width + selection.x + x
-        ]
+        const source =
+          pattern.cells[(selection.y + y) * pattern.width + selection.x + x]
         if (!source?.color || source.isExternal) continue
         nextCells[y * pattern.width + x] = { color: source.color }
         changed = true
@@ -813,7 +943,7 @@ export function useEditorState() {
   }
 
   function removeIsolatedCells() {
-    const nextCells = pattern.cells.map((cell, index) => {
+    const nextCells = mapPatternCells(pattern.cells, (cell, index) => {
       // 空格不参与"清理孤立";它本来就是空,不算杂色
       if (cell.color === null) return cell
 
@@ -1003,10 +1133,7 @@ export function useEditorState() {
       return
     }
 
-    commitPattern(
-      remapped.pattern,
-      withHex(excludedColorHexes, normalized),
-    )
+    commitPattern(remapped.pattern, withHex(excludedColorHexes, normalized))
     setImageStatus(`已排除 ${normalized}，并重映射到 ${remapped.replacement}`)
   }
 
@@ -1113,16 +1240,7 @@ export function useEditorState() {
   }
 
   function exportJson() {
-    const payload = JSON.stringify(
-      {
-        schemaVersion: 1,
-        rows: pattern.height,
-        cols: pattern.width,
-        pattern,
-      },
-      null,
-      2,
-    )
+    const payload = JSON.stringify(serializePatternGrid(pattern), null, 2)
     const blob = new Blob([payload], { type: 'application/json' })
     downloadUrl(URL.createObjectURL(blob), 'bead-pattern.json', true)
   }
@@ -1152,8 +1270,8 @@ export function useEditorState() {
   async function importJson(file: File) {
     try {
       const text = await file.text()
-      const payload = JSON.parse(text) as { pattern?: unknown }
-      const nextPattern = parsePatternGrid(payload.pattern)
+      const payload = JSON.parse(text) as unknown
+      const nextPattern = parsePatternGrid(payload)
       if (!nextPattern) throw new Error('图纸结构或尺寸无效')
       setRows(nextPattern.height)
       setCols(nextPattern.width)
@@ -1165,28 +1283,27 @@ export function useEditorState() {
   }
 
   function saveLocal() {
-    localStorage.setItem(
-      'bead-pattern-editor',
-      JSON.stringify({
-        schemaVersion: 1,
-        rows: pattern.height,
-        cols: pattern.width,
-        pattern,
-      }),
-    )
-    setImageStatus('已保存到当前浏览器')
+    try {
+      localStorage.setItem(
+        'bead-pattern-editor',
+        JSON.stringify(serializePatternGrid(pattern)),
+      )
+      setImageStatus('已保存到当前浏览器')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setImageStatus(`保存失败：${message}`)
+    }
   }
 
   function restoreLocal() {
-    const saved = localStorage.getItem('bead-pattern-editor')
-    if (!saved) {
-      setImageStatus('当前浏览器没有保存过的图纸')
-      return
-    }
-
     try {
-      const payload = JSON.parse(saved) as { pattern?: unknown }
-      const nextPattern = parsePatternGrid(payload.pattern)
+      const saved = localStorage.getItem('bead-pattern-editor')
+      if (!saved) {
+        setImageStatus('当前浏览器没有保存过的图纸')
+        return
+      }
+      const payload = JSON.parse(saved) as unknown
+      const nextPattern = parsePatternGrid(payload)
       if (!nextPattern) throw new Error('保存的图纸结构或尺寸无效')
       setRows(nextPattern.height)
       setCols(nextPattern.width)
@@ -1251,8 +1368,6 @@ export function useEditorState() {
     toggleShowGrid,
     currentTheme,
     setCurrentTheme,
-    /** @deprecated 兼容旧用法,等同 canvasSettings.showGrid */
-    showGrid: canvasSettings.showGrid,
     zoom,
     setZoom,
     converter,
@@ -1273,12 +1388,16 @@ export function useEditorState() {
     currentBrand,
     setCurrentBrand,
     colorStats,
+    paintChunks: patternSummary.paintChunks,
+    setStrokePreviewListener,
     usedCount,
     canUndo,
     canRedo,
     undo,
     redo,
     applyCanvasSize,
+    viewportFitRequest,
+    requestViewportFit,
     clearCanvas,
     beginStroke,
     endStroke,
@@ -1407,8 +1526,16 @@ export function getShapeCellIndexes(
     source.forEach((index) => {
       const centerX = index % width
       const centerY = Math.floor(index / width)
-      for (let y = centerY - offset; y < centerY - offset + strokeSize; y += 1) {
-        for (let x = centerX - offset; x < centerX - offset + strokeSize; x += 1) {
+      for (
+        let y = centerY - offset;
+        y < centerY - offset + strokeSize;
+        y += 1
+      ) {
+        for (
+          let x = centerX - offset;
+          x < centerX - offset + strokeSize;
+          x += 1
+        ) {
           add(x, y)
         }
       }
@@ -1498,7 +1625,9 @@ function mergePaletteWithCustomPriority(
   customColors: BeadColor[],
 ): BeadColor[] {
   const colorsByHex = new Map<string, BeadColor>()
-  brandColors.forEach((color) => colorsByHex.set(normalizeHex(color.hex), color))
+  brandColors.forEach((color) =>
+    colorsByHex.set(normalizeHex(color.hex), color),
+  )
   customColors.forEach((color) => {
     const normalized = normalizeHex(color.hex)
     const brandColor = colorsByHex.get(normalized)
@@ -1552,33 +1681,27 @@ export function remapPatternColor(
   alreadyExcluded: Set<string>,
 ): { pattern: PatternGrid; replacement: string | null } {
   const normalizedTarget = normalizeHex(targetHex)
-  const candidateHexes = [
-    ...new Set(
-      pattern.cells
-        .filter((cell) => !cell.isExternal)
-        .map((cell) => cell.color)
-        .filter((color): color is string => Boolean(color))
-        .map(normalizeHex)
-        .filter(
-          (color) => color !== normalizedTarget && !alreadyExcluded.has(color),
-        ),
-    ),
-  ]
+  const candidateSet = new Set<string>()
+  pattern.cells.forEach((cell) => {
+    if (!cell.color || cell.isExternal) return
+    const color = normalizeHex(cell.color)
+    if (color !== normalizedTarget && !alreadyExcluded.has(color)) {
+      candidateSet.add(color)
+    }
+  })
+  const candidateHexes = [...candidateSet]
 
   if (candidateHexes.length === 0) {
     return { pattern, replacement: null }
   }
 
   const replacement = findNearestHex(normalizedTarget, candidateHexes)
-  let changed = false
-  const nextCells = pattern.cells.map((cell) => {
-    if (cell.color === null || cell.isExternal) return cell
-    if (normalizeHex(cell.color) !== normalizedTarget) return cell
-    changed = true
-    return { ...cell, color: replacement }
-  })
-
-  if (!changed) return { pattern, replacement: null }
+  const nextCells = replacePatternColor(
+    pattern.cells,
+    normalizedTarget,
+    replacement,
+  )
+  if (nextCells === pattern.cells) return { pattern, replacement: null }
   return { pattern: { ...pattern, cells: nextCells }, replacement }
 }
 
@@ -1630,27 +1753,21 @@ function loadImage(file: File) {
   })
 }
 
-/**
- * 读取自定义色板。兼容旧版 `{hex, name}` 格式,自动升级为 BeadColor。
- */
 function loadCustomPalette(): BeadColor[] {
   try {
     const saved = localStorage.getItem(customPaletteStorageKey)
     if (!saved) return []
-    const parsed = JSON.parse(saved) as Array<
-      BeadColor | { hex: string; name?: string }
-    >
+    const parsed = JSON.parse(saved) as BeadColor[]
     if (!Array.isArray(parsed)) return []
-    const upgraded = parsed.map((item) => {
-      if ('codes' in item && item.codes) return item as BeadColor
-      const legacy = item as { hex: string; name?: string }
-      return {
-        hex: legacy.hex,
-        codes: {},
-        nameZh: legacy.name,
-      }
-    })
-    return mergePaletteWithCustomPriority([], upgraded)
+    const colors = parsed.filter(
+      (item) =>
+        item &&
+        typeof item.hex === 'string' &&
+        /^#[0-9a-f]{6}$/i.test(item.hex) &&
+        item.codes &&
+        typeof item.codes === 'object',
+    )
+    return mergePaletteWithCustomPriority([], colors)
   } catch {
     return []
   }
@@ -1700,6 +1817,14 @@ function loadTheme(): ThemeId {
     /* ignore */
   }
   return DEFAULT_THEME_ID
+}
+
+function writeLocalStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Preferences are optional when storage is unavailable or full.
+  }
 }
 
 function downloadUrl(url: string, filename: string, revoke = false) {

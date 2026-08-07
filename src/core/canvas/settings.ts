@@ -10,8 +10,6 @@ export type CanvasSettings = {
   paperColor: string
   /** 纸面 alpha,0-1。值越低越能透出外框色。 */
   paperAlpha: number
-  /** @deprecated 旧版留白色字段；现在等同 paperColor，仅作存储兼容。 */
-  externalColor: string
   /** 网格线颜色 */
   gridColor: string
   /** 网格线粗细(SVG strokeWidth) */
@@ -26,7 +24,6 @@ export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
   bgColor: '#eadcc7',
   paperColor: '#ffffff',
   paperAlpha: 0.4,
-  externalColor: '#ffffff',
   gridColor: '#9f9485',
   gridWidth: 1,
   majorGridEvery: 5,
@@ -38,7 +35,7 @@ export const MAJOR_GRID_OPTIONS = [0, 3, 5, 10] as const
 
 /**
  * 把任意值安全解析成 CanvasSettings。缺失/类型错误的字段回退到默认。
- * 用于 localStorage / 旧版本数据迁移场景。
+ * 用于读取 localStorage 中的用户设置。
  */
 export function parseCanvasSettings(raw: unknown): CanvasSettings {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_CANVAS_SETTINGS }
@@ -56,10 +53,6 @@ export function parseCanvasSettings(raw: unknown): CanvasSettings {
       typeof r.paperAlpha === 'number' && r.paperAlpha >= 0 && r.paperAlpha <= 1
         ? r.paperAlpha
         : DEFAULT_CANVAS_SETTINGS.paperAlpha,
-    externalColor:
-      typeof r.paperColor === 'string'
-        ? r.paperColor
-        : DEFAULT_CANVAS_SETTINGS.externalColor,
     gridColor:
       typeof r.gridColor === 'string'
         ? r.gridColor

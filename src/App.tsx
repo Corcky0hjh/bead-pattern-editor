@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ToastViewport } from './components/ToastViewport'
 import { EditorShell } from './features/editor/EditorShell'
 import { ThemePreview } from './features/theme-preview/ThemePreview'
 
@@ -14,9 +15,12 @@ function App() {
   if (hash === '#themes') return <ThemePreview />
 
   return (
-    <main className="min-h-svh bg-editor-bg p-4 text-editor-text md:p-8 2xl:box-border 2xl:h-svh 2xl:overflow-hidden">
-      <EditorShell />
-    </main>
+    <>
+      <main className="min-h-svh bg-editor-bg p-4 text-editor-text md:p-8 2xl:box-border 2xl:h-svh 2xl:overflow-hidden">
+        <EditorShell />
+      </main>
+      <ToastViewport />
+    </>
   )
 }
 

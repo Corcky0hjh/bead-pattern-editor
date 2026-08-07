@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -142,8 +143,12 @@ function ImageImportModal({
   const [previewing, setPreviewing] = useState(false)
   const previewRequestIdRef = useRef(0)
   const previewPendingRef = useRef(false)
-  const [previewStatus, setPreviewStatus] = useState('先导入图片')
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [previewStatus, setPreviewStatus] = useState(
+    initialFile ? '准备生成预览' : '先导入图片',
+  )
+  const [imageUrl, setImageUrl] = useState<string | null>(() =>
+    initialFile ? URL.createObjectURL(initialFile) : null,
+  )
   const [imageSize, setImageSize] = useState<{
     width: number
     height: number
@@ -169,7 +174,17 @@ function ImageImportModal({
   const [previewPattern, setPreviewPattern] = useState<PatternGrid | null>(null)
   const [excludedColors, setExcludedColors] = useState<Set<string>>(new Set())
   const excludedColorsRef = useRef(excludedColors)
-  excludedColorsRef.current = excludedColors
+
+  useEffect(() => {
+    excludedColorsRef.current = excludedColors
+  }, [excludedColors])
+
+  useEffect(
+    () => () => {
+      if (imageUrl) URL.revokeObjectURL(imageUrl)
+    },
+    [imageUrl],
+  )
 
   const conversionOptions = useMemo<ImageConversionOptions>(() => {
     return {
@@ -198,34 +213,13 @@ function ImageImportModal({
     () => buildColorStats(previewPattern, editor),
     [editor, previewPattern],
   )
-  useEffect(() => {
-    if (!file) {
-      previewRequestIdRef.current += 1
-      previewPendingRef.current = false
-      setPreviewing(false)
-      setImageUrl(null)
-      setImageSize(null)
-      setBasePattern(null)
-      setPreviewPattern(null)
-      excludedColorsRef.current = new Set()
-      setExcludedColors(excludedColorsRef.current)
-      setPlacement({
-        x: 0,
-        y: 0,
-        scale: 1,
-        rotation: 0,
-        flipX: false,
-        flipY: false,
-      })
-      setPreviewStatus('先导入图片')
-      return
-    }
 
-    const nextUrl = URL.createObjectURL(file)
+  function changeFile(nextFile: File | null) {
     previewRequestIdRef.current += 1
     previewPendingRef.current = false
     setPreviewing(false)
-    setImageUrl(nextUrl)
+    setFile(nextFile)
+    setImageUrl(nextFile ? URL.createObjectURL(nextFile) : null)
     setImageSize(null)
     setBasePattern(null)
     setPreviewPattern(null)
@@ -239,39 +233,29 @@ function ImageImportModal({
       flipX: false,
       flipY: false,
     })
-    setPreviewStatus('准备生成预览')
-    return () => URL.revokeObjectURL(nextUrl)
-  }, [file])
+    setPreviewStatus(nextFile ? '准备生成预览' : '先导入图片')
+  }
 
-  useEffect(() => {
-    if (!imageSize) return
-    setPlacement(fitImageToBoard(imageSize, draft.cols, draft.rows, 'contain'))
-  }, [draft.cols, draft.rows, imageSize])
-
-  useEffect(() => {
-    if (!file || !canGenerate || activeStep < 2) {
-      previewRequestIdRef.current += 1
-      previewPendingRef.current = false
-      setPreviewing(false)
-      return
+  function changeBoardSize(nextDraft: SetStateAction<ConversionDraft>) {
+    const resolved =
+      typeof nextDraft === 'function' ? nextDraft(draft) : nextDraft
+    setDraft(resolved)
+    if (
+      imageSize &&
+      (resolved.cols !== draft.cols || resolved.rows !== draft.rows)
+    ) {
+      setPlacement(
+        fitImageToBoard(imageSize, resolved.cols, resolved.rows, 'contain'),
+      )
     }
-    previewRequestIdRef.current += 1
-    previewPendingRef.current = true
-    setPreviewing(true)
-    const timer = window.setTimeout(() => {
-      void generatePreview(file)
-    }, 360)
-    return () => window.clearTimeout(timer)
-  }, [
-    activeStep,
-    availablePaletteKey,
-    canGenerate,
-    conversionOptions,
-    editor.currentBrand,
-    file,
-  ])
+  }
 
-  async function generatePreview(sourceFile = file) {
+  function handleImageLoad(nextSize: { width: number; height: number }) {
+    setImageSize(nextSize)
+    setPlacement(fitImageToBoard(nextSize, draft.cols, draft.rows, 'contain'))
+  }
+
+  const generatePreview = useEffectEvent(async (sourceFile = file) => {
     if (!sourceFile) return
     const requestId = previewRequestIdRef.current + 1
     previewRequestIdRef.current = requestId
@@ -303,7 +287,33 @@ function ImageImportModal({
         setPreviewing(false)
       }
     }
-  }
+  })
+
+  useEffect(() => {
+    if (!file || !canGenerate || activeStep < 2) {
+      previewRequestIdRef.current += 1
+      previewPendingRef.current = false
+      const frame = window.requestAnimationFrame(() => setPreviewing(false))
+      return () => window.cancelAnimationFrame(frame)
+    }
+    previewRequestIdRef.current += 1
+    previewPendingRef.current = true
+    const frame = window.requestAnimationFrame(() => setPreviewing(true))
+    const timer = window.setTimeout(() => {
+      void generatePreview(file)
+    }, 360)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
+  }, [
+    activeStep,
+    availablePaletteKey,
+    canGenerate,
+    conversionOptions,
+    editor.currentBrand,
+    file,
+  ])
 
   function applyExcluded(nextExcluded: Set<string>) {
     if (!basePattern) return
@@ -404,8 +414,12 @@ function ImageImportModal({
             <div className="min-h-0 overflow-auto px-5 py-4">
               {activeStep === 1 ? (
                 <StepCard>
-                  <UploadDropzone file={file} compact onFileChange={setFile} />
-                  <BoardSizeControls draft={draft} onChange={setDraft} />
+                  <UploadDropzone
+                    file={file}
+                    compact
+                    onFileChange={changeFile}
+                  />
+                  <BoardSizeControls draft={draft} onChange={changeBoardSize} />
                   <ImagePlacementControls
                     cols={draft.cols}
                     imageSize={imageSize}
@@ -457,7 +471,6 @@ function ImageImportModal({
                   />
                 </StepCard>
               ) : null}
-
             </div>
 
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-editor-border px-5 py-4">
@@ -511,7 +524,7 @@ function ImageImportModal({
                 imageUrl={imageUrl}
                 placement={placement}
                 rows={draft.rows}
-                onImageLoad={setImageSize}
+                onImageLoad={handleImageLoad}
                 onPlacementChange={setPlacement}
               />
             </aside>
@@ -904,7 +917,8 @@ function PlacementStage({
         stageBounds.maxX,
       ),
       y: clampPlacementAxisToBounds(
-        drag.startPlacement.y + (event.clientY - drag.startY) / boardRect.height,
+        drag.startPlacement.y +
+          (event.clientY - drag.startY) / boardRect.height,
         nextImageHeightRatio,
         stageBounds.minY,
         stageBounds.maxY,
@@ -1610,8 +1624,9 @@ function clampPlacementAxisToBounds(
 
 function getBoardPresetValue(cols: number, rows: number) {
   return (
-    boardSizePresets.find((preset) => preset.cols === cols && preset.rows === rows)
-      ?.label ?? ''
+    boardSizePresets.find(
+      (preset) => preset.cols === cols && preset.rows === rows,
+    )?.label ?? ''
   )
 }
 

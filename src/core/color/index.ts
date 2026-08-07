@@ -16,7 +16,6 @@ export {
 } from './brands'
 export { getDisplayCode, groupColorsForBrand } from './display'
 export { findNearestBeadColors, type NearestBeadColor } from './nearest'
-export type { PaletteColor } from './palette'
 
 const datasets: Record<BrandId, BeadColor[]> = {
   mard: mardData as BeadColor[],

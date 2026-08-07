@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test:pattern-grid": "node --experimental-strip-types scripts/test-pattern-grid.mjs",
     "typecheck": "tsc -b",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -18,6 +19,7 @@
     "interactjs": "^1.10.28",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "sonner": "^2.0.7",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {

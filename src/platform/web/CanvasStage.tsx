@@ -1,6 +1,7 @@
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent,
@@ -18,6 +19,7 @@ import {
   DotsSixVertical,
   Eyedropper,
   Eraser,
+  GearSix,
   FlipHorizontal,
   FlipVertical,
   Hand,
@@ -50,10 +52,7 @@ import {
   getFitZoom,
   normalizeWheelDelta,
 } from './viewportCamera'
-import {
-  ToolButton,
-  type ToolButtonIcon,
-} from '../../components/ToolButton'
+import { ToolButton, type ToolButtonIcon } from '../../components/ToolButton'
 import type {
   EditorStateController,
   EditorTool,
@@ -68,6 +67,7 @@ import { getShapeCellIndexes } from '../../features/editor/useEditorState'
 
 type CanvasStageProps = {
   editor: EditorStateController
+  onOpenSettings: () => void
 }
 
 type StageTool = { value: EditorTool; label: string; icon: ToolButtonIcon }
@@ -233,18 +233,123 @@ function getSelectionModeIcon(mode: SelectionMode): ToolButtonIcon {
 }
 
 function getShapeKindIcon(kind: ShapeKind): ToolButtonIcon {
-  return shapeKindOptions.find((option) => option.value === kind)?.icon ?? LineSegment
+  return (
+    shapeKindOptions.find((option) => option.value === kind)?.icon ??
+    LineSegment
+  )
 }
 
 function getShapeStyleIcon(style: ShapeStyle): ToolButtonIcon {
-  return shapeStyleOptions.find((option) => option.value === style)?.icon ?? Square
+  return (
+    shapeStyleOptions.find((option) => option.value === style)?.icon ?? Square
+  )
 }
 const semanticCellSize = 10
-const maxCanvasBitmapSide = 4096
+const maxCanvasBitmapSide = 2048
 const minViewportZoom = 5
 const maxViewportZoom = 500
 const worldPaddingAt100 = 32
 const toolbarDragPuckSize = 56
+type PaintChunkCanvasCacheEntry = {
+  token: object
+  key: string
+  canvas: HTMLCanvasElement
+  bytes: number
+}
+
+const maxPaintChunkCanvasCacheBytes = 32 * 1024 * 1024
+const paintChunkCanvasCache = new Map<
+  object,
+  Map<string, PaintChunkCanvasCacheEntry>
+>()
+const paintChunkCanvasLru = new Map<PaintChunkCanvasCacheEntry, true>()
+let paintChunkCanvasCacheBytes = 0
+
+function touchPaintChunkCanvas(entry: PaintChunkCanvasCacheEntry) {
+  paintChunkCanvasLru.delete(entry)
+  paintChunkCanvasLru.set(entry, true)
+}
+
+function cachePaintChunkCanvas(entry: PaintChunkCanvasCacheEntry) {
+  const tokenCache =
+    paintChunkCanvasCache.get(entry.token) ??
+    new Map<string, PaintChunkCanvasCacheEntry>()
+  tokenCache.set(entry.key, entry)
+  paintChunkCanvasCache.set(entry.token, tokenCache)
+  paintChunkCanvasCacheBytes += entry.bytes
+  touchPaintChunkCanvas(entry)
+
+  while (
+    paintChunkCanvasCacheBytes > maxPaintChunkCanvasCacheBytes &&
+    paintChunkCanvasLru.size > 1
+  ) {
+    const oldest = paintChunkCanvasLru.keys().next().value
+    if (!oldest) break
+    paintChunkCanvasLru.delete(oldest)
+    paintChunkCanvasCacheBytes -= oldest.bytes
+    const oldestTokenCache = paintChunkCanvasCache.get(oldest.token)
+    oldestTokenCache?.delete(oldest.key)
+    if (oldestTokenCache?.size === 0) {
+      paintChunkCanvasCache.delete(oldest.token)
+    }
+  }
+}
+
+function getPaintChunkCanvas(
+  chunk: EditorStateController['paintChunks'][number],
+  cellSize: number,
+) {
+  const cacheKey = `${chunk.width}:${chunk.height}:${cellSize}`
+  const tokenCache = paintChunkCanvasCache.get(chunk.token)
+  const cached = tokenCache?.get(cacheKey)
+  if (cached) {
+    touchPaintChunkCanvas(cached)
+    return cached.canvas
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = chunk.width * cellSize
+  canvas.height = chunk.height * cellSize
+  const context = canvas.getContext('2d')
+  if (context) {
+    context.imageSmoothingEnabled = false
+    if (chunk.isUniform) {
+      if (chunk.solidColor !== null) {
+        context.fillStyle = chunk.solidColor
+        context.fillRect(0, 0, canvas.width, canvas.height)
+      }
+    } else {
+      for (let y = 0; y < chunk.height; y += 1) {
+        let runStart = -1
+        let runColor: string | null = null
+        for (let x = 0; x <= chunk.width; x += 1) {
+          const cell = x < chunk.width ? chunk.get(x, y) : undefined
+          const color = cell && !cell.isExternal ? cell.color : null
+          if (color === runColor) continue
+          if (runColor !== null) {
+            context.fillStyle = runColor
+            context.fillRect(
+              runStart * cellSize,
+              y * cellSize,
+              (x - runStart) * cellSize,
+              cellSize,
+            )
+          }
+          runStart = color === null ? -1 : x
+          runColor = color
+        }
+      }
+    }
+  }
+
+  cachePaintChunkCanvas({
+    token: chunk.token,
+    key: cacheKey,
+    canvas,
+    bytes: canvas.width * canvas.height * 4,
+  })
+  return canvas
+}
 const toolbarDockDelay = 400
 
 /** 把 hex 色 + alpha(0-1) 拼成 rgba() 字符串。失败时退回 paperColor 原值。 */
@@ -258,9 +363,15 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${a})`
 }
 
-export function CanvasStage({ editor }: CanvasStageProps) {
+export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
   const [painting, setPainting] = useState(false)
-  const [openToolOptions, setOpenToolOptions] = useState<EditorTool | null>(null)
+  const [openToolOptions, setOpenToolOptions] = useState<EditorTool | null>(
+    null,
+  )
+  const [renderedOptionsTool, setRenderedOptionsTool] =
+    useState<EditorTool | null>(null)
+  const [toolOptionsClosing, setToolOptionsClosing] = useState(false)
+  const [toolOptionsAnchor, setToolOptionsAnchor] = useState({ x: 28, y: 28 })
   const [selection, setSelection] = useState<SelectionRect | null>(null)
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('select')
   const [pointerOutsideSelection, setPointerOutsideSelection] = useState(false)
@@ -299,6 +410,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     | null
   >(null)
   const toolbarRef = useRef<HTMLDivElement | null>(null)
+  const toolbarSurfaceRef = useRef<HTMLDivElement | null>(null)
+  const toolOptionsPopoverRef = useRef<HTMLDivElement | null>(null)
   const toolbarContentRef = useRef<HTMLDivElement | null>(null)
   const stageRef = useRef<HTMLElement | null>(null)
   const [stageViewportOrigin, setStageViewportOrigin] = useState<{
@@ -319,6 +432,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
   const zoomInputRef = useRef<HTMLInputElement | null>(null)
   const zoomHoldDelayRef = useRef<number | null>(null)
   const zoomHoldIntervalRef = useRef<number | null>(null)
+  const toolOptionsCloseTimerRef = useRef<number | null>(null)
   const toolbarDragHandlersRef = useRef({
     start: startToolbarDrag,
     move: moveToolbar,
@@ -328,6 +442,18 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     start: startToolbarDrag,
     move: moveToolbar,
     finish: finishToolbarDrag,
+  }
+  const canvasActionsRef = useRef({
+    cancelToolbarDrag,
+    clearSelection,
+    fitCanvasToViewport,
+    zoomViewportAt,
+  })
+  canvasActionsRef.current = {
+    cancelToolbarDrag,
+    clearSelection,
+    fitCanvasToViewport,
+    zoomViewportAt,
   }
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -350,6 +476,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       Math.floor(maxCanvasBitmapSide / Math.max(pattern.width, pattern.height)),
     ),
   )
+  const cellSizeRef = useRef(cellSize)
+  cellSizeRef.current = cellSize
   const zoomScale = (semanticCellSize * (editor.zoom / 100)) / cellSize
   const visualCellSize = cellSize * zoomScale
   const canvasWidth = pattern.width * cellSize
@@ -368,7 +496,10 @@ export function CanvasStage({ editor }: CanvasStageProps) {
   toolbarDragSessionRef.current = toolbarDragSession
 
   useEffect(() => {
-    if (document.activeElement !== zoomInputRef.current && zoomInputRef.current) {
+    if (
+      document.activeElement !== zoomInputRef.current &&
+      zoomInputRef.current
+    ) {
       zoomInputRef.current.value = String(Math.round(editor.zoom))
     }
   }, [editor.zoom])
@@ -396,8 +527,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       : null
   const canRotateSelection = Boolean(
     selection &&
-      selection.height <= pattern.width &&
-      selection.width <= pattern.height,
+    selection.height <= pattern.width &&
+    selection.width <= pattern.height,
   )
   const toolbarOptionsAbove =
     displayedToolbarLayout.placement === 'bottom' ||
@@ -410,19 +541,136 @@ export function CanvasStage({ editor }: CanvasStageProps) {
   const toolbarContentSide = toolbarDragSession
     ? toolbarDragOriginSide
     : toolbarOptionsSide
+  const toolbarOptionsDirection = toolbarOptionsSide
+    ? displayedToolbarLayout.placement === 'left'
+      ? 'right'
+      : 'left'
+    : toolbarOptionsAbove
+      ? 'up'
+      : 'down'
   const toolbarOptionsPosition = toolbarOptionsSide
     ? displayedToolbarLayout.placement === 'left'
-      ? 'left-full top-0 ml-2'
-      : 'right-full top-0 mr-2'
+      ? 'left-[calc(100%-36px)] -translate-y-1/2 !rounded-l-none'
+      : 'right-[calc(100%-36px)] -translate-y-1/2 !rounded-r-none'
     : toolbarOptionsAbove
-      ? 'bottom-full mb-2'
-      : 'top-full mt-2'
+      ? 'bottom-[calc(100%-36px)] -translate-x-1/2 !rounded-b-none'
+      : 'top-[calc(100%-36px)] -translate-x-1/2 !rounded-t-none'
+  const toolbarOptionsInset =
+    toolbarOptionsDirection === 'right'
+      ? 'pl-[44px]'
+      : toolbarOptionsDirection === 'left'
+        ? 'pr-[44px]'
+        : toolbarOptionsDirection === 'down'
+          ? 'pt-[44px]'
+          : 'pb-[44px]'
+
+  useEffect(() => {
+    if (toolOptionsCloseTimerRef.current !== null) {
+      window.clearTimeout(toolOptionsCloseTimerRef.current)
+      toolOptionsCloseTimerRef.current = null
+    }
+    if (activeOptionsTool) {
+      const frame = window.requestAnimationFrame(() => {
+        setRenderedOptionsTool(activeOptionsTool)
+        setToolOptionsClosing(false)
+      })
+      return () => window.cancelAnimationFrame(frame)
+    }
+    if (!renderedOptionsTool) return
+    const frame = window.requestAnimationFrame(() => {
+      setToolOptionsClosing(true)
+      toolOptionsCloseTimerRef.current = window.setTimeout(() => {
+        setRenderedOptionsTool(null)
+        setToolOptionsClosing(false)
+        toolOptionsCloseTimerRef.current = null
+      }, 180)
+    })
+    return () => {
+      window.cancelAnimationFrame(frame)
+      if (toolOptionsCloseTimerRef.current !== null) {
+        window.clearTimeout(toolOptionsCloseTimerRef.current)
+        toolOptionsCloseTimerRef.current = null
+      }
+    }
+  }, [activeOptionsTool, renderedOptionsTool])
+
+  useLayoutEffect(() => {
+    const popover = toolOptionsPopoverRef.current
+    const toolbar = toolbarRef.current
+    const toolbarSurface = toolbarSurfaceRef.current
+    const stage = stageRef.current
+    if (
+      !renderedOptionsTool ||
+      !popover ||
+      !toolbar ||
+      !toolbarSurface ||
+      !stage
+    )
+      return
+
+    const toolbarRect = toolbar.getBoundingClientRect()
+    const toolbarSurfaceRect = toolbarSurface.getBoundingClientRect()
+    const stageRect = stage.getBoundingClientRect()
+    const popoverWidth = popover.offsetWidth
+    const popoverHeight = popover.offsetHeight
+    popover.style.marginLeft = '0px'
+    popover.style.marginTop = '0px'
+
+    if (toolbarOptionsSide) {
+      const minimum =
+        Math.max(stageRect.top, toolbarSurfaceRect.top) -
+        toolbarRect.top +
+        popoverHeight / 2
+      const maximum = stageRect.bottom - toolbarRect.top - popoverHeight / 2
+      popover.style.top = `${Math.min(maximum, Math.max(minimum, toolOptionsAnchor.y))}px`
+    } else {
+      const minimum = stageRect.left - toolbarRect.left + popoverWidth / 2
+      const maximum = stageRect.right - toolbarRect.left - popoverWidth / 2
+      popover.style.left = `${Math.min(maximum, Math.max(minimum, toolOptionsAnchor.x))}px`
+    }
+
+    const positionedLeft =
+      toolbarRect.left +
+      popover.offsetLeft -
+      (toolbarOptionsSide ? 0 : popoverWidth / 2)
+    const positionedTop =
+      toolbarRect.top +
+      popover.offsetTop -
+      (toolbarOptionsSide ? popoverHeight / 2 : 0)
+    const positionedRight = positionedLeft + popoverWidth
+    const positionedBottom = positionedTop + popoverHeight
+    const minimumLeft = toolbarOptionsSide
+      ? stageRect.left
+      : Math.max(stageRect.left, toolbarSurfaceRect.left)
+    const shiftX =
+      positionedLeft < minimumLeft
+        ? minimumLeft - positionedLeft
+        : positionedRight > stageRect.right
+          ? stageRect.right - positionedRight
+          : 0
+    const minimumTop = toolbarOptionsSide
+      ? Math.max(stageRect.top, toolbarSurfaceRect.top)
+      : stageRect.top
+    const shiftY =
+      positionedTop < minimumTop
+        ? minimumTop - positionedTop
+        : positionedBottom > stageRect.bottom
+          ? stageRect.bottom - positionedBottom
+          : 0
+    popover.style.marginLeft = `${shiftX}px`
+    popover.style.marginTop = `${shiftY}px`
+  }, [
+    renderedOptionsTool,
+    displayedToolbarLayout.placement,
+    toolOptionsAnchor,
+    toolbarOptionsSide,
+  ])
   const holdingToolbarOrigin = Boolean(
     toolbarDragSession &&
-      toolbarDragSession.origin.placement !== 'floating' &&
-      !toolbarDragSession.hasLeftOrigin &&
-      (!toolbarDragSession.animatePlaceholder ||
-        toolbarDragSession.candidate === toolbarDragSession.origin.placement),
+    toolbarDragSession.origin.placement !== 'floating' &&
+    !toolbarDragSession.hasLeftOrigin &&
+    (!toolbarDragSession.animatePlaceholder ||
+      toolbarDragSession.candidate === toolbarDragSession.origin.placement),
   )
   const activeToolbarDock = toolbarDragSession
     ? holdingToolbarOrigin
@@ -482,6 +730,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       ) {
         commitFloatingSelection()
         setSelection(null)
+        setSelectionMode('select')
       }
     }
 
@@ -494,17 +743,21 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       )
       if (meta && !editingText && (event.key === '+' || event.key === '=')) {
         event.preventDefault()
-        zoomViewportAt(Math.min(maxViewportZoom, zoomRef.current + 10))
+        canvasActionsRef.current.zoomViewportAt(
+          Math.min(maxViewportZoom, zoomRef.current + 10),
+        )
         return
       }
       if (meta && !editingText && event.key === '-') {
         event.preventDefault()
-        zoomViewportAt(Math.max(minViewportZoom, zoomRef.current - 10))
+        canvasActionsRef.current.zoomViewportAt(
+          Math.max(minViewportZoom, zoomRef.current - 10),
+        )
         return
       }
       if (meta && !editingText && event.key === '0') {
         event.preventDefault()
-        fitCanvasToViewport()
+        canvasActionsRef.current.fitCanvasToViewport()
         return
       }
       const undoShortcut = meta && lower === 'z' && !event.shiftKey
@@ -525,7 +778,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       if (event.key === 'Escape') {
         if (toolbarDragSessionRef.current) {
           event.preventDefault()
-          cancelToolbarDrag()
+          canvasActionsRef.current.cancelToolbarDrag()
           interact.stop()
           return
         }
@@ -539,7 +792,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
         if (floatingSelectionRef.current) {
           cancelFloatingSelection()
         } else {
-          clearSelection()
+          canvasActionsRef.current.clearSelection()
         }
       }
     }
@@ -620,9 +873,17 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       viewport.clientHeight > 0
     ) {
       initialFitDoneRef.current = true
-      fitCanvasToViewport()
+      canvasActionsRef.current.fitCanvasToViewport()
     }
   }, [canvasHeight, canvasWidth])
+
+  useLayoutEffect(() => {
+    if (editor.viewportFitRequest === 0) return
+    const frame = window.requestAnimationFrame(() =>
+      canvasActionsRef.current.fitCanvasToViewport(),
+    )
+    return () => window.cancelAnimationFrame(frame)
+  }, [editor.viewportFitRequest, canvasHeight, canvasWidth])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -646,10 +907,6 @@ export function CanvasStage({ editor }: CanvasStageProps) {
   }, [])
 
   useEffect(() => {
-    if (!selection) setSelectionMode('select')
-  }, [selection])
-
-  useEffect(() => {
     if (!selection) return
     const protectedSelection = editor.protectedSelection
     if (
@@ -667,13 +924,17 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     if (editor.currentTool !== 'select') {
       selectionDragRef.current = null
       commitFloatingSelection()
-      setSelection(editor.protectedSelection)
-      return
+      const frame = window.requestAnimationFrame(() =>
+        setSelection(editorRef.current.protectedSelection),
+      )
+      return () => window.cancelAnimationFrame(frame)
     }
 
     function handleSelectionKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null
-      if (target?.matches('input, textarea, select, [contenteditable="true"]')) {
+      if (
+        target?.matches('input, textarea, select, [contenteditable="true"]')
+      ) {
         return
       }
       if ((event.key === 'Delete' || event.key === 'Backspace') && selection) {
@@ -688,6 +949,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
         setFloatingSelection(null)
         editorRef.current.setProtectedSelection(null)
         setSelection(null)
+        setSelectionMode('select')
       }
     }
 
@@ -696,40 +958,49 @@ export function CanvasStage({ editor }: CanvasStageProps) {
   }, [editor, editor.currentTool, selection])
 
   // 细网格:每一格的边界都画
-  const verticalGridLines = Array.from(
-    { length: pattern.width + 1 },
-    (_, index) => index * cellSize,
-  )
-  const horizontalGridLines = Array.from(
-    { length: pattern.height + 1 },
-    (_, index) => index * cellSize,
-  )
-  const gridPath = [
-    ...verticalGridLines.map((x) => `M${x} 0V${canvasHeight}`),
-    ...horizontalGridLines.map((y) => `M0 ${y}H${canvasWidth}`),
-  ].join('')
-  // 大网格:每 N 格加粗一条。0 = 关闭。第 0 条边界天然算"大网格"起点。
-  const majorEvery = settings.majorGridEvery
-  const majorGridPath =
-    majorEvery > 0
-      ? [
-          ...verticalGridLines
-            .filter((_, index) => index % majorEvery === 0)
-            .map((x) => `M${x} 0V${canvasHeight}`),
-          ...horizontalGridLines
-            .filter((_, index) => index % majorEvery === 0)
-            .map((y) => `M0 ${y}H${canvasWidth}`),
-        ].join('')
-      : ''
+  const { gridPath, majorGridPath } = useMemo(() => {
+    const verticalGridLines = Array.from(
+      { length: pattern.width + 1 },
+      (_, index) => index * cellSize,
+    )
+    const horizontalGridLines = Array.from(
+      { length: pattern.height + 1 },
+      (_, index) => index * cellSize,
+    )
+    const nextGridPath = [
+      ...verticalGridLines.map((x) => `M${x} 0V${canvasHeight}`),
+      ...horizontalGridLines.map((y) => `M0 ${y}H${canvasWidth}`),
+    ].join('')
+    const majorEvery = settings.majorGridEvery
+    const nextMajorGridPath =
+      majorEvery > 0
+        ? [
+            ...verticalGridLines
+              .filter((_, index) => index % majorEvery === 0)
+              .map((x) => `M${x} 0V${canvasHeight}`),
+            ...horizontalGridLines
+              .filter((_, index) => index % majorEvery === 0)
+              .map((y) => `M0 ${y}H${canvasWidth}`),
+          ].join('')
+        : ''
+    return { gridPath: nextGridPath, majorGridPath: nextMajorGridPath }
+  }, [
+    canvasHeight,
+    canvasWidth,
+    cellSize,
+    pattern.height,
+    pattern.width,
+    settings.majorGridEvery,
+  ])
   const cursorClass = pointerOutsideSelection
     ? 'cursor-not-allowed'
     : editor.eyedropperActive
       ? 'cursor-copy'
-    : editor.currentTool === 'pan'
-      ? 'cursor-grab active:cursor-grabbing'
-      : editor.currentTool === 'fill'
-        ? 'cursor-cell'
-        : 'cursor-crosshair'
+      : editor.currentTool === 'pan'
+        ? 'cursor-grab active:cursor-grabbing'
+        : editor.currentTool === 'fill'
+          ? 'cursor-cell'
+          : 'cursor-crosshair'
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -742,40 +1013,54 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
     context.imageSmoothingEnabled = false
     context.clearRect(0, 0, canvas.width, canvas.height)
-
-    // 画布纸面:可配置色 + alpha,透出外框形成"纸"质感。cell 100% 实色不变。
     context.fillStyle = withAlpha(settings.paperColor, settings.paperAlpha)
     context.fillRect(0, 0, canvas.width, canvas.height)
 
-    pattern.cells.forEach((cell, index) => {
-      if (cell.color === null || cell.isExternal) return
-      if (floatingSelection?.kind === 'move') {
-        const source = floatingSelection.source
-        const cellX = index % pattern.width
-        const cellY = Math.floor(index / pattern.width)
-        if (
-          cellX >= source.x &&
-          cellX < source.x + source.width &&
-          cellY >= source.y &&
-          cellY < source.y + source.height
-        ) {
-          return
-        }
-      }
-      const x = (index % pattern.width) * cellSize
-      const y = Math.floor(index / pattern.width) * cellSize
-      context.fillStyle = cell.color
-      context.fillRect(x, y, cellSize, cellSize)
+    editor.paintChunks.forEach((chunk) => {
+      const chunkCanvas = getPaintChunkCanvas(chunk, cellSize)
+      context.drawImage(chunkCanvas, chunk.x * cellSize, chunk.y * cellSize)
     })
+
+    if (floatingSelection?.kind === 'move') {
+      const source = floatingSelection.source
+      context.fillStyle = withAlpha(settings.paperColor, settings.paperAlpha)
+      context.fillRect(
+        source.x * cellSize,
+        source.y * cellSize,
+        source.width * cellSize,
+        source.height * cellSize,
+      )
+    }
   }, [
     canvasHeight,
     canvasWidth,
     cellSize,
     floatingSelection,
-    pattern,
+    editor.paintChunks,
     settings.paperColor,
     settings.paperAlpha,
   ])
+
+  useEffect(() => {
+    const controller = editorRef.current
+    controller.setStrokePreviewListener((changes) => {
+      const canvas = canvasRef.current
+      const context = canvas?.getContext('2d')
+      if (!canvas || !context) return
+      changes.forEach(({ index, color }) => {
+        const x = (index % pattern.width) * cellSize
+        const y = Math.floor(index / pattern.width) * cellSize
+        context.clearRect(x, y, cellSize, cellSize)
+        context.fillStyle = withAlpha(settings.paperColor, settings.paperAlpha)
+        context.fillRect(x, y, cellSize, cellSize)
+        if (color !== null) {
+          context.fillStyle = color
+          context.fillRect(x, y, cellSize, cellSize)
+        }
+      })
+    })
+    return () => controller.setStrokePreviewListener(null)
+  }, [cellSize, pattern.width, settings.paperAlpha, settings.paperColor])
 
   useEffect(() => {
     const preview = selectionPreviewRef.current
@@ -788,12 +1073,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
     floatingSelection.cells.forEach((cell) => {
       context.fillStyle = cell.color
-      context.fillRect(
-        cell.x * cellSize,
-        cell.y * cellSize,
-        cellSize,
-        cellSize,
-      )
+      context.fillRect(cell.x * cellSize, cell.y * cellSize, cellSize, cellSize)
     })
   }, [cellSize, floatingSelection, selection])
 
@@ -850,16 +1130,18 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     if (!viewport) return
 
     function handleWheel(event: WheelEvent) {
+      const currentViewport = viewportRef.current
+      if (!currentViewport) return
       event.preventDefault()
       const deltaX = normalizeWheelDelta(
         event.deltaX,
         event.deltaMode,
-        viewport.clientWidth,
+        currentViewport.clientWidth,
       )
       const deltaY = normalizeWheelDelta(
         event.deltaY,
         event.deltaMode,
-        viewport.clientHeight,
+        currentViewport.clientHeight,
       )
       if (!event.ctrlKey && !event.metaKey) {
         const current = viewPositionRef.current
@@ -877,7 +1159,11 @@ export function CanvasStage({ editor }: CanvasStageProps) {
         maxViewportZoom,
         Math.max(minViewportZoom, Math.round(current * factor * 10) / 10),
       )
-      zoomViewportAt(next, event.clientX, event.clientY)
+      canvasActionsRef.current.zoomViewportAt(
+        next,
+        event.clientX,
+        event.clientY,
+      )
     }
 
     viewport.addEventListener('wheel', handleWheel, { passive: false })
@@ -905,8 +1191,12 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
   function getPointerCellIndex(event: PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect()
-    const x = Math.floor(((event.clientX - rect.left) / rect.width) * pattern.width)
-    const y = Math.floor(((event.clientY - rect.top) / rect.height) * pattern.height)
+    const x = Math.floor(
+      ((event.clientX - rect.left) / rect.width) * pattern.width,
+    )
+    const y = Math.floor(
+      ((event.clientY - rect.top) / rect.height) * pattern.height,
+    )
     if (x < 0 || y < 0 || x >= pattern.width || y >= pattern.height) {
       return null
     }
@@ -1151,8 +1441,11 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     const rect = viewport.getBoundingClientRect()
     const anchorX = clientX === undefined ? rect.width / 2 : clientX - rect.left
     const anchorY = clientY === undefined ? rect.height / 2 : clientY - rect.top
-    const currentScale = (semanticCellSize * (currentZoom / 100)) / cellSize
-    const nextScale = (semanticCellSize * (normalizedZoom / 100)) / cellSize
+    const currentCellSize = cellSizeRef.current
+    const currentScale =
+      (semanticCellSize * (currentZoom / 100)) / currentCellSize
+    const nextScale =
+      (semanticCellSize * (normalizedZoom / 100)) / currentCellSize
     const currentPosition = viewPositionRef.current
     updateViewPosition(
       getAnchoredViewPosition({
@@ -1232,14 +1525,13 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
   function flipSelectedContent(axis: 'horizontal' | 'vertical') {
     if (!selection) return
-    const floating: FloatingSelection =
-      floatingSelectionRef.current ?? {
-        kind: 'move',
-        source: selection,
-        cells: getSelectionLayerCells(selection),
-        pivotX2: selection.x * 2 + selection.width,
-        pivotY2: selection.y * 2 + selection.height,
-      }
+    const floating: FloatingSelection = floatingSelectionRef.current ?? {
+      kind: 'move',
+      source: selection,
+      cells: getSelectionLayerCells(selection),
+      pivotX2: selection.x * 2 + selection.width,
+      pivotY2: selection.y * 2 + selection.height,
+    }
     const nextFloating: FloatingSelection = {
       ...floating,
       cells: floating.cells.map((cell) => ({
@@ -1255,21 +1547,17 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
   function rotateSelectedContent() {
     if (!selection) return
-    if (
-      selection.height > pattern.width ||
-      selection.width > pattern.height
-    ) {
+    if (selection.height > pattern.width || selection.width > pattern.height) {
       return
     }
     const currentFloating = floatingSelectionRef.current
-    const floating: FloatingSelection =
-      currentFloating ?? {
-        kind: 'move',
-        source: selection,
-        cells: getSelectionLayerCells(selection),
-        pivotX2: selection.x * 2 + selection.width,
-        pivotY2: selection.y * 2 + selection.height,
-      }
+    const floating: FloatingSelection = currentFloating ?? {
+      kind: 'move',
+      source: selection,
+      cells: getSelectionLayerCells(selection),
+      pivotX2: selection.x * 2 + selection.width,
+      pivotY2: selection.y * 2 + selection.height,
+    }
     const width = selection.height
     const height = selection.width
     const idealX = Math.floor((floating.pivotX2 - width) / 2)
@@ -1298,7 +1586,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
   function copySelectedContent() {
     if (!selection) return
-    const cells = floatingSelectionRef.current?.cells ?? getSelectionLayerCells(selection)
+    const cells =
+      floatingSelectionRef.current?.cells ?? getSelectionLayerCells(selection)
     commitFloatingSelection()
     const nextSelection = { ...selection, x: 0, y: 0 }
     const nextFloating: FloatingSelection = {
@@ -1370,12 +1659,20 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     lastPaintedIndexRef.current = null
   }
 
-  function handleToolClick(tool: StageTool) {
+  function handleToolClick(tool: StageTool, button: HTMLButtonElement) {
     const isActive =
       !editor.eyedropperActive && editor.currentTool === tool.value
 
     if (isActive) {
       if (toolsWithOptions.has(tool.value)) {
+        const toolbarRect = toolbarRef.current?.getBoundingClientRect()
+        const buttonRect = button.getBoundingClientRect()
+        if (toolbarRect) {
+          setToolOptionsAnchor({
+            x: buttonRect.left - toolbarRect.left + buttonRect.width / 2,
+            y: buttonRect.top - toolbarRect.top + buttonRect.height / 2,
+          })
+        }
         setOpenToolOptions((current) =>
           current === tool.value ? null : tool.value,
         )
@@ -1405,9 +1702,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
 
   function scheduleToolbarFrame(callback: () => void) {
     const frame = window.requestAnimationFrame(() => {
-      toolbarAnimationFramesRef.current = toolbarAnimationFramesRef.current.filter(
-        (current) => current !== frame,
-      )
+      toolbarAnimationFramesRef.current =
+        toolbarAnimationFramesRef.current.filter((current) => current !== frame)
       callback()
     })
     toolbarAnimationFramesRef.current.push(frame)
@@ -1429,7 +1725,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       toolbarDragSessionRef.current ||
       (!force &&
         (toolbarRevealOrientationRef.current || toolbarResizeGuardRef.current))
-    ) return
+    )
+      return
 
     const toolbarRect = toolbar.getBoundingClientRect()
     const position = clampToolbarPosition(
@@ -1488,10 +1785,9 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     const floatingHeight =
       origin.orientation === 'vertical' ? naturalExtent : toolbarDragPuckSize
     const initialDock =
-      origin.placement !== 'floating'
-        ? origin.placement
-        : null
-    const originIsSide = origin.placement === 'left' || origin.placement === 'right'
+      origin.placement !== 'floating' ? origin.placement : null
+    const originIsSide =
+      origin.placement === 'left' || origin.placement === 'right'
     const puckInsetX = originIsSide
       ? Math.max(0, (rect.width - toolbarDragPuckSize) / 2)
       : 0
@@ -1500,11 +1796,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       contentBounds,
       { width: toolbarDragPuckSize, height: toolbarDragPuckSize },
       {
-        x:
-          clientX -
-          stageRect.left -
-          toolbarDragPuckSize / 2 -
-          puckInsetX,
+        x: clientX - stageRect.left - toolbarDragPuckSize / 2 - puckInsetX,
         y: clientY - stageRect.top - toolbarDragPuckSize / 2,
       },
     )
@@ -1549,11 +1841,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
     })
   }
 
-  function moveToolbar(
-    clientX: number,
-    clientY: number,
-    preventDock: boolean,
-  ) {
+  function moveToolbar(clientX: number, clientY: number, preventDock: boolean) {
     const drag = toolbarDragSessionRef.current
     const stage = stageRef.current
     if (!drag || !stage) return
@@ -1583,8 +1871,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
           : candidate
             ? performance.now()
             : null,
-      hasLeftOrigin:
-        drag.hasLeftOrigin || candidate !== drag.origin.placement,
+      hasLeftOrigin: drag.hasLeftOrigin || candidate !== drag.origin.placement,
       pointerClientX: clientX,
       pointerClientY: clientY,
     }
@@ -1628,14 +1915,14 @@ export function CanvasStage({ editor }: CanvasStageProps) {
           : null
     const dwellCompleted = Boolean(
       releaseCandidate &&
-        candidateEnteredAt !== null &&
-        performance.now() - candidateEnteredAt >= toolbarDockDelay,
+      candidateEnteredAt !== null &&
+      performance.now() - candidateEnteredAt >= toolbarDockDelay,
     )
     const confirmedDockTarget =
       drag.dockTarget === releaseCandidate ? drag.dockTarget : null
     const dockTarget = preventDock
       ? null
-      : confirmedDockTarget ?? (dwellCompleted ? releaseCandidate : null)
+      : (confirmedDockTarget ?? (dwellCompleted ? releaseCandidate : null))
     const placement: ToolbarPlacement = dockTarget ?? 'floating'
     const orientation: ToolbarOrientation =
       dockTarget === 'left' || dockTarget === 'right'
@@ -1704,12 +1991,16 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       {pendingToolbarDock ? (
         <div
           aria-hidden="true"
-          className={`toolbar-dock-hint pointer-events-none absolute z-30 border-editor-accent ${{
-            top: 'left-1/2 top-3 w-[95%] -translate-x-1/2 border-t-[1.5px] border-dashed',
-            bottom: 'bottom-3 left-1/2 w-[95%] -translate-x-1/2 border-t-[1.5px] border-dashed',
-            left: 'left-3 top-1/2 h-[95%] -translate-y-1/2 border-l-[1.5px] border-dashed',
-            right: 'right-3 top-1/2 h-[95%] -translate-y-1/2 border-l-[1.5px] border-dashed',
-          }[pendingToolbarDock]}`}
+          className={`toolbar-dock-hint pointer-events-none absolute z-30 border-editor-accent ${
+            {
+              top: 'left-1/2 top-3 w-[95%] -translate-x-1/2 border-t-[1.5px] border-dashed',
+              bottom:
+                'bottom-3 left-1/2 w-[95%] -translate-x-1/2 border-t-[1.5px] border-dashed',
+              left: 'left-3 top-1/2 h-[95%] -translate-y-1/2 border-l-[1.5px] border-dashed',
+              right:
+                'right-3 top-1/2 h-[95%] -translate-y-1/2 border-l-[1.5px] border-dashed',
+            }[pendingToolbarDock]
+          }`}
         />
       ) : null}
       <div
@@ -1720,10 +2011,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
             : 'transition-none'
         }`}
         style={{
-          height:
-            activeToolbarDock === 'top' ? dockPlaceholderHeight : 0,
-          marginBottom:
-            activeToolbarDock === 'top' ? 16 : 0,
+          height: activeToolbarDock === 'top' ? dockPlaceholderHeight : 0,
+          marginBottom: activeToolbarDock === 'top' ? 16 : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -1732,20 +2021,18 @@ export function CanvasStage({ editor }: CanvasStageProps) {
               : 0,
         }}
       >
-        <div className="h-full w-full rounded-[26px] border border-dashed border-editor-accent/65 bg-editor-accent-soft shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]" />
+        <div className="h-full w-full rounded-[18px] border border-dashed border-editor-accent/65 bg-editor-accent-soft shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]" />
       </div>
       <div
         aria-hidden="true"
-        className={`pointer-events-none col-start-1 row-start-2 h-full overflow-hidden rounded-[26px] border border-dashed border-editor-accent/65 bg-editor-accent-soft ${
+        className={`pointer-events-none col-start-1 row-start-2 h-full overflow-hidden rounded-[18px] border border-dashed border-editor-accent/65 bg-editor-accent-soft ${
           toolbarDragSession?.animatePlaceholder
             ? 'transition-[width,margin,opacity] duration-200 ease-out'
             : 'transition-none'
         }`}
         style={{
-          width:
-            sideDockPlacement === 'left' ? dockPlaceholderWidth : 0,
-          marginRight:
-            sideDockPlacement === 'left' ? 16 : 0,
+          width: sideDockPlacement === 'left' ? dockPlaceholderWidth : 0,
+          marginRight: sideDockPlacement === 'left' ? 16 : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -1756,16 +2043,14 @@ export function CanvasStage({ editor }: CanvasStageProps) {
       />
       <div
         aria-hidden="true"
-        className={`pointer-events-none col-start-3 row-start-2 h-full overflow-hidden rounded-[26px] border border-dashed border-editor-accent/65 bg-editor-accent-soft ${
+        className={`pointer-events-none col-start-3 row-start-2 h-full overflow-hidden rounded-[18px] border border-dashed border-editor-accent/65 bg-editor-accent-soft ${
           toolbarDragSession?.animatePlaceholder
             ? 'transition-[width,margin,opacity] duration-200 ease-out'
             : 'transition-none'
         }`}
         style={{
-          width:
-            sideDockPlacement === 'right' ? dockPlaceholderWidth : 0,
-          marginLeft:
-            sideDockPlacement === 'right' ? 16 : 0,
+          width: sideDockPlacement === 'right' ? dockPlaceholderWidth : 0,
+          marginLeft: sideDockPlacement === 'right' ? 16 : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -1782,10 +2067,8 @@ export function CanvasStage({ editor }: CanvasStageProps) {
             : 'transition-none'
         }`}
         style={{
-          height:
-            activeToolbarDock === 'bottom' ? dockPlaceholderHeight : 0,
-          marginTop:
-            activeToolbarDock === 'bottom' ? 16 : 0,
+          height: activeToolbarDock === 'bottom' ? dockPlaceholderHeight : 0,
+          marginTop: activeToolbarDock === 'bottom' ? 16 : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -1794,15 +2077,17 @@ export function CanvasStage({ editor }: CanvasStageProps) {
               : 0,
         }}
       >
-        <div className="h-full w-full rounded-[26px] border border-dashed border-editor-accent/65 bg-editor-accent-soft shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]" />
+        <div className="h-full w-full rounded-[18px] border border-dashed border-editor-accent/65 bg-editor-accent-soft shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]" />
       </div>
       <div
         ref={toolbarRef}
         onMouseDownCapture={(event) => {
-          if ((event.target as HTMLElement).closest('button')) event.preventDefault()
+          if ((event.target as HTMLElement).closest('button'))
+            event.preventDefault()
         }}
         className={`max-w-full ${
-          displayedToolbarLayout.placement === 'floating' && !stageViewportOrigin
+          displayedToolbarLayout.placement === 'floating' &&
+          !stageViewportOrigin
             ? 'invisible '
             : ''
         }${
@@ -1811,100 +2096,114 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                 toolbarDragOriginSide ? 'flex justify-center' : ''
               }`
             : displayedToolbarLayout.placement === 'floating'
-            ? 'fixed z-50 max-w-[calc(100%_-_2rem)]'
-            : displayedToolbarLayout.placement === 'bottom'
-              ? 'relative z-40 col-[1/4] row-start-3 mt-4 w-full self-center'
-              : displayedToolbarLayout.placement === 'top'
-                ? 'relative z-40 col-[1/4] row-start-1 mb-4 w-full self-center'
-                : displayedToolbarLayout.placement === 'left'
-                  ? 'relative z-40 col-start-1 row-start-2 mr-4 h-full w-14 self-stretch'
-                  : 'relative z-40 col-start-3 row-start-2 ml-4 h-full w-14 self-stretch'
+              ? 'fixed z-50 max-w-[calc(100%_-_2rem)]'
+              : displayedToolbarLayout.placement === 'bottom'
+                ? 'relative z-40 col-[1/4] row-start-3 mt-4 w-full self-center'
+                : displayedToolbarLayout.placement === 'top'
+                  ? 'relative z-40 col-[1/4] row-start-1 mb-4 w-full self-center'
+                  : displayedToolbarLayout.placement === 'left'
+                    ? 'relative z-40 col-start-1 row-start-2 mr-4 h-full w-14 self-stretch'
+                    : 'relative z-40 col-start-3 row-start-2 ml-4 h-full w-14 self-stretch'
         }`}
         style={
           toolbarDragSession
             ? {
-                left:
-                  (stageViewportOrigin?.left ?? 0) +
-                  toolbarDragSession.x,
-                 top:
-                   (stageViewportOrigin?.top ?? 0) +
-                   toolbarDragSession.y,
-               }
-            : displayedToolbarLayout.placement === 'floating'
-            ? {
-                left:
-                  (stageViewportOrigin?.left ?? 0) +
-                  Math.min(
-                  Math.max(
-                    stageContentBounds?.left ?? 16,
-                    displayedToolbarLayout.x,
-                  ),
-                  Math.max(
-                    stageContentBounds?.left ?? 16,
-                    (stageContentBounds?.right ?? window.innerWidth) -
-                      (toolbarRef.current?.offsetWidth ?? toolbarDragPuckSize) -
-                      0,
-                  ),
-                ),
-                top:
-                  (stageViewportOrigin?.top ?? 0) +
-                  Math.min(
-                  Math.max(
-                    stageContentBounds?.top ?? 16,
-                    displayedToolbarLayout.y,
-                  ),
-                  Math.max(
-                    stageContentBounds?.top ?? 16,
-                    (stageContentBounds?.bottom ?? window.innerHeight) -
-                      (toolbarRef.current?.offsetHeight ?? toolbarDragPuckSize),
-                  ),
-                ),
-                maxWidth: Math.max(
-                  toolbarDragPuckSize,
-                  stageContentBounds?.width ?? window.innerWidth - 32,
-                ),
-                maxHeight:
-                  displayedToolbarLayout.orientation === 'vertical'
-                    ? stageContentBounds?.height
-                    : undefined,
+                left: (stageViewportOrigin?.left ?? 0) + toolbarDragSession.x,
+                top: (stageViewportOrigin?.top ?? 0) + toolbarDragSession.y,
               }
-            : undefined
+            : displayedToolbarLayout.placement === 'floating'
+              ? {
+                  left:
+                    (stageViewportOrigin?.left ?? 0) +
+                    Math.min(
+                      Math.max(
+                        stageContentBounds?.left ?? 16,
+                        displayedToolbarLayout.x,
+                      ),
+                      Math.max(
+                        stageContentBounds?.left ?? 16,
+                        (stageContentBounds?.right ?? window.innerWidth) -
+                          (toolbarRef.current?.offsetWidth ??
+                            toolbarDragPuckSize) -
+                          0,
+                      ),
+                    ),
+                  top:
+                    (stageViewportOrigin?.top ?? 0) +
+                    Math.min(
+                      Math.max(
+                        stageContentBounds?.top ?? 16,
+                        displayedToolbarLayout.y,
+                      ),
+                      Math.max(
+                        stageContentBounds?.top ?? 16,
+                        (stageContentBounds?.bottom ?? window.innerHeight) -
+                          (toolbarRef.current?.offsetHeight ??
+                            toolbarDragPuckSize),
+                      ),
+                    ),
+                  maxWidth: Math.max(
+                    toolbarDragPuckSize,
+                    stageContentBounds?.width ?? window.innerWidth - 32,
+                  ),
+                  maxHeight:
+                    displayedToolbarLayout.orientation === 'vertical'
+                      ? stageContentBounds?.height
+                      : undefined,
+                }
+              : undefined
         }
       >
-        {activeOptionsTool && !toolbarDragSession ? (
+        {renderedOptionsTool && !toolbarDragSession ? (
           <div
-            className={`tool-options-popover absolute z-10 max-w-[calc(100vw-1.5rem)] overflow-visible rounded-[20px] border border-editor-border bg-editor-elevated/95 p-2 shadow-[0_14px_42px_rgba(31,24,18,0.16)] backdrop-blur-md ${toolbarOptionsPosition}`}
+            ref={toolOptionsPopoverRef}
+            className={`tool-options-popover absolute z-0 max-w-[calc(100vw-1.5rem)] overflow-visible rounded-[18px] border border-editor-border bg-editor-elevated/95 p-2 shadow-[0_14px_42px_rgba(31,24,18,0.16)] backdrop-blur-md ${toolbarOptionsPosition} ${toolbarOptionsInset}`}
+            data-drawer-direction={toolbarOptionsDirection}
+            data-closing={toolOptionsClosing ? 'true' : 'false'}
+            style={
+              toolbarOptionsSide
+                ? { top: toolOptionsAnchor.y }
+                : { left: toolOptionsAnchor.x }
+            }
             role="group"
-            aria-label={`${stageTools.find((tool) => tool.value === activeOptionsTool)?.label ?? ''}设置`}
+            aria-label={`${stageTools.find((tool) => tool.value === renderedOptionsTool)?.label ?? ''}设置`}
             onClick={() => setOpenToolOptions(null)}
           >
-            <div className="flex h-10 w-max items-center gap-1 md:gap-2">
-              {activeOptionsTool === 'brush' || activeOptionsTool === 'eraser' ? (
+            <div
+              className={`flex items-center gap-1 md:gap-2 ${
+                toolbarOptionsSide
+                  ? 'h-auto w-10 flex-col [&>div]:!h-auto [&>div]:!w-10 [&>div]:!flex-col [&>div]:!px-1 [&>div]:!py-1 [&_[data-toolbar-divider]]:!h-px [&_[data-toolbar-divider]]:!w-6'
+                  : 'h-10 w-max'
+              }`}
+            >
+              {renderedOptionsTool === 'brush' ||
+              renderedOptionsTool === 'eraser' ? (
                 <ToolSizePicker
                   value={
-                    activeOptionsTool === 'brush'
+                    renderedOptionsTool === 'brush'
                       ? editor.brushSize
                       : editor.eraserSize
                   }
                   onChange={
-                    activeOptionsTool === 'brush'
+                    renderedOptionsTool === 'brush'
                       ? editor.setBrushSize
                       : editor.setEraserSize
                   }
                 />
               ) : null}
 
-              {activeOptionsTool === 'brush' || activeOptionsTool === 'eraser' ? (
+              {renderedOptionsTool === 'brush' ||
+              renderedOptionsTool === 'eraser' ? (
                 <>
-                  <ToolbarDivider />
+                  <ToolbarDivider horizontal={toolbarOptionsSide} />
                   <SymmetryModePicker
                     value={
-                      activeOptionsTool === 'brush'
+                      renderedOptionsTool === 'brush'
                         ? editor.brushSymmetryMode
                         : editor.eraserSymmetryMode
                     }
                     onChange={
-                      activeOptionsTool === 'brush'
+                      renderedOptionsTool === 'brush'
                         ? editor.setBrushSymmetryMode
                         : editor.setEraserSymmetryMode
                     }
@@ -1912,9 +2211,9 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                 </>
               ) : null}
 
-              {activeOptionsTool === 'eraser' ? (
+              {renderedOptionsTool === 'eraser' ? (
                 <>
-                  <ToolbarDivider />
+                  <ToolbarDivider horizontal={toolbarOptionsSide} />
                   <div className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft px-1">
                     <button
                       type="button"
@@ -1938,14 +2237,14 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                 </>
               ) : null}
 
-              {activeOptionsTool === 'fill' ? (
+              {renderedOptionsTool === 'fill' ? (
                 <FillModePicker
                   value={editor.fillMode}
                   onChange={editor.setFillMode}
                 />
               ) : null}
 
-              {activeOptionsTool === 'shape' ? (
+              {renderedOptionsTool === 'shape' ? (
                 <ShapeToolOptions
                   kind={editor.shapeKind}
                   style={editor.shapeStyle}
@@ -1954,7 +2253,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                 />
               ) : null}
 
-              {activeOptionsTool === 'select' ? (
+              {renderedOptionsTool === 'select' ? (
                 <SelectionToolOptions
                   mode={selectionMode}
                   selection={selection}
@@ -1972,26 +2271,31 @@ export function CanvasStage({ editor }: CanvasStageProps) {
         ) : null}
 
         <div
+          ref={toolbarSurfaceRef}
+          data-toolbar-orientation={
+            toolbarContentSide ? 'vertical' : 'horizontal'
+          }
           className={
             toolbarDragSession
-              ? 'toolbar-surface relative w-fit overflow-hidden rounded-[24px] border-0 bg-editor-elevated p-0 text-editor-strong shadow-[0_12px_30px_rgba(31,24,18,0.24)]'
-              : `toolbar-surface relative rounded-[24px] border border-editor-border p-[7px] transition-[box-shadow,background-color] duration-200 ease-out ${
+              ? 'toolbar-surface relative z-10 w-fit overflow-hidden rounded-[18px] border border-editor-border bg-editor-elevated p-0 text-editor-strong shadow-[0_12px_30px_rgba(31,24,18,0.24)]'
+              : `toolbar-surface relative z-10 rounded-[18px] border border-editor-border p-[7px] transition-[box-shadow,background-color] duration-200 ease-out ${
                   toolbarContentSide
-                    ? 'h-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-                    : 'overflow-x-auto 2xl:overflow-visible'
+                    ? 'h-full overflow-hidden'
+                    : 'overflow-hidden'
                 } ${
                   displayedToolbarLayout.placement === 'floating'
                     ? 'w-max max-w-full bg-editor-elevated shadow-[0_18px_48px_rgba(31,24,18,0.22)]'
-                    : 'bg-editor-elevated/70 shadow-none'
+                    : 'bg-editor-elevated shadow-none'
                 }`
           }
         >
           <div
             ref={toolbarContentRef}
-            className={`flex ${toolbarDragSession ? 'pointer-events-none gap-0' : 'gap-2'} ${
+            data-toolbar-content
+            className={`${toolbarDragSession ? 'pointer-events-none gap-0' : 'gap-2'} ${
               toolbarContentSide
-                ? 'h-full min-h-0 flex-col items-center'
-                : `min-w-max items-center ${
+                ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] justify-items-center'
+                : `flex min-w-max items-center ${
                     displayedToolbarLayout.placement === 'top' ||
                     displayedToolbarLayout.placement === 'bottom'
                       ? 'w-full'
@@ -2020,241 +2324,258 @@ export function CanvasStage({ editor }: CanvasStageProps) {
             </button>
             <div
               data-toolbar-operations
-              className={`toolbar-operation-group flex gap-2 overflow-hidden ${
+              className={`toolbar-operation-group flex gap-2 ${
                 toolbarDragSession
                   ? !toolbarDragSession.animatePlaceholder
-                    ? `${toolbarDragOriginSide ? 'h-fit w-fit flex-col items-center' : 'h-fit w-fit'} opacity-100 transition-none`
+                    ? `${toolbarDragOriginSide ? 'h-fit w-fit flex-col items-center' : 'h-fit w-fit'} overflow-hidden opacity-100 transition-none`
                     : toolbarDragOriginSide
-                      ? 'h-0 w-fit flex-col items-center opacity-0 transition-[height,opacity] duration-200 ease-out'
-                      : 'h-fit w-0 opacity-0 transition-[width,opacity] duration-200 ease-out'
+                      ? 'h-0 w-fit flex-col items-center overflow-hidden opacity-0 transition-[height,opacity] duration-200 ease-out'
+                      : 'h-fit w-0 overflow-hidden opacity-0 transition-[width,opacity] duration-200 ease-out'
                   : toolbarRevealOrientation
                     ? toolbarRevealOrientation === 'vertical'
-                      ? 'h-0 w-fit flex-col items-center opacity-0 transition-none'
-                      : 'h-fit w-0 opacity-0 transition-none'
-                  : toolbarContentSide
-                    ? 'h-full w-fit flex-col items-center opacity-100 transition-[height,opacity] duration-200 ease-out'
-                    : `h-fit opacity-100 transition-[width,opacity] duration-200 ease-out ${
-                        displayedToolbarLayout.placement === 'top' ||
-                        displayedToolbarLayout.placement === 'bottom'
-                          ? 'w-full'
-                          : 'w-fit'
-                      }`
+                      ? 'h-0 w-fit flex-col items-center overflow-hidden opacity-0 transition-none'
+                      : 'h-fit w-0 overflow-hidden opacity-0 transition-none'
+                    : toolbarContentSide
+                      ? 'h-full min-h-0 w-fit flex-col items-center overflow-x-hidden overflow-y-auto opacity-100 [scrollbar-width:none] transition-[height,opacity] duration-200 ease-out [&::-webkit-scrollbar]:hidden'
+                      : `h-fit max-w-full overflow-x-auto overflow-y-hidden opacity-100 [scrollbar-width:none] transition-[width,opacity] duration-200 ease-out [&::-webkit-scrollbar]:hidden ${
+                          displayedToolbarLayout.placement === 'top' ||
+                          displayedToolbarLayout.placement === 'bottom'
+                            ? 'w-full'
+                            : 'w-fit'
+                        }`
               }`}
             >
-            <div
-              data-toolbar-row
-              className={`flex gap-1 ${
-                toolbarContentSide ? 'h-auto flex-col items-center' : 'h-10'
-              }`}
-              aria-label="主要工具"
-            >
-              {stageTools.map((tool) => (
-                <ToolButton
-                  key={tool.value}
-                  icon={tool.icon}
-                  label={tool.label}
-                  active={
-                    !editor.eyedropperActive &&
-                    editor.currentTool === tool.value
-                  }
-                  statusActive={
-                    tool.value === 'select' &&
-                    Boolean(editor.protectedSelection) &&
-                    editor.currentTool !== 'select'
-                  }
-                  hasOptions={toolsWithOptions.has(tool.value)}
-                  optionsOpen={activeOptionsTool === tool.value}
-                  presetValue={
-                    tool.value === 'brush'
-                      ? editor.brushSize
-                      : tool.value === 'eraser'
-                        ? editor.eraserSize
-                        : tool.value === 'shape'
-                          ? editor.shapeKind === 'line'
-                            ? editor.brushSize
-                            : (() => {
-                                const ShapeIcon = getShapeKindIcon(editor.shapeKind)
-                                return <ShapeIcon size={9} weight="regular" />
-                              })()
-                        : null
-                  }
-                  presetIcon={
-                    tool.value === 'select'
-                      ? getSelectionModeIcon(selectionMode)
-                      : tool.value === 'fill'
-                      ? getFillModeIcon(editor.fillMode)
-                      : tool.value === 'shape'
-                        ? editor.shapeKind === 'line'
-                          ? LineSegment
-                          : getShapeStyleIcon(editor.shapeStyle)
-                      : getSymmetryIcon(
-                          tool.value === 'brush'
-                            ? editor.brushSymmetryMode
-                            : tool.value === 'eraser'
-                              ? editor.eraserSymmetryMode
-                              : null,
-                        )
-                  }
-                  colorIndicator={
-                    tool.value === 'brush' ||
-                    tool.value === 'fill' ||
-                    tool.value === 'shape'
-                      ? editor.currentColor
-                      : null
-                  }
-                  vertical={toolbarContentSide}
-                  onClick={() => handleToolClick(tool)}
-                />
-              ))}
-              <button
-                aria-pressed={editor.eyedropperActive}
-                aria-label="吸管"
-                title="吸管"
-                className={`grid h-10 w-10 place-items-center rounded-2xl text-sm font-bold ${toolbarButtonInteractionClass} ${
-                  editor.eyedropperActive
-                    ? 'bg-editor-accent text-white'
-                    : toolbarButtonIdleClass
-                }`}
-                type="button"
-                onClick={() => {
-                  setOpenToolOptions(null)
-                  editor.setEyedropperActive((value) => !value)
-                }}
-              >
-                <Eyedropper size={18} weight="regular" />
-              </button>
-            </div>
-
-            <div
-              data-toolbar-row
-              className={`flex items-center gap-2 ${
-                toolbarContentSide ? 'mt-auto flex-col' : 'ml-auto'
-              }`}
-              onPointerDownCapture={() => setOpenToolOptions(null)}
-            >
-              <ToolbarDivider horizontal={toolbarContentSide} />
               <div
                 data-toolbar-row
                 className={`flex gap-1 ${
-                  toolbarContentSide ? 'h-auto flex-col' : 'h-10'
+                  toolbarContentSide ? 'h-auto flex-col items-center' : 'h-10'
                 }`}
-                aria-label="历史操作"
+                aria-label="主要工具"
               >
-              <button
-                className={`grid h-10 w-10 place-items-center rounded-2xl ${toolbarSystemButtonInteractionClass} ${toolbarButtonIdleClass} disabled:scale-100 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-editor-surface-soft`}
-                type="button"
-                disabled={!editor.canUndo && !floatingSelection}
-                aria-label="撤销"
-                onClick={() => {
-                  if (floatingSelectionRef.current) {
-                    cancelFloatingSelection()
-                  } else {
-                    editor.undo()
-                  }
-                }}
-              >
-                <ArrowCounterClockwise size={18} weight="regular" />
-              </button>
-              <button
-                className={`grid h-10 w-10 place-items-center rounded-2xl ${toolbarSystemButtonInteractionClass} ${toolbarButtonIdleClass} disabled:scale-100 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-editor-surface-soft`}
-                type="button"
-                disabled={!editor.canRedo && !floatingSelection}
-                aria-label="重做"
-                onClick={() => {
-                  if (floatingSelectionRef.current) cancelFloatingSelection()
-                  if (editor.canRedo) editor.redo()
-                }}
-              >
-                <ArrowClockwise size={18} weight="regular" />
-              </button>
+                {stageTools.map((tool) => (
+                  <ToolButton
+                    key={tool.value}
+                    icon={tool.icon}
+                    label={tool.label}
+                    active={
+                      !editor.eyedropperActive &&
+                      editor.currentTool === tool.value
+                    }
+                    statusActive={
+                      tool.value === 'select' &&
+                      Boolean(editor.protectedSelection) &&
+                      editor.currentTool !== 'select'
+                    }
+                    hasOptions={toolsWithOptions.has(tool.value)}
+                    optionsOpen={activeOptionsTool === tool.value}
+                    presetValue={
+                      tool.value === 'brush'
+                        ? editor.brushSize
+                        : tool.value === 'eraser'
+                          ? editor.eraserSize
+                          : tool.value === 'shape'
+                            ? editor.shapeKind === 'line'
+                              ? editor.brushSize
+                              : (() => {
+                                  const ShapeIcon = getShapeKindIcon(
+                                    editor.shapeKind,
+                                  )
+                                  return <ShapeIcon size={9} weight="regular" />
+                                })()
+                            : null
+                    }
+                    presetIcon={
+                      tool.value === 'select'
+                        ? getSelectionModeIcon(selectionMode)
+                        : tool.value === 'fill'
+                          ? getFillModeIcon(editor.fillMode)
+                          : tool.value === 'shape'
+                            ? editor.shapeKind === 'line'
+                              ? LineSegment
+                              : getShapeStyleIcon(editor.shapeStyle)
+                            : getSymmetryIcon(
+                                tool.value === 'brush'
+                                  ? editor.brushSymmetryMode
+                                  : tool.value === 'eraser'
+                                    ? editor.eraserSymmetryMode
+                                    : null,
+                              )
+                    }
+                    colorIndicator={
+                      tool.value === 'brush' ||
+                      tool.value === 'fill' ||
+                      tool.value === 'shape'
+                        ? editor.currentColor
+                        : null
+                    }
+                    vertical={toolbarContentSide}
+                    onClick={(event) =>
+                      handleToolClick(tool, event.currentTarget)
+                    }
+                  />
+                ))}
+                <button
+                  aria-pressed={editor.eyedropperActive}
+                  aria-label="吸管"
+                  title="吸管"
+                  className={`grid h-10 w-10 place-items-center rounded-2xl text-sm font-bold ${toolbarButtonInteractionClass} ${
+                    editor.eyedropperActive
+                      ? 'bg-editor-accent text-white'
+                      : toolbarButtonIdleClass
+                  }`}
+                  type="button"
+                  onClick={() => {
+                    setOpenToolOptions(null)
+                    editor.setEyedropperActive((value) => !value)
+                  }}
+                >
+                  <Eyedropper size={18} weight="regular" />
+                </button>
               </div>
-              <ToolbarDivider horizontal={toolbarContentSide} />
+
               <div
                 data-toolbar-row
-                className={`flex items-center rounded-2xl bg-editor-surface-soft p-1 ${
-                  toolbarContentSide ? 'flex-col' : 'h-10'
+                className={`flex items-center gap-2 ${
+                  toolbarContentSide ? 'mt-auto flex-col' : 'ml-auto'
                 }`}
-                aria-label="画布缩放"
+                onPointerDownCapture={() => setOpenToolOptions(null)}
               >
-                <button
-                  className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
-                  type="button"
-                  aria-label="缩小"
-                  disabled={editor.zoom <= minViewportZoom}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    event.currentTarget.setPointerCapture(event.pointerId)
-                    startContinuousZoom(-1)
-                  }}
-                  onPointerUp={stopContinuousZoom}
-                  onPointerCancel={stopContinuousZoom}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return
-                    event.preventDefault()
-                    stepZoom(-1)
-                  }}
+                <ToolbarDivider horizontal={toolbarContentSide} />
+                <div
+                  data-toolbar-row
+                  className={`flex gap-1 ${
+                    toolbarContentSide ? 'h-auto flex-col' : 'h-10'
+                  }`}
+                  aria-label="历史操作"
                 >
-                  <Minus size={15} weight="bold" />
-                </button>
-                <input
-                  ref={zoomInputRef}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={3}
-                  defaultValue={Math.round(editor.zoom)}
-                  aria-label="缩放比例"
-                  title={`缩放比例，${minViewportZoom} 至 ${maxViewportZoom}`}
-                  className="h-8 w-8 appearance-none rounded-xl bg-transparent text-center text-[10px] font-bold tabular-nums text-editor-strong outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  onFocus={(event) => event.currentTarget.select()}
-                  onInput={(event) => {
-                    event.currentTarget.value = event.currentTarget.value
-                      .replace(/\D/g, '')
-                      .slice(0, 3)
-                  }}
-                  onBlur={commitZoomInput}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      commitZoomInput()
-                      event.currentTarget.blur()
-                    }
-                    if (event.key === 'Escape') {
-                      event.currentTarget.value = String(Math.round(zoomRef.current))
-                      event.currentTarget.blur()
-                    }
-                  }}
-                />
-                <button
-                  className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
-                  type="button"
-                  aria-label="放大"
-                  disabled={editor.zoom >= maxViewportZoom}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    event.currentTarget.setPointerCapture(event.pointerId)
-                    startContinuousZoom(1)
-                  }}
-                  onPointerUp={stopContinuousZoom}
-                  onPointerCancel={stopContinuousZoom}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return
-                    event.preventDefault()
-                    stepZoom(1)
-                  }}
+                  <button
+                    className={`grid h-10 w-10 place-items-center rounded-2xl ${toolbarSystemButtonInteractionClass} ${toolbarButtonIdleClass} disabled:scale-100 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-editor-surface-soft`}
+                    type="button"
+                    disabled={!editor.canUndo && !floatingSelection}
+                    aria-label="撤销"
+                    onClick={() => {
+                      if (floatingSelectionRef.current) {
+                        cancelFloatingSelection()
+                      } else {
+                        editor.undo()
+                      }
+                    }}
+                  >
+                    <ArrowCounterClockwise size={18} weight="regular" />
+                  </button>
+                  <button
+                    className={`grid h-10 w-10 place-items-center rounded-2xl ${toolbarSystemButtonInteractionClass} ${toolbarButtonIdleClass} disabled:scale-100 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-editor-surface-soft`}
+                    type="button"
+                    disabled={!editor.canRedo && !floatingSelection}
+                    aria-label="重做"
+                    onClick={() => {
+                      if (floatingSelectionRef.current)
+                        cancelFloatingSelection()
+                      if (editor.canRedo) editor.redo()
+                    }}
+                  >
+                    <ArrowClockwise size={18} weight="regular" />
+                  </button>
+                </div>
+                <ToolbarDivider horizontal={toolbarContentSide} />
+                <div
+                  data-toolbar-row
+                  className={`flex items-center rounded-2xl bg-editor-surface-soft p-1 ${
+                    toolbarContentSide ? 'flex-col' : 'h-10'
+                  }`}
+                  aria-label="画布缩放"
                 >
-                  <Plus size={15} weight="bold" />
-                </button>
+                  <button
+                    className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
+                    type="button"
+                    aria-label="缩小"
+                    disabled={editor.zoom <= minViewportZoom}
+                    onPointerDown={(event) => {
+                      event.preventDefault()
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                      startContinuousZoom(-1)
+                    }}
+                    onPointerUp={stopContinuousZoom}
+                    onPointerCancel={stopContinuousZoom}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return
+                      event.preventDefault()
+                      stepZoom(-1)
+                    }}
+                  >
+                    <Minus size={15} weight="bold" />
+                  </button>
+                  <input
+                    ref={zoomInputRef}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={3}
+                    defaultValue={Math.round(editor.zoom)}
+                    aria-label="缩放比例"
+                    title={`缩放比例，${minViewportZoom} 至 ${maxViewportZoom}`}
+                    className="h-8 w-8 appearance-none rounded-xl bg-transparent text-center text-[10px] font-bold tabular-nums text-editor-strong outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    onFocus={(event) => event.currentTarget.select()}
+                    onInput={(event) => {
+                      event.currentTarget.value = event.currentTarget.value
+                        .replace(/\D/g, '')
+                        .slice(0, 3)
+                    }}
+                    onBlur={commitZoomInput}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        commitZoomInput()
+                        event.currentTarget.blur()
+                      }
+                      if (event.key === 'Escape') {
+                        event.currentTarget.value = String(
+                          Math.round(zoomRef.current),
+                        )
+                        event.currentTarget.blur()
+                      }
+                    }}
+                  />
+                  <button
+                    className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
+                    type="button"
+                    aria-label="放大"
+                    disabled={editor.zoom >= maxViewportZoom}
+                    onPointerDown={(event) => {
+                      event.preventDefault()
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                      startContinuousZoom(1)
+                    }}
+                    onPointerUp={stopContinuousZoom}
+                    onPointerCancel={stopContinuousZoom}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return
+                      event.preventDefault()
+                      stepZoom(1)
+                    }}
+                  >
+                    <Plus size={15} weight="bold" />
+                  </button>
+                  <button
+                    type="button"
+                    className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated"
+                    aria-label="定位画布"
+                    title="适应并定位画布"
+                    onClick={fitCanvasToViewport}
+                  >
+                    <Crosshair size={15} weight="bold" />
+                  </button>
+                </div>
+                <ToolbarDivider horizontal={toolbarContentSide} />
                 <button
                   type="button"
-                  className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated"
-                  aria-label="定位画布"
-                  title="适应并定位画布"
-                  onClick={fitCanvasToViewport}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-editor-strong transition hover:bg-editor-elevated active:scale-95"
+                  aria-label="设置"
+                  title="画布与主题设置"
+                  onClick={onOpenSettings}
                 >
-                  <Crosshair size={15} weight="bold" />
+                  <GearSix size={18} weight="regular" />
                 </button>
               </div>
-            </div>
             </div>
           </div>
         </div>
@@ -2292,6 +2613,7 @@ export function CanvasStage({ editor }: CanvasStageProps) {
             commitFloatingSelection()
             editor.setProtectedSelection(null)
             setSelection(null)
+            setSelectionMode('select')
             return
           }
 
@@ -2471,18 +2793,10 @@ export function CanvasStage({ editor }: CanvasStageProps) {
                         className="block h-full w-full"
                         style={{ imageRendering: 'pixelated' }}
                       />
-                      <SelectionLayerCorner
-                        position="top-left"
-                      />
-                      <SelectionLayerCorner
-                        position="top-right"
-                      />
-                      <SelectionLayerCorner
-                        position="bottom-left"
-                      />
-                      <SelectionLayerCorner
-                        position="bottom-right"
-                      />
+                      <SelectionLayerCorner position="top-left" />
+                      <SelectionLayerCorner position="top-right" />
+                      <SelectionLayerCorner position="bottom-left" />
+                      <SelectionLayerCorner position="bottom-right" />
                     </>
                   ) : null}
                 </div>
@@ -2540,7 +2854,6 @@ export function CanvasStage({ editor }: CanvasStageProps) {
           </div>
         </div>
       </div>
-
     </section>
   )
 }
@@ -2839,7 +3152,7 @@ function SymmetryButton({
   )
 }
 
-function SymmetryBothIcon({ size = 18, weight: _weight }: IconProps) {
+function SymmetryBothIcon({ size = 18 }: IconProps) {
   return (
     <SymmetryIconFrame size={size}>
       <RightTriangleOutline points="62 116 116 116 116 62" />
@@ -2850,7 +3163,7 @@ function SymmetryBothIcon({ size = 18, weight: _weight }: IconProps) {
   )
 }
 
-function SymmetryCenterIcon({ size = 18, weight: _weight }: IconProps) {
+function SymmetryCenterIcon({ size = 18 }: IconProps) {
   return (
     <SymmetryIconFrame size={size}>
       <RightTriangleOutline points="62 116 116 116 116 62" />
