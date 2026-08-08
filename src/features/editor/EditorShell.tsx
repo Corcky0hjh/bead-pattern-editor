@@ -147,25 +147,8 @@ export function EditorShell() {
 
   return (
     <>
-      <div className="mx-auto grid max-w-[1760px] grid-cols-1 gap-5 2xl:h-full 2xl:grid-cols-[320px_minmax(0,1fr)_340px]">
-        <aside className="order-2 grid overflow-visible gap-3 2xl:order-1 2xl:min-h-0 2xl:max-h-full 2xl:grid-rows-[auto_minmax(0,1fr)]">
-        <div className="shrink-0 rounded-3xl border border-editor-border bg-editor-surface p-5">
-          <p className="text-xs font-bold tracking-[0.16em] text-editor-accent uppercase">
-            Bead Pattern Editor
-          </p>
-          <h1 className="mt-2 text-2xl leading-tight font-black tracking-[-0.04em] text-editor-strong">
-            拼豆图纸工作台
-          </h1>
-        </div>
-
-          <div className="flex min-h-0 flex-col gap-3 overflow-visible 2xl:overflow-y-auto">
-            <CollapsibleSection title="照片转图纸">
-              <ImagePanel editor={editor} />
-            </CollapsibleSection>
-          </div>
-        </aside>
-
-        <section className="order-1 min-w-0 2xl:order-2 2xl:min-h-0">
+      <div className="mx-auto grid max-w-[1760px] grid-cols-1 gap-5 2xl:h-full 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="order-1 min-w-0 2xl:min-h-0">
           <CanvasStage
             editor={editor}
             onOpenSettings={() => setSettingsOpen(true)}
@@ -174,6 +157,9 @@ export function EditorShell() {
 
         <aside className="order-3 overflow-visible 2xl:min-h-0 2xl:max-h-full">
           <div className="grid max-h-full content-start gap-3 overflow-visible 2xl:overflow-y-auto">
+            <CollapsibleSection title="照片转图纸">
+              <ImagePanel editor={editor} />
+            </CollapsibleSection>
             <CollapsibleSection title="颜色" defaultOpen>
               <ColorPanel editor={editor} />
             </CollapsibleSection>

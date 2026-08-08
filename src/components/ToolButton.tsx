@@ -61,10 +61,10 @@ export function ToolButton({
           aria-hidden="true"
           className={`pointer-events-none absolute z-0 grid border transition duration-150 ${
             vertical
-              ? `inset-x-0 bottom-0 h-7 rounded-b-2xl px-1 pt-3 ${
+              ? `bottom-0 left-px h-7 w-[38px] rounded-b-2xl rounded-t-[6px] px-1 pt-3 ${
                   hasPresetValue ? 'grid-cols-2' : 'place-items-center'
                 }`
-              : `inset-y-0 right-0 w-7 rounded-r-2xl pl-3 pr-0.5 ${
+              : `right-0 top-px h-[38px] w-7 rounded-l-[6px] rounded-r-2xl pl-3 pr-0.5 ${
                   hasPresetValue ? 'grid-rows-2 py-1' : 'place-items-center'
                 }`
           } ${
@@ -98,22 +98,29 @@ export function ToolButton({
 
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute left-0 top-0 z-10 grid h-10 w-10 place-items-center rounded-2xl border border-transparent text-sm font-bold transition duration-150 group-hover:border-editor-accent/25 group-active:scale-95 ${
+        className={`pointer-events-none absolute left-0 top-0 z-10 grid h-10 w-10 place-items-center text-sm font-bold ${
           active || statusActive
-            ? 'bg-editor-accent text-white shadow-sm'
-            : 'bg-editor-surface-soft text-editor-strong group-hover:bg-editor-elevated'
+            ? 'text-white'
+            : 'text-editor-strong'
         }`}
       >
-        <Icon size={18} weight="regular" />
+        <span
+          className={`absolute inset-0 rounded-2xl border border-transparent transition-[transform,background-color,border-color] duration-150 group-hover:border-editor-accent/25 group-active:scale-95 ${
+            active || statusActive
+              ? 'bg-editor-accent shadow-sm'
+              : 'bg-editor-surface-soft group-hover:bg-editor-elevated'
+          }`}
+        />
+
+        <Icon className="relative z-10" size={18} weight="regular" />
 
         {colorIndicator ? (
           <span
             aria-hidden="true"
-            className="absolute bottom-0 left-0 h-2.5 w-2.5 rounded-full border border-white/85 shadow-[0_2px_6px_rgba(10,8,6,0.55),0_0_0_1px_rgba(31,24,18,0.18)]"
+            className="absolute bottom-0 left-0 z-20 h-2.5 w-2.5 rounded-full border border-white/85 shadow-[0_2px_6px_rgba(10,8,6,0.55),0_0_0_1px_rgba(31,24,18,0.18)]"
             style={{ backgroundColor: colorIndicator }}
           />
         ) : null}
-
       </span>
     </button>
   )

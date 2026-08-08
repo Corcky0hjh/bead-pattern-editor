@@ -56,6 +56,7 @@ import { ToolButton, type ToolButtonIcon } from '../../components/ToolButton'
 import type {
   EditorStateController,
   EditorTool,
+  EraserMode,
   FillMode,
   SelectionLayerCell,
   SelectionRect,
@@ -107,6 +108,15 @@ type FloatingSelection = {
 }
 
 const toolbarLayoutStorageKey = 'bead-pattern-editor-toolbar-layout'
+
+const eraserModeOptions: Array<{
+  value: EraserMode
+  label: string
+  icon: ToolButtonIcon
+}> = [
+  { value: 'brush', label: '笔刷擦除', icon: Eraser },
+  { value: 'region', label: '删除连续色块', icon: SquaresFour },
+]
 
 function getInitialToolbarLayout(): ToolbarLayout {
   try {
@@ -371,6 +381,8 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
   const [renderedOptionsTool, setRenderedOptionsTool] =
     useState<EditorTool | null>(null)
   const [toolOptionsClosing, setToolOptionsClosing] = useState(false)
+  const [renderedEraserMode, setRenderedEraserMode] =
+    useState<EraserMode>(editor.eraserMode)
   const [toolOptionsAnchor, setToolOptionsAnchor] = useState({ x: 28, y: 28 })
   const [selection, setSelection] = useState<SelectionRect | null>(null)
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('select')
@@ -1665,6 +1677,9 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
 
     if (isActive) {
       if (toolsWithOptions.has(tool.value)) {
+        if (tool.value === 'eraser') {
+          setRenderedEraserMode(editor.eraserMode)
+        }
         const toolbarRect = toolbarRef.current?.getBoundingClientRect()
         const buttonRect = button.getBoundingClientRect()
         if (toolbarRect) {
@@ -2176,8 +2191,16 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                   : 'h-10 w-max'
               }`}
             >
+              {renderedOptionsTool === 'eraser' ? (
+                <EraserModePicker
+                  value={renderedEraserMode}
+                  onChange={editor.setEraserMode}
+                />
+              ) : null}
+
               {renderedOptionsTool === 'brush' ||
-              renderedOptionsTool === 'eraser' ? (
+              (renderedOptionsTool === 'eraser' &&
+                renderedEraserMode === 'brush') ? (
                 <ToolSizePicker
                   value={
                     renderedOptionsTool === 'brush'
@@ -2372,7 +2395,9 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                       tool.value === 'brush'
                         ? editor.brushSize
                         : tool.value === 'eraser'
-                          ? editor.eraserSize
+                          ? editor.eraserMode === 'region'
+                            ? <SquaresFour size={9} weight="regular" />
+                            : editor.eraserSize
                           : tool.value === 'shape'
                             ? editor.shapeKind === 'line'
                               ? editor.brushSize
@@ -2738,7 +2763,8 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                   const isStrokeTool =
                     !editor.eyedropperActive &&
                     (editor.currentTool === 'brush' ||
-                      editor.currentTool === 'eraser')
+                      (editor.currentTool === 'eraser' &&
+                        editor.eraserMode === 'brush'))
                   if (isStrokeTool) {
                     editor.beginStroke()
                     setPainting(true)
@@ -2920,6 +2946,44 @@ function FillModePicker({
       aria-label="填色范围"
     >
       {fillModeOptions.map((option) => {
+        const Icon = option.icon
+        const active = value === option.value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            className={`grid h-8 w-8 place-items-center rounded-xl transition active:scale-95 ${
+              active
+                ? 'bg-editor-accent text-white shadow-sm'
+                : 'text-editor-strong hover:bg-editor-elevated'
+            }`}
+            aria-label={option.label}
+            aria-pressed={active}
+            title={option.label}
+            onClick={() => onChange(option.value)}
+          >
+            <Icon size={15} weight="regular" />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function EraserModePicker({
+  value,
+  onChange,
+}: {
+  value: EraserMode
+  onChange: (value: EraserMode) => void
+}) {
+  return (
+    <div
+      className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft px-1"
+      role="group"
+      aria-label="橡皮模式"
+    >
+      {eraserModeOptions.map((option) => {
         const Icon = option.icon
         const active = value === option.value
         return (

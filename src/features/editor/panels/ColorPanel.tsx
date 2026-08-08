@@ -14,7 +14,7 @@ import {
   type BrandId,
 } from '../../../core/color'
 import { ColorPickerPopover } from '../../../components/ColorPickerPopover'
-import { useModalDialog } from '../../../components/useModalDialog'
+import { ModalDialog } from '../../../components/ModalDialog'
 import type { EditorStateController } from '../useEditorState'
 
 type ColorPanelProps = {
@@ -261,7 +261,6 @@ export function PaletteManagerModal({
   editor: EditorStateController
   onClose: () => void
 }) {
-  const dialogRef = useModalDialog(onClose)
   const [query, setQuery] = useState('')
   const filteredPalette = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -279,17 +278,11 @@ export function PaletteManagerModal({
   )
 
   return (
-    <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-editor-strong/28 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label="色卡管理"
+    <ModalDialog
+      label="色卡管理"
+      onClose={onClose}
+      panelClassName="canvas-settings-dialog grid max-h-[min(760px,92svh)] w-full max-w-5xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[18px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(0,0,0,0.34)]"
     >
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        className="grid max-h-[min(760px,92svh)] w-full max-w-5xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(31,24,18,0.26)]"
-      >
         <header className="flex items-start justify-between gap-4 border-b border-editor-border px-5 py-4">
           <div>
             <h2 className="text-xl font-black text-editor-strong">色卡管理</h2>
@@ -394,8 +387,7 @@ export function PaletteManagerModal({
             )
           })}
         </div>
-      </div>
-    </div>
+    </ModalDialog>
   )
 }
 

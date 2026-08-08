@@ -74,6 +74,7 @@ export type EditorTool =
   | 'shape'
 export type SymmetryMode = 'off' | 'vertical' | 'horizontal' | 'both' | 'center'
 export type FillMode = 'region' | 'global'
+export type EraserMode = 'brush' | 'region'
 export type ShapeKind = 'line' | 'rectangle' | 'ellipse'
 export type ShapeStyle = 'outline' | 'filled'
 export type SelectionRect = {
@@ -263,6 +264,7 @@ export function useEditorState() {
     useState<SymmetryMode>('off')
   const [brushSize, setBrushSize] = useState(1)
   const [eraserSize, setEraserSize] = useState(1)
+  const [eraserMode, setEraserMode] = useState<EraserMode>('brush')
   const [fillMode, setFillMode] = useState<FillMode>('region')
   const [shapeKind, setShapeKind] = useState<ShapeKind>('line')
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>('outline')
@@ -691,6 +693,11 @@ export function useEditorState() {
       return
     }
 
+    if (currentTool === 'eraser' && eraserMode === 'region') {
+      eraseConnectedRegions(index)
+      return
+    }
+
     const color = currentTool === 'eraser' ? null : currentColor
     const size = currentTool === 'eraser' ? eraserSize : brushSize
     const symmetryMode =
@@ -763,6 +770,26 @@ export function useEditorState() {
       Object.freeze({ color: currentColor }),
       protectedSelection ?? undefined,
     )
+    if (nextPattern !== pattern) commitPattern(nextPattern)
+  }
+
+  function eraseConnectedRegions(index: number) {
+    let nextPattern = pattern
+    for (const targetIndex of getSymmetryIndexes(
+      index,
+      pattern.width,
+      pattern.height,
+      eraserSymmetryMode,
+      protectedSelection,
+    )) {
+      if (!nextPattern.cells[targetIndex]?.color) continue
+      nextPattern = floodFillPatternGrid(
+        nextPattern,
+        targetIndex,
+        Object.freeze({ color: null }),
+        protectedSelection ?? undefined,
+      )
+    }
     if (nextPattern !== pattern) commitPattern(nextPattern)
   }
 
@@ -1331,6 +1358,8 @@ export function useEditorState() {
     setBrushSize,
     eraserSize,
     setEraserSize,
+    eraserMode,
+    setEraserMode,
     fillMode,
     setFillMode,
     shapeKind,
