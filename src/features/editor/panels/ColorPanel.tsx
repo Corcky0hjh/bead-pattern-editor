@@ -192,10 +192,10 @@ export function ColorPanel({ editor }: ColorPanelProps) {
                   code={item.code}
                   count={item.count}
                   selected={
-                    editor.currentColor.toLowerCase() ===
+                    editor.highlightedColor?.toLowerCase() ===
                     item.color.toLowerCase()
                   }
-                  onPickCurrent={() => editor.selectDrawingColor(item.color)}
+                  onPickCurrent={() => editor.toggleHighlightedColor(item.color)}
                 />
               )
             })}
@@ -292,6 +292,7 @@ export function PaletteManagerModal({
             </p>
           </div>
           <button
+            data-modal-close
             className="grid h-9 w-9 place-items-center rounded-full bg-editor-surface-soft text-lg font-black text-editor-strong"
             type="button"
             onClick={onClose}
@@ -707,9 +708,9 @@ function UsedColorRow({
 }) {
   return (
     <div
-      className={`grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-editor-border/70 py-1.5 text-xs transition last:border-b-0 ${
+      className={`grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-editor-border/70 px-2 py-1.5 text-xs transition last:border-b-0 ${
         selected
-          ? 'text-editor-strong'
+          ? 'rounded-xl bg-editor-accent/10 text-editor-strong'
           : 'text-editor-text hover:text-editor-strong'
       }`}
     >

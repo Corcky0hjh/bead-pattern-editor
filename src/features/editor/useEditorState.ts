@@ -271,6 +271,7 @@ export function useEditorState() {
   const [protectedSelection, setProtectedSelection] =
     useState<SelectionRect | null>(null)
   const [currentColor, setCurrentColor] = useState(initialColor)
+  const [highlightedColor, setHighlightedColor] = useState<string | null>(null)
   const [eyedropperActive, setEyedropperActive] = useState(false)
   const [paletteExpanded, setPaletteExpanded] = useState(false)
   const [recentColors, setRecentColors] = useState<string[]>([initialColor])
@@ -426,6 +427,24 @@ export function useEditorState() {
     () => colorStats.reduce((total, item) => total + item.count, 0),
     [colorStats],
   )
+
+  useEffect(() => {
+    if (
+      highlightedColor &&
+      !colorStats.some(
+        (item) => item.color.toLowerCase() === highlightedColor.toLowerCase(),
+      )
+    ) {
+      setHighlightedColor(null)
+    }
+  }, [colorStats, highlightedColor])
+
+  function toggleHighlightedColor(color: string) {
+    const normalized = color.toLowerCase()
+    setHighlightedColor((current) =>
+      current?.toLowerCase() === normalized ? null : normalized,
+    )
+  }
 
   function rememberColor(color: string) {
     const normalized = color.toLowerCase()
@@ -1369,6 +1388,8 @@ export function useEditorState() {
     protectedSelection,
     setProtectedSelection,
     currentColor,
+    highlightedColor,
+    toggleHighlightedColor,
     updateCurrentColor,
     selectDrawingColor,
     previewCurrentColor,

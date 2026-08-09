@@ -231,6 +231,37 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
               </div>
             </SettingRow>
           </SettingsSection>
+
+          <SettingsSection title="标尺与定位" description="显示行列坐标、指针位置和选区统计">
+            <SettingToggle
+              label="显示行列标尺"
+              checked={s.showRulers !== false}
+              onChange={(checked) => update({ showRulers: checked })}
+            />
+            <SettingToggle
+              label="指针行列高亮"
+              checked={s.showPointerGuides !== false}
+              onChange={(checked) => update({ showPointerGuides: checked })}
+            />
+            <SettingToggle
+              label="显示指针行列坐标"
+              checked={s.showPointerCoordinates !== false}
+              onChange={(checked) => update({ showPointerCoordinates: checked })}
+            />
+            <SettingToggle
+              label="显示选区统计"
+              checked={s.showSelectionStats !== false}
+              onChange={(checked) => update({ showSelectionStats: checked })}
+            />
+          </SettingsSection>
+
+          <SettingsSection title="豆子标注" description="在色块上显示当前品牌对应的豆子型号">
+            <SettingToggle
+              label="显示豆子型号"
+              checked={s.showBeadCodes !== false}
+              onChange={(checked) => update({ showBeadCodes: checked })}
+            />
+          </SettingsSection>
         </>
       ) : null}
 
@@ -432,6 +463,31 @@ function SettingRow({
       </div>
       <div className="flex justify-start sm:justify-end">{children}</div>
     </div>
+  )
+}
+
+function SettingToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <SettingRow label={label}>
+      <label className="relative inline-flex cursor-pointer items-center">
+        <input
+          type="checkbox"
+          className="peer sr-only"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+        <span className="h-6 w-11 rounded-full bg-editor-elevated transition peer-checked:bg-editor-accent" />
+        <span className="absolute left-1 h-4 w-4 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5" />
+      </label>
+    </SettingRow>
   )
 }
 

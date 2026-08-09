@@ -128,9 +128,18 @@
     animation: settings-backdrop-enter 180ms ease-out;
   }
 
+  .app-modal-backdrop[data-closing='true'] {
+    pointer-events: none;
+    animation: settings-backdrop-exit 180ms ease-in forwards;
+  }
+
   .canvas-settings-dialog {
     transform-origin: center;
     animation: settings-dialog-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .app-modal-backdrop[data-closing='true'] .canvas-settings-dialog {
+    animation: settings-dialog-exit 180ms ease-in forwards;
   }
 
   .settings-panel-stack {
@@ -152,7 +161,7 @@
     transform-origin: 40px 50%;
     transition:
       transform 460ms cubic-bezier(0.2, 0.9, 0.2, 1),
-      filter 240ms ease,
+      border-color 180ms ease,
       box-shadow 320ms ease;
   }
 
@@ -173,12 +182,16 @@
 
   .settings-panel-card[data-position='3'] {
     z-index: 1;
-    transform: translateX(-65px) translateY(48px) rotate(-12deg) scale(0.92);
+    transform: translateX(-65px) translateY(65px) rotate(-13deg) scale(0.92);
   }
 
   .settings-panel-card:not([data-active='true']):hover {
-    filter: brightness(1.08);
+    border-color: color-mix(in srgb, var(--card-accent) 72%, var(--color-editor-border));
     box-shadow: 0 26px 70px rgba(0, 0, 0, 0.32);
+  }
+
+  .settings-panel-card:not([data-active='true']):hover .settings-panel-card__identity {
+    background: color-mix(in srgb, var(--card-accent) 15%, var(--color-editor-surface));
   }
 
   .settings-panel-card__identity {
@@ -194,6 +207,7 @@
     background: color-mix(in srgb, var(--card-accent) 7%, var(--color-editor-surface));
     color: var(--card-accent);
     font-size: 11px;
+    transition: background-color 180ms ease;
   }
 
   .settings-panel-card__identity span {
@@ -786,6 +800,29 @@
     to { opacity: 1; }
   }
 
+  .selection-marquee {
+    isolation: isolate;
+  }
+
+  .selection-marquee::after {
+    content: '';
+    position: absolute;
+    z-index: 30;
+    inset: -2px;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, var(--color-editor-accent) 64%, transparent 64%) 0 0 / 14px 2px repeat-x,
+      linear-gradient(90deg, var(--color-editor-accent) 64%, transparent 64%) 0 100% / 14px 2px repeat-x,
+      linear-gradient(0deg, var(--color-editor-accent) 64%, transparent 64%) 0 0 / 2px 14px repeat-y,
+      linear-gradient(0deg, var(--color-editor-accent) 64%, transparent 64%) 100% 0 / 2px 14px repeat-y;
+    animation: selection-marquee-move 650ms linear infinite;
+  }
+
+  @keyframes settings-backdrop-exit {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
   @keyframes settings-dialog-enter {
     from {
       opacity: 0;
@@ -794,6 +831,27 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes settings-dialog-exit {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+
+  @keyframes selection-marquee-move {
+    to {
+      background-position:
+        14px 0,
+        -14px 100%,
+        0 -14px,
+        100% 14px;
     }
   }
 

@@ -18,8 +18,11 @@ import {
   Crosshair,
   DotsSixVertical,
   Eyedropper,
+  Eye,
   Eraser,
   GearSix,
+  GridFour,
+  Hash,
   FlipHorizontal,
   FlipVertical,
   Hand,
@@ -29,6 +32,8 @@ import {
   PaintBucket,
   Plus,
   Rectangle,
+  Ruler,
+  Tag,
   Shapes,
   Square,
   SquareHalf,
@@ -53,6 +58,8 @@ import {
   normalizeWheelDelta,
 } from './viewportCamera'
 import { ToolButton, type ToolButtonIcon } from '../../components/ToolButton'
+import type { CanvasSettings } from '../../core/canvas/settings'
+import { getDisplayCode } from '../../core/color'
 import type {
   EditorStateController,
   EditorTool,
@@ -73,6 +80,7 @@ type CanvasStageProps = {
 
 type StageTool = { value: EditorTool; label: string; icon: ToolButtonIcon }
 type SelectionMode = 'select' | 'move'
+type ToolOptionsTarget = EditorTool | 'display'
 type ToolbarPlacement = 'top' | 'right' | 'bottom' | 'left' | 'floating'
 type ToolbarDockPlacement = Exclude<ToolbarPlacement, 'floating'>
 type ToolbarOrientation = 'horizontal' | 'vertical'
@@ -373,13 +381,23 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${a})`
 }
 
+function getCodeTextColor(hex: string): string {
+  const clean = hex.replace('#', '')
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return '#1f1812'
+  const red = parseInt(clean.slice(0, 2), 16)
+  const green = parseInt(clean.slice(2, 4), 16)
+  const blue = parseInt(clean.slice(4, 6), 16)
+  const luminance = (red * 299 + green * 587 + blue * 114) / 1000
+  return luminance > 150 ? '#2a211b' : '#ffffff'
+}
+
 export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
   const [painting, setPainting] = useState(false)
-  const [openToolOptions, setOpenToolOptions] = useState<EditorTool | null>(
+  const [openToolOptions, setOpenToolOptions] = useState<ToolOptionsTarget | null>(
     null,
   )
   const [renderedOptionsTool, setRenderedOptionsTool] =
-    useState<EditorTool | null>(null)
+    useState<ToolOptionsTarget | null>(null)
   const [toolOptionsClosing, setToolOptionsClosing] = useState(false)
   const [renderedEraserMode, setRenderedEraserMode] =
     useState<EraserMode>(editor.eraserMode)
@@ -387,6 +405,7 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
   const [selection, setSelection] = useState<SelectionRect | null>(null)
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('select')
   const [pointerOutsideSelection, setPointerOutsideSelection] = useState(false)
+  const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null)
   const [toolbarLayout, setToolbarLayout] = useState(getInitialToolbarLayout)
   const [toolbarDragSession, setToolbarDragSession] =
     useState<ToolbarDragSession | null>(null)
@@ -469,6 +488,8 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
   }
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const beadCodeCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const colorHighlightCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const selectionPreviewRef = useRef<HTMLCanvasElement | null>(null)
   const shapePreviewRef = useRef<HTMLCanvasElement | null>(null)
   const editorRef = useRef(editor)
@@ -499,6 +520,57 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
   const worldHeight = canvasHeight + worldPadding
   const worldInset = worldPadding / 2
   const settings = editor.canvasSettings
+  const beadCodeByHex = useMemo(() => {
+    const codes = new Map<string, string>()
+    editor.palette.forEach((color) => {
+      const brandCode = getDisplayCode(color, editor.currentBrand)
+      const customName = color.nameZh ?? color.nameEn
+      const customCharacters = customName ? Array.from(customName) : []
+      const label =
+        brandCode ??
+        (customName
+          ? customCharacters.length > 3
+            ? `${customCharacters.slice(0, 3).join('')}…`
+            : customName
+          : color.hex.slice(1).toUpperCase())
+      codes.set(color.hex.toLowerCase(), label)
+    })
+    return codes
+  }, [editor.currentBrand, editor.palette])
+  const renderBeadCodes =
+    settings.showBeadCodes !== false && visualCellSize >= 18
+  const rulerStep = visualCellSize >= 24 ? 1 : visualCellSize >= 10 ? 5 : 10
+  const rulerColumns = useMemo(
+    () =>
+      Array.from({ length: pattern.width }, (_, index) => index).filter(
+        (index) => index % rulerStep === 0,
+      ),
+    [pattern.width, rulerStep],
+  )
+  const rulerRows = useMemo(
+    () =>
+      Array.from({ length: pattern.height }, (_, index) => index).filter(
+        (index) => index % rulerStep === 0,
+      ),
+    [pattern.height, rulerStep],
+  )
+  const selectionFilledCount = useMemo(() => {
+    if (!selection) return 0
+    if (floatingSelection) return floatingSelection.cells.length
+    let count = 0
+    for (let y = selection.y; y < selection.y + selection.height; y += 1) {
+      for (let x = selection.x; x < selection.x + selection.width; x += 1) {
+        const cell = pattern.cells[y * pattern.width + x]
+        if (cell?.color && !cell.isExternal) count += 1
+      }
+    }
+    return count
+  }, [floatingSelection, pattern.cells, pattern.width, selection])
+  const canvasScreenLeft = viewPosition.x + worldInset * zoomScale
+  const canvasScreenTop = viewPosition.y + worldInset * zoomScale
+  const canvasScreenWidth = canvasWidth * zoomScale
+  const canvasScreenHeight = canvasHeight * zoomScale
+  const floatingSelectionTarget = floatingSelection ? selection : null
   editorRef.current = editor
   zoomRef.current = editor.zoom
   floatingSelectionRef.current = floatingSelection
@@ -534,9 +606,11 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
       }
     : toolbarLayout
   const activeOptionsTool =
-    !editor.eyedropperActive && openToolOptions === editor.currentTool
-      ? openToolOptions
-      : null
+    openToolOptions === 'display'
+      ? 'display'
+      : !editor.eyedropperActive && openToolOptions === editor.currentTool
+        ? openToolOptions
+        : null
   const canRotateSelection = Boolean(
     selection &&
     selection.height <= pattern.width &&
@@ -633,11 +707,20 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
         Math.max(stageRect.top, toolbarSurfaceRect.top) -
         toolbarRect.top +
         popoverHeight / 2
-      const maximum = stageRect.bottom - toolbarRect.top - popoverHeight / 2
+      const maximum =
+        Math.min(stageRect.bottom, toolbarSurfaceRect.bottom) -
+        toolbarRect.top -
+        popoverHeight / 2
       popover.style.top = `${Math.min(maximum, Math.max(minimum, toolOptionsAnchor.y))}px`
     } else {
-      const minimum = stageRect.left - toolbarRect.left + popoverWidth / 2
-      const maximum = stageRect.right - toolbarRect.left - popoverWidth / 2
+      const minimum =
+        Math.max(stageRect.left, toolbarSurfaceRect.left) -
+        toolbarRect.left +
+        popoverWidth / 2
+      const maximum =
+        Math.min(stageRect.right, toolbarSurfaceRect.right) -
+        toolbarRect.left -
+        popoverWidth / 2
       popover.style.left = `${Math.min(maximum, Math.max(minimum, toolOptionsAnchor.x))}px`
     }
 
@@ -654,20 +737,26 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
     const minimumLeft = toolbarOptionsSide
       ? stageRect.left
       : Math.max(stageRect.left, toolbarSurfaceRect.left)
+    const maximumRight = toolbarOptionsSide
+      ? stageRect.right
+      : Math.min(stageRect.right, toolbarSurfaceRect.right)
     const shiftX =
       positionedLeft < minimumLeft
         ? minimumLeft - positionedLeft
-        : positionedRight > stageRect.right
-          ? stageRect.right - positionedRight
+        : positionedRight > maximumRight
+          ? maximumRight - positionedRight
           : 0
     const minimumTop = toolbarOptionsSide
       ? Math.max(stageRect.top, toolbarSurfaceRect.top)
       : stageRect.top
+    const maximumBottom = toolbarOptionsSide
+      ? Math.min(stageRect.bottom, toolbarSurfaceRect.bottom)
+      : stageRect.bottom
     const shiftY =
       positionedTop < minimumTop
         ? minimumTop - positionedTop
-        : positionedBottom > stageRect.bottom
-          ? stageRect.bottom - positionedBottom
+        : positionedBottom > maximumBottom
+          ? maximumBottom - positionedBottom
           : 0
     popover.style.marginLeft = `${shiftX}px`
     popover.style.marginTop = `${shiftY}px`
@@ -1014,6 +1103,228 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
           ? 'cursor-cell'
           : 'cursor-crosshair'
 
+  useLayoutEffect(() => {
+    const overlay = beadCodeCanvasRef.current
+    const viewport = viewportRef.current
+    if (!overlay || !viewport) return
+    const width = viewport.clientWidth
+    const height = viewport.clientHeight
+    const dpr = Math.max(1, window.devicePixelRatio || 1)
+    const bitmapWidth = Math.round(width * dpr)
+    const bitmapHeight = Math.round(height * dpr)
+    if (overlay.width !== bitmapWidth || overlay.height !== bitmapHeight) {
+      overlay.width = bitmapWidth
+      overlay.height = bitmapHeight
+    }
+    const context = overlay.getContext('2d')
+    if (!context) return
+    context.setTransform(dpr, 0, 0, dpr, 0, 0)
+    context.clearRect(0, 0, width, height)
+    if (!renderBeadCodes) return
+
+    const minX = Math.max(0, Math.floor(-canvasScreenLeft / visualCellSize))
+    const minY = Math.max(0, Math.floor(-canvasScreenTop / visualCellSize))
+    const maxX = Math.min(
+      pattern.width - 1,
+      Math.ceil((width - canvasScreenLeft) / visualCellSize),
+    )
+    const maxY = Math.min(
+      pattern.height - 1,
+      Math.ceil((height - canvasScreenTop) / visualCellSize),
+    )
+    const cutSource =
+      floatingSelection?.kind === 'move' ? floatingSelection.source : null
+    const floatingTarget = floatingSelectionTarget
+
+    function paintLabel(x: number, y: number, color: string) {
+      const code =
+        beadCodeByHex.get(color.toLowerCase()) ??
+        color.replace('#', '').toUpperCase()
+      const fontScale =
+        code.length >= 4 ? 0.25 : code.length === 3 ? 0.31 : 0.38
+      context.fillStyle = getCodeTextColor(color)
+      context.font = `800 ${Math.max(8, Math.min(18, visualCellSize * fontScale))}px ui-monospace, SFMono-Regular, Menlo, monospace`
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillText(
+        code,
+        canvasScreenLeft + (x + 0.5) * visualCellSize,
+        canvasScreenTop + (y + 0.5) * visualCellSize,
+        visualCellSize - 3,
+      )
+    }
+
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        if (
+          (cutSource &&
+            x >= cutSource.x &&
+            x < cutSource.x + cutSource.width &&
+            y >= cutSource.y &&
+            y < cutSource.y + cutSource.height) ||
+          (floatingTarget &&
+            x >= floatingTarget.x &&
+            x < floatingTarget.x + floatingTarget.width &&
+            y >= floatingTarget.y &&
+            y < floatingTarget.y + floatingTarget.height)
+        ) {
+          continue
+        }
+        const cell = pattern.cells[y * pattern.width + x]
+        if (cell?.color && !cell.isExternal) paintLabel(x, y, cell.color)
+      }
+    }
+
+    if (floatingSelection && floatingSelectionTarget) {
+      floatingSelection.cells.forEach((cell) => {
+        const x = floatingSelectionTarget.x + cell.x
+        const y = floatingSelectionTarget.y + cell.y
+        if (x < minX || x > maxX || y < minY || y > maxY) return
+        paintLabel(x, y, cell.color)
+      })
+    }
+  }, [
+    beadCodeByHex,
+    canvasScreenLeft,
+    canvasScreenTop,
+    floatingSelection,
+    floatingSelectionTarget,
+    pattern.cells,
+    pattern.height,
+    pattern.width,
+    renderBeadCodes,
+    visualCellSize,
+  ])
+
+  useLayoutEffect(() => {
+    const overlay = colorHighlightCanvasRef.current
+    const viewport = viewportRef.current
+    if (!overlay || !viewport) return
+    const width = viewport.clientWidth
+    const height = viewport.clientHeight
+    const dpr = Math.max(1, window.devicePixelRatio || 1)
+    const bitmapWidth = Math.round(width * dpr)
+    const bitmapHeight = Math.round(height * dpr)
+    if (overlay.width !== bitmapWidth || overlay.height !== bitmapHeight) {
+      overlay.width = bitmapWidth
+      overlay.height = bitmapHeight
+    }
+    const context = overlay.getContext('2d')
+    if (!context) return
+    context.setTransform(dpr, 0, 0, dpr, 0, 0)
+    context.clearRect(0, 0, width, height)
+    context.globalCompositeOperation = 'source-over'
+    context.shadowColor = 'rgba(0, 0, 0, 0)'
+    context.shadowBlur = 0
+    context.setLineDash([])
+    const highlighted = editor.highlightedColor?.toLowerCase()
+    if (!highlighted) return
+
+    context.fillStyle = 'rgba(22, 18, 15, 0.46)'
+    context.fillRect(
+      canvasScreenLeft,
+      canvasScreenTop,
+      canvasScreenWidth,
+      canvasScreenHeight,
+    )
+    const visibleMinX = Math.max(0, Math.floor(-canvasScreenLeft / visualCellSize))
+    const visibleMinY = Math.max(0, Math.floor(-canvasScreenTop / visualCellSize))
+    const visibleMaxX = Math.min(
+      pattern.width - 1,
+      Math.ceil((width - canvasScreenLeft) / visualCellSize),
+    )
+    const visibleMaxY = Math.min(
+      pattern.height - 1,
+      Math.ceil((height - canvasScreenTop) / visualCellSize),
+    )
+    const minX = Math.max(0, visibleMinX - 1)
+    const minY = Math.max(0, visibleMinY - 1)
+    const maxX = Math.min(pattern.width - 1, visibleMaxX + 1)
+    const maxY = Math.min(pattern.height - 1, visibleMaxY + 1)
+    const cutSource =
+      floatingSelection?.kind === 'move' ? floatingSelection.source : null
+    const floatingTarget = floatingSelectionTarget
+    const matches: Array<{ x: number; y: number }> = []
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        if (
+          (cutSource && x >= cutSource.x && x < cutSource.x + cutSource.width && y >= cutSource.y && y < cutSource.y + cutSource.height) ||
+          (floatingTarget && x >= floatingTarget.x && x < floatingTarget.x + floatingTarget.width && y >= floatingTarget.y && y < floatingTarget.y + floatingTarget.height)
+        ) continue
+        const cell = pattern.cells[y * pattern.width + x]
+        if (cell?.color?.toLowerCase() === highlighted && !cell.isExternal) {
+          matches.push({ x, y })
+        }
+      }
+    }
+    if (floatingSelection && floatingSelectionTarget) {
+      floatingSelection.cells.forEach((cell) => {
+        if (cell.color.toLowerCase() === highlighted) {
+          matches.push({
+            x: floatingSelectionTarget.x + cell.x,
+            y: floatingSelectionTarget.y + cell.y,
+          })
+        }
+      })
+    }
+    context.globalCompositeOperation = 'destination-out'
+    matches.forEach(({ x, y }) => {
+      context.fillRect(
+        canvasScreenLeft + x * visualCellSize,
+        canvasScreenTop + y * visualCellSize,
+        visualCellSize,
+        visualCellSize,
+      )
+    })
+    context.globalCompositeOperation = 'source-over'
+    const matchedCells = new Set(matches.map(({ x, y }) => `${x}:${y}`))
+    context.strokeStyle = 'rgba(255, 255, 255, 0.96)'
+    context.lineWidth = 2.5
+    context.lineJoin = 'round'
+    context.shadowColor = 'rgba(20, 16, 13, 0.5)'
+    context.shadowBlur = 3
+    context.setLineDash([7, 4])
+    context.beginPath()
+    matches.forEach(({ x, y }) => {
+      const left = canvasScreenLeft + x * visualCellSize
+      const top = canvasScreenTop + y * visualCellSize
+      const right = left + visualCellSize
+      const bottom = top + visualCellSize
+      if (!matchedCells.has(`${x}:${y - 1}`)) {
+        context.moveTo(left, top)
+        context.lineTo(right, top)
+      }
+      if (!matchedCells.has(`${x + 1}:${y}`)) {
+        context.moveTo(right, top)
+        context.lineTo(right, bottom)
+      }
+      if (!matchedCells.has(`${x}:${y + 1}`)) {
+        context.moveTo(right, bottom)
+        context.lineTo(left, bottom)
+      }
+      if (!matchedCells.has(`${x - 1}:${y}`)) {
+        context.moveTo(left, bottom)
+        context.lineTo(left, top)
+      }
+    })
+    context.stroke()
+    context.setLineDash([])
+    context.shadowColor = 'rgba(0, 0, 0, 0)'
+    context.shadowBlur = 0
+  }, [
+    canvasScreenHeight,
+    canvasScreenLeft,
+    canvasScreenTop,
+    canvasScreenWidth,
+    editor.highlightedColor,
+    floatingSelection,
+    floatingSelectionTarget,
+    pattern.cells,
+    pattern.height,
+    pattern.width,
+    visualCellSize,
+  ])
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -1035,6 +1346,12 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
 
     if (floatingSelection?.kind === 'move') {
       const source = floatingSelection.source
+      context.clearRect(
+        source.x * cellSize,
+        source.y * cellSize,
+        source.width * cellSize,
+        source.height * cellSize,
+      )
       context.fillStyle = withAlpha(settings.paperColor, settings.paperAlpha)
       context.fillRect(
         source.x * cellSize,
@@ -1043,6 +1360,7 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
         source.height * cellSize,
       )
     }
+
   }, [
     canvasHeight,
     canvasWidth,
@@ -1411,11 +1729,6 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
 
   function finishSelection() {
     selectionDragRef.current = null
-  }
-
-  function returnToBrush() {
-    setOpenToolOptions(null)
-    editor.setCurrentTool('brush')
   }
 
   function updateViewPosition(position: { x: number; y: number }) {
@@ -2181,7 +2494,7 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                 : { left: toolOptionsAnchor.x }
             }
             role="group"
-            aria-label={`${stageTools.find((tool) => tool.value === renderedOptionsTool)?.label ?? ''}设置`}
+            aria-label={renderedOptionsTool === 'display' ? '显示设置' : `${stageTools.find((tool) => tool.value === renderedOptionsTool)?.label ?? ''}设置`}
             onClick={() => setOpenToolOptions(null)}
           >
             <div
@@ -2287,6 +2600,16 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                   onCopy={copySelectedContent}
                   onClearSelection={clearSelection}
                   canRotate={canRotateSelection}
+                />
+              ) : null}
+              {renderedOptionsTool === 'display' ? (
+                <DisplayOptions
+                  showRulers={settings.showRulers !== false}
+                  showPointerGuides={settings.showPointerGuides !== false}
+                  showGrid={settings.showGrid}
+                  showPointerCoordinates={settings.showPointerCoordinates !== false}
+                  showBeadCodes={settings.showBeadCodes !== false}
+                  onChange={editor.updateCanvasSettings}
                 />
               ) : null}
             </div>
@@ -2463,7 +2786,15 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                 className={`flex items-center gap-2 ${
                   toolbarContentSide ? 'mt-auto flex-col' : 'ml-auto'
                 }`}
-                onPointerDownCapture={() => setOpenToolOptions(null)}
+                onPointerDownCapture={(event) => {
+                  if (
+                    event.target instanceof Element &&
+                    event.target.closest('[data-tool-button]')
+                  ) {
+                    return
+                  }
+                  setOpenToolOptions(null)
+                }}
               >
                 <ToolbarDivider horizontal={toolbarContentSide} />
                 <div
@@ -2591,6 +2922,27 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                   </button>
                 </div>
                 <ToolbarDivider horizontal={toolbarContentSide} />
+                <ToolButton
+                  icon={Eye}
+                  label="显示"
+                  active={false}
+                  hasOptions
+                  optionsOpen={activeOptionsTool === 'display'}
+                  vertical={toolbarContentSide}
+                  onClick={(event) => {
+                    const toolbarRect = toolbarRef.current?.getBoundingClientRect()
+                    const buttonRect = event.currentTarget.getBoundingClientRect()
+                    if (toolbarRect) {
+                      setToolOptionsAnchor({
+                        x: buttonRect.left - toolbarRect.left + buttonRect.width / 2,
+                        y: buttonRect.top - toolbarRect.top + buttonRect.height / 2,
+                      })
+                    }
+                    setOpenToolOptions((current) =>
+                      current === 'display' ? null : 'display',
+                    )
+                  }}
+                />
                 <button
                   type="button"
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-editor-strong transition hover:bg-editor-elevated active:scale-95"
@@ -2622,16 +2974,6 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
 
           if (
             event.button === 0 &&
-            editor.currentTool === 'eraser' &&
-            !editor.eyedropperActive &&
-            !canvasRef.current?.contains(event.target as Node)
-          ) {
-            returnToBrush()
-            return
-          }
-
-          if (
-            event.button === 0 &&
             editor.currentTool === 'select' &&
             !canvasRef.current?.contains(event.target as Node)
           ) {
@@ -2647,6 +2989,20 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
           }
         }}
         onPointerMove={(event) => {
+          const canvasRect = canvasRef.current?.getBoundingClientRect()
+          if (canvasRect) {
+            const x = Math.floor((event.clientX - canvasRect.left) / visualCellSize)
+            const y = Math.floor((event.clientY - canvasRect.top) / visualCellSize)
+            const nextCell =
+              x >= 0 && y >= 0 && x < pattern.width && y < pattern.height
+                ? { x, y }
+                : null
+            setHoveredCell((previous) =>
+              previous?.x === nextCell?.x && previous?.y === nextCell?.y
+                ? previous
+                : nextCell,
+            )
+          }
           if (!panningRef.current) return
           const viewport = viewportRef.current
           if (!viewport) return
@@ -2662,6 +3018,7 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
         onPointerLeave={() => {
           endStroke()
           setPointerOutsideSelection(false)
+          setHoveredCell(null)
         }}
         onPointerUp={(event) => {
           endStroke()
@@ -2756,7 +3113,6 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                       }
                     }
                     if (index === null || !pattern.cells[index]?.color) {
-                      returnToBrush()
                       return
                     }
                   }
@@ -2800,10 +3156,10 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
               selection ? (
                 <div
                   aria-hidden="true"
-                  className={`pointer-events-none absolute outline outline-2 outline-editor-accent shadow-[0_0_0_1px_rgba(255,255,255,0.7)] ${
+                  className={`selection-marquee pointer-events-none absolute shadow-[0_0_0_1px_rgba(255,255,255,0.7)] ${
                     floatingSelection
                       ? 'z-10 bg-transparent shadow-[0_8px_20px_rgba(31,24,18,0.22)]'
-                      : 'z-0 bg-editor-accent/10'
+                      : 'z-0 bg-transparent'
                   }`}
                   style={{
                     left: selection.x * cellSize,
@@ -2831,7 +3187,7 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
                 <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
                   <div
                     aria-hidden="true"
-                    className="absolute shadow-[0_0_0_9999px_rgba(31,24,18,0.07)]"
+                    className="absolute outline outline-[9999px] outline-[rgba(31,24,18,0.07)]"
                     style={{
                       left: selection.x * cellSize,
                       top: selection.y * cellSize,
@@ -2879,6 +3235,114 @@ export function CanvasStage({ editor, onOpenSettings }: CanvasStageProps) {
             </div>
           </div>
         </div>
+        <canvas
+          ref={beadCodeCanvasRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[21] h-full w-full"
+        />
+        <canvas
+          ref={colorHighlightCanvasRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[22] h-full w-full"
+        />
+        {settings.showPointerGuides !== false && hoveredCell ? (
+          <>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute z-20 bg-editor-accent/10"
+              style={{
+                left: canvasScreenLeft + hoveredCell.x * visualCellSize,
+                top: canvasScreenTop,
+                width: visualCellSize,
+                height: canvasScreenHeight,
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute z-20 bg-editor-accent/10"
+              style={{
+                left: canvasScreenLeft,
+                top: canvasScreenTop + hoveredCell.y * visualCellSize,
+                width: canvasScreenWidth,
+                height: visualCellSize,
+              }}
+            />
+          </>
+        ) : null}
+        {settings.showRulers !== false ? (
+          <>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute z-30 h-6 overflow-hidden rounded-md border border-editor-border bg-editor-surface/95 shadow-sm backdrop-blur"
+              style={{
+                left: canvasScreenLeft,
+                top: Math.max(0, canvasScreenTop - 26),
+                width: canvasScreenWidth,
+              }}
+            >
+              {rulerColumns.map((column) => (
+                <span
+                  key={column}
+                  className={`absolute top-0 flex h-full items-center border-l px-1 font-mono text-[9px] font-bold tabular-nums ${
+                    hoveredCell &&
+                    Math.floor(hoveredCell.x / rulerStep) * rulerStep === column
+                      ? 'border-editor-accent bg-editor-accent text-white'
+                      : 'border-editor-border text-editor-text'
+                  }`}
+                  style={{
+                    left: column * visualCellSize,
+                    minWidth: Math.max(visualCellSize * rulerStep, 18),
+                  }}
+                >
+                  {column + 1}
+                </span>
+              ))}
+            </div>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute z-30 w-7 overflow-hidden rounded-md border border-editor-border bg-editor-surface/95 shadow-sm backdrop-blur"
+              style={{
+                left: Math.max(0, canvasScreenLeft - 30),
+                top: canvasScreenTop,
+                height: canvasScreenHeight,
+              }}
+            >
+              {rulerRows.map((row) => (
+                <span
+                  key={row}
+                  className={`absolute left-0 flex w-full items-start justify-center border-t pt-0.5 font-mono text-[9px] font-bold leading-none tabular-nums ${
+                    hoveredCell &&
+                    Math.floor(hoveredCell.y / rulerStep) * rulerStep === row
+                      ? 'border-editor-accent bg-editor-accent text-white'
+                      : 'border-editor-border text-editor-text'
+                  }`}
+                  style={{
+                    top: row * visualCellSize,
+                    minHeight: Math.max(visualCellSize * rulerStep, 18),
+                  }}
+                >
+                  {row + 1}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : null}
+        {settings.showPointerCoordinates !== false && hoveredCell ? (
+          <div className="pointer-events-none absolute bottom-3 right-3 z-30 rounded-lg border border-editor-border bg-editor-surface/90 px-2.5 py-1.5 font-mono text-[10px] font-black tabular-nums text-editor-strong shadow-sm backdrop-blur">
+            列 {hoveredCell.x + 1} · 行 {hoveredCell.y + 1}
+          </div>
+        ) : null}
+        {settings.showSelectionStats !== false && selection ? (
+          <div
+            className="pointer-events-none absolute z-30 -translate-y-full rounded-lg bg-editor-strong px-2.5 py-1.5 text-[10px] font-bold tabular-nums text-editor-surface shadow-md"
+            style={{
+              left: canvasScreenLeft + selection.x * visualCellSize,
+              top: canvasScreenTop + selection.y * visualCellSize - 6,
+            }}
+          >
+            {selection.width} × {selection.height} 格 · {selection.width * selection.height} 格容量 · {selectionFilledCount} 颗已用
+          </div>
+        ) : null}
       </div>
     </section>
   )
@@ -2906,6 +3370,90 @@ function ToolSizePicker({
         >
           {size}
         </button>
+      ))}
+    </div>
+  )
+}
+
+function DisplayOptions({
+  showRulers,
+  showPointerGuides,
+  showGrid,
+  showPointerCoordinates,
+  showBeadCodes,
+  onChange,
+}: {
+  showRulers: boolean
+  showPointerGuides: boolean
+  showGrid: boolean
+  showPointerCoordinates: boolean
+  showBeadCodes: boolean
+  onChange: (partial: Partial<CanvasSettings>) => void
+}) {
+  const options = [
+    {
+      label: '标尺',
+      icon: Ruler,
+      active: showRulers,
+      partial: { showRulers: !showRulers },
+    },
+    {
+      label: '十字定位',
+      icon: Crosshair,
+      active: showPointerGuides,
+      partial: { showPointerGuides: !showPointerGuides },
+    },
+    {
+      label: '网格',
+      icon: GridFour,
+      active: showGrid,
+      partial: { showGrid: !showGrid },
+    },
+    {
+      label: '右下角行列',
+      icon: Hash,
+      active: showPointerCoordinates,
+      partial: { showPointerCoordinates: !showPointerCoordinates },
+    },
+    {
+      label: '豆子型号',
+      icon: Tag,
+      active: showBeadCodes,
+      partial: { showBeadCodes: !showBeadCodes },
+    },
+  ] satisfies Array<{
+    label: string
+    icon: ToolButtonIcon
+    active: boolean
+    partial: Partial<CanvasSettings>
+  }>
+
+  return (
+    <div
+      className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft p-1"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {options.map((option) => (
+        (() => {
+          const Icon = option.icon
+          return (
+            <button
+              key={option.label}
+              type="button"
+              aria-label={option.label}
+              title={option.label}
+              aria-pressed={option.active}
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl transition ${
+                option.active
+                  ? 'bg-editor-accent text-white shadow-sm'
+                  : 'text-editor-text hover:bg-editor-elevated hover:text-editor-strong'
+              }`}
+              onClick={() => onChange(option.partial)}
+            >
+              <Icon size={15} weight={option.active ? 'bold' : 'regular'} />
+            </button>
+          )
+        })()
       ))}
     </div>
   )

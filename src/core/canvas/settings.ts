@@ -18,6 +18,16 @@ export type CanvasSettings = {
   majorGridEvery: number
   /** 是否显示网格 */
   showGrid: boolean
+  /** 是否显示顶部/左侧行列标尺 */
+  showRulers: boolean
+  /** 指针所在行列是否高亮 */
+  showPointerGuides: boolean
+  /** 是否显示右下角指针行列坐标 */
+  showPointerCoordinates: boolean
+  /** 选区旁是否显示尺寸和豆数 */
+  showSelectionStats: boolean
+  /** 是否在色块上显示当前品牌豆子型号 */
+  showBeadCodes: boolean
 }
 
 export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
@@ -28,6 +38,11 @@ export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
   gridWidth: 1,
   majorGridEvery: 5,
   showGrid: true,
+  showRulers: true,
+  showPointerGuides: true,
+  showPointerCoordinates: true,
+  showSelectionStats: true,
+  showBeadCodes: true,
 }
 
 /** 大网格间隔的可选值(0 = 关闭) */
@@ -69,5 +84,25 @@ export function parseCanvasSettings(raw: unknown): CanvasSettings {
       typeof r.showGrid === 'boolean'
         ? r.showGrid
         : DEFAULT_CANVAS_SETTINGS.showGrid,
+    showRulers:
+      typeof r.showRulers === 'boolean'
+        ? r.showRulers
+        : DEFAULT_CANVAS_SETTINGS.showRulers,
+    showPointerGuides:
+      typeof r.showPointerGuides === 'boolean'
+        ? r.showPointerGuides
+        : DEFAULT_CANVAS_SETTINGS.showPointerGuides,
+    showPointerCoordinates:
+      typeof r.showPointerCoordinates === 'boolean'
+        ? r.showPointerCoordinates
+        : DEFAULT_CANVAS_SETTINGS.showPointerCoordinates,
+    showSelectionStats:
+      typeof r.showSelectionStats === 'boolean'
+        ? r.showSelectionStats
+        : DEFAULT_CANVAS_SETTINGS.showSelectionStats,
+    showBeadCodes:
+      typeof r.showBeadCodes === 'boolean'
+        ? r.showBeadCodes
+        : DEFAULT_CANVAS_SETTINGS.showBeadCodes,
   }
 }

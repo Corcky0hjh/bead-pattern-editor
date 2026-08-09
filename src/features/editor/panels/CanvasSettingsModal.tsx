@@ -77,6 +77,7 @@ export function CanvasSettingsModal({
                 {active ? (
                   <button
                     data-dialog-initial-focus
+                    data-modal-close
                     type="button"
                     className="settings-panel-card__close absolute z-20 grid h-7 w-7 place-items-center rounded-lg bg-transparent transition hover:bg-editor-elevated"
                     aria-label="关闭设置"
@@ -137,10 +138,18 @@ const shortcutGroups = [
   {
     title: '历史与视图',
     items: [
-      ['Ctrl + Z', '撤销'],
-      ['Ctrl + Y', '重做'],
-      ['Ctrl + 滚轮', '以指针为中心缩放'],
+      ['Ctrl / Cmd + Z', '撤销'],
+      ['Ctrl / Cmd + Y', '重做'],
+      ['Ctrl / Cmd + Shift + Z', '重做'],
+      ['滚轮', '垂直移动画布'],
+      ['Shift + 滚轮', '水平移动画布'],
+      ['Ctrl / Cmd + 滚轮', '以指针为中心缩放'],
+      ['Ctrl / Cmd + + / -', '放大 / 缩小画布'],
+      ['Ctrl / Cmd + 0', '画布适应视口'],
       ['方向键', '微调选区位置'],
+      ['Delete / Backspace', '删除选区'],
+      ['Enter', '确认浮动选区'],
+      ['Esc', '取消当前操作 / 清除选区'],
     ],
   },
 ] as const
