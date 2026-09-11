@@ -8,7 +8,7 @@
 - Tailwind CSS v4
 - 原生 Canvas / DOM 作为第一阶段 Web 渲染层
 - ESLint + Prettier 做基础代码约束
-- Vercel 作为推荐部署目标
+- 腾讯云香港服务器 + Caddy，推送 main 后通过 GitHub Actions 自动部署（见 [部署说明](deploy/README.md)）
 
 ## 本地启动
 

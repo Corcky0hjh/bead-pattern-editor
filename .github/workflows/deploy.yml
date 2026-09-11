@@ -1,0 +1,78 @@
+name: Deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Install and build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          printf '%s\n' "$GITHUB_SHA" > dist/deploy-version.txt
+          tar -czf deploy.tar.gz dist deploy
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<'SSH'
+          Host corcky-deploy
+            HostName 43.161.220.230
+            User ubuntu
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            BatchMode yes
+            StrictHostKeyChecking yes
+            ConnectTimeout 15
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+          SSH
+      - name: Upload and deploy
+        run: |
+          ssh corcky-deploy 'mkdir -p /home/ubuntu/apps/.deploy/beads'
+          scp deploy.tar.gz corcky-deploy:/home/ubuntu/apps/.deploy/beads/incoming.tar.gz
+          ssh corcky-deploy 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /home/ubuntu/apps/.deploy/beads
+          release="$(mktemp -d /home/ubuntu/apps/.deploy/beads/release.XXXXXX)"
+          trap 'rm -rf -- "$release"; rm -f -- /home/ubuntu/apps/.deploy/beads/incoming.tar.gz' EXIT
+          tar -xzf incoming.tar.gz -C "$release"
+          cd "$release"
+          bash deploy/deploy.sh
+          REMOTE
+      - name: Verify deployed version
+        run: |
+          for attempt in $(seq 1 12); do
+            actual="$(curl -fsS --max-time 15 'https://beads.corcky.top/deploy-version.txt' || true)"
+            if [ "$actual" = "$GITHUB_SHA" ]; then
+              echo "Verified https://beads.corcky.top/ at $GITHUB_SHA"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Live version did not match this commit."
+          exit 1
+      - name: Remove runner SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
