@@ -107,8 +107,13 @@ export function measureToolbarNaturalExtent(
   const operationsGap = operationsStyle
     ? Number.parseFloat(operationsStyle[gapProperty]) || 0
     : 0
-  const operationsExtent =
-    operationChildren.reduce(
+  // Horizontal two-row toolbars stack their operation groups vertically.
+  // Adding both row widths falsely consumes the entire stage and clamps every
+  // drop to the left edge. Their horizontal extent is the widest row instead.
+  const stackedRows = axis === 'horizontal' && operationsStyle?.display === 'grid'
+  const operationsExtent = stackedRows
+    ? Math.max(0, ...operationChildren.map((child) => child.getBoundingClientRect().width))
+    : operationChildren.reduce(
       (total, child) => total + child.getBoundingClientRect()[dimension],
       0,
     ) + Math.max(0, operationChildren.length - 1) * operationsGap

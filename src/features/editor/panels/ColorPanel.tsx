@@ -14,6 +14,7 @@ import {
   type BrandId,
 } from '../../../core/color'
 import { ColorPickerPopover } from '../../../components/ColorPickerPopover'
+import { Dropdown } from '../../../components/Dropdown'
 import { ModalDialog } from '../../../components/ModalDialog'
 import type { EditorStateController } from '../useEditorState'
 
@@ -47,19 +48,82 @@ export function ColorPanel({ editor }: ColorPanelProps) {
 
   return (
     <div className="grid gap-4">
-      <BrandPicker
-        currentBrand={editor.currentBrand}
-        onChange={editor.setCurrentBrand}
-      />
-
-      {stubBrand ? (
-        <p className="rounded-2xl bg-editor-surface-soft px-3 py-2 text-[11px] leading-5 text-editor-text">
-          {editor.brand.shortLabel} 色卡数据待录入，先用 MARD 5mm 上手。
-          自定义色仍可用。
-        </p>
+      {editor.editorMode === 'bead' ? (
+        <section className="grid gap-2">
+          <p className="text-xs font-bold text-editor-text">拼豆模式</p>
+          <div role="group" aria-label="拼豆模式" className="grid grid-cols-2 gap-1 rounded-2xl bg-editor-surface-soft p-1">
+            {([
+              { value: 'free', label: '自由拼豆' },
+              { value: 'layer', label: '图层拼豆' },
+            ] as const).map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={editor.beadingMode === value}
+                className={`rounded-xl px-3 py-2 text-xs font-bold transition ${editor.beadingMode === value ? 'bg-editor-accent text-white' : 'text-editor-text hover:bg-editor-elevated hover:text-editor-strong'}`}
+                onClick={() => editor.setBeadingMode(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
       ) : null}
-
-      <section className="rounded-2xl bg-editor-surface-soft px-3 py-2">
+      {editor.editorMode === 'bead' ? (
+        <section className="grid gap-2 rounded-2xl bg-editor-surface-soft/60 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-bold text-editor-text">整体进度</p>
+            <button
+              type="button"
+              aria-label="重置拼豆进度"
+              disabled={editor.completedBeadCount === 0}
+              className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-editor-text transition hover:bg-editor-elevated hover:text-editor-accent disabled:pointer-events-none disabled:opacity-35"
+              onClick={editor.resetBeadingProgress}
+            >
+              <Trash size={13} weight="regular" />
+              重置进度
+            </button>
+          </div>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-lg font-bold tabular-nums text-editor-strong">
+                {editor.usedCount === 0
+                  ? 0
+                  : Math.round(
+                      (editor.completedBeadCount / editor.usedCount) * 100,
+                    )}
+                %
+              </p>
+            </div>
+            <p className="text-xs font-black tabular-nums text-editor-strong">
+              {editor.completedBeadCount} / {editor.usedCount} 颗
+            </p>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-editor-elevated">
+            <div
+              className="h-full rounded-full bg-editor-accent transition-[width] duration-200"
+              style={{
+                width: `${
+                  editor.usedCount === 0
+                    ? 0
+                    : (editor.completedBeadCount / editor.usedCount) * 100
+                }%`,
+              }}
+            />
+          </div>
+          {editor.beadingMode === 'free' && editor.beadingColor ? (
+            <button
+              type="button"
+              className="justify-self-start rounded-full bg-editor-elevated px-3 py-1.5 text-[11px] font-black text-editor-strong"
+              onClick={() => editor.setBeadingColor(null)}
+            >
+              显示全部颜色
+            </button>
+          ) : null}
+        </section>
+      ) : null}
+      {editor.editorMode === 'draw' ? <>
+      <section className="py-1">
         <div className="flex items-center gap-3">
           <ColorPickerPopover
             ariaLabel="当前颜色"
@@ -82,65 +146,9 @@ export function ColorPanel({ editor }: ColorPanelProps) {
             disabled={currentInCustomPalette}
             onClick={editor.addCurrentColorToPalette}
           >
-            {currentInCustomPalette ? '已存' : '存为自定义'}
+            {currentInCustomPalette ? '已存' : '收藏颜色'}
           </button>
         </div>
-      </section>
-
-      {editor.customPalette.length > 0 ? (
-        <CustomColorsSection editor={editor} />
-      ) : null}
-
-      <section className="grid gap-3 rounded-2xl bg-editor-surface-soft p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <span className="block text-xs font-bold text-editor-text">
-              可用色卡 · {editor.brand.shortLabel}
-            </span>
-            <span className="mt-1 block text-[11px] leading-4 text-editor-text/75">
-              {editor.availablePalette.length} / {editor.palette.length}{' '}
-              色可用于转图
-              {editor.excludedColorHexes.size > 0
-                ? ` · 已排除 ${editor.excludedColorHexes.size} 色`
-                : ''}
-            </span>
-          </div>
-          <button
-            className="shrink-0 rounded-full bg-editor-accent px-3 py-1.5 text-xs font-black text-white"
-            type="button"
-            onClick={() => setPaletteModalOpen(true)}
-          >
-            管理
-          </button>
-        </div>
-      </section>
-
-      <section className="grid gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-bold text-editor-text">选择豆色</span>
-          <span className="rounded-full bg-editor-surface-soft px-2 py-1 text-[11px] font-bold text-editor-text">
-            {editor.availablePalette.length} 色
-          </span>
-        </div>
-        {editor.availablePalette.length > 0 ? (
-          <div className="grid max-h-56 grid-cols-[repeat(auto-fill,minmax(38px,1fr))] gap-2 overflow-auto rounded-3xl bg-editor-surface-soft p-2">
-            {editor.availablePalette.map((color) => (
-              <BeadColorPickCell
-                key={color.hex}
-                color={color}
-                brand={editor.currentBrand}
-                selected={
-                  color.hex.toLowerCase() === editor.currentColor.toLowerCase()
-                }
-                onClick={() => editor.selectDrawingColor(color.hex)}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-3xl bg-editor-surface-soft px-3 py-3 text-xs leading-5 text-editor-text">
-            当前没有可选豆色
-          </p>
-        )}
       </section>
 
       <section className="grid gap-3">
@@ -159,15 +167,62 @@ export function ColorPanel({ editor }: ColorPanelProps) {
         </div>
       </section>
 
+      {editor.customPalette.length > 0 ? (
+        <CustomColorsSection editor={editor} />
+      ) : null}
+
+      <section className="grid gap-3 border-t border-editor-border pt-4">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <Dropdown
+              ariaLabel="色卡品牌"
+              value={editor.currentBrand}
+              onChange={editor.setCurrentBrand}
+              options={brands.map((brand) => ({
+                value: brand.id,
+                label: brand.shortLabel,
+                hint: brand.available ? brand.label : `${brand.label} · 数据待录入`,
+              }))}
+              className="flex h-9 w-full items-center justify-between gap-2 rounded-xl bg-editor-surface-soft px-3 text-xs font-bold text-editor-strong outline-none transition-colors hover:bg-editor-accent-soft focus-visible:ring-2 focus-visible:ring-editor-accent/40"
+            />
+          </div>
+          <button type="button" onClick={() => setPaletteModalOpen(true)} className="h-9 shrink-0 rounded-lg px-2 text-xs font-bold text-editor-text hover:bg-editor-surface-soft">管理色卡</button>
+        </div>
+        <div className="flex items-center justify-between text-xs text-editor-text">
+          <span>选择豆色</span><span className="text-[11px] tabular-nums">{editor.availablePalette.length} 色{editor.excludedColorHexes.size > 0 ? ` · 已排除 ${editor.excludedColorHexes.size}` : ''}</span>
+        </div>
+        {stubBrand ? <p className="text-xs leading-5 text-editor-text">该品牌色卡待录入，可先使用 MARD 或自定义颜色。</p> : null}
+        {editor.availablePalette.length > 0 ? (
+          <div className="grid max-h-72 grid-cols-[repeat(auto-fill,minmax(38px,1fr))] gap-1 overflow-y-auto py-1">
+            {editor.availablePalette.map((color) => (
+              <BeadColorPickCell
+                key={color.hex}
+                color={color}
+                brand={editor.currentBrand}
+                selected={
+                  color.hex.toLowerCase() === editor.currentColor.toLowerCase()
+                }
+                onClick={() => editor.selectDrawingColor(color.hex)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="py-3 text-xs leading-5 text-editor-text">
+            当前没有可选豆色
+          </p>
+        )}
+      </section>
+
+      </> : null}
       <section className="grid gap-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-bold text-editor-text">用色统计</span>
+          <span className="text-xs font-bold text-editor-text">{editor.editorMode === 'bead' && editor.beadingMode === 'layer' ? '颜色图层' : '本图用色'}</span>
           <span className="rounded-full bg-editor-surface-soft px-2 py-1 text-[11px] font-bold text-editor-text">
             共 {editor.colorStats.length} 色
           </span>
         </div>
         {editor.colorStats.length > 0 ? (
-          <div className="max-h-72 overflow-auto rounded-2xl bg-editor-surface-soft px-2">
+          <div className="border-t border-editor-border">
             {editor.colorStats.map((item) => {
               const paletteColor =
                 editor.customPalette.find(
@@ -191,17 +246,41 @@ export function ColorPanel({ editor }: ColorPanelProps) {
                   label={label}
                   code={item.code}
                   count={item.count}
-                  selected={
-                    editor.highlightedColor?.toLowerCase() ===
-                    item.color.toLowerCase()
+                  completedCount={
+                    editor.editorMode === 'bead'
+                      ? (editor.completedBeadCountsByColor.get(
+                          item.color.toLowerCase(),
+                        ) ?? 0)
+                      : undefined
                   }
-                  onPickCurrent={() => editor.toggleHighlightedColor(item.color)}
+                  selected={
+                    editor.editorMode === 'bead'
+                      ? editor.beadingColor?.toLowerCase() ===
+                        item.color.toLowerCase()
+                      : editor.highlightedColor?.toLowerCase() ===
+                        item.color.toLowerCase()
+                  }
+                  onPickCurrent={() => {
+                    if (editor.editorMode === 'bead') {
+                      if (editor.beadingMode === 'layer') {
+                        editor.selectBeadingColorLayer(item.color)
+                      } else {
+                        editor.setBeadingColor((current) =>
+                          current?.toLowerCase() === item.color.toLowerCase()
+                            ? null
+                            : item.color.toLowerCase(),
+                        )
+                      }
+                    } else {
+                      editor.toggleHighlightedColor(item.color)
+                    }
+                  }}
                 />
               )
             })}
           </div>
         ) : (
-          <p className="rounded-3xl bg-editor-surface-soft px-3 py-3 text-xs leading-5 text-editor-text">
+          <p className="py-3 text-xs leading-5 text-editor-text">
             还没用过颜色
           </p>
         )}
@@ -696,6 +775,7 @@ function UsedColorRow({
   label,
   code,
   count,
+  completedCount,
   selected,
   onPickCurrent,
 }: {
@@ -703,6 +783,7 @@ function UsedColorRow({
   label: string
   code: string | null
   count: number
+  completedCount?: number
   selected: boolean
   onPickCurrent: () => void
 }) {
@@ -737,7 +818,7 @@ function UsedColorRow({
         </span>
       </button>
       <strong className="min-w-7 text-right text-[11px] tabular-nums text-editor-strong">
-        {count}
+        {completedCount === undefined ? count : `${completedCount}/${count}`}
       </strong>
     </div>
   )

@@ -1,5 +1,361 @@
 @import 'tailwindcss';
 
+.editor-canvas-stage {
+  container: toolbar-space / inline-size;
+}
+
+@container toolbar-space (width < 448px) {
+  .toolbar-surface[data-toolbar-orientation='horizontal'] .beading-progress-label {
+    display: none;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'] .beading-toolbar-progress {
+    gap: 8px;
+    padding-inline: 8px;
+  }
+}
+
+/* Measured natural widths: full 819px, compact 662px (rounded up).
+   Compact: 40px handle + 2px gap + 292px tools + 2px gap +
+   310px utilities + 16px surface padding/border. Use available stage
+   content width, so an open work panel also participates in the breakpoint. */
+.toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-content] {
+  min-width: 0;
+}
+
+  @container toolbar-space (width < 819px) {
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-tool-button][data-has-preset='true'] {
+      width: 40px !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-tool-button][data-has-preset='true']
+      > span:first-child {
+      display: none !important;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      .toolbar-operation-group {
+      gap: 2px;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-toolbar-content] {
+      gap: 2px;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-toolbar-row] {
+      gap: 2px;
+    }
+
+    .toolbar-surface[data-toolbar-orientation='horizontal']
+      [data-toolbar-divider] {
+      display: none !important;
+    }
+  }
+
+/* Keep the animated shell separate from the two independently scrolling rows. */
+.toolbar-surface[data-toolbar-dragging='true'] {
+  border-radius: 28px;
+  transition: border-radius 200ms ease-out;
+}
+
+@container toolbar-space (width < 662px) {
+  .toolbar-surface[data-toolbar-orientation='horizontal'] {
+    max-width: 100%;
+    width: max-content;
+    margin-inline: auto;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-content] {
+    width: max-content;
+    max-width: 100%;
+    align-items: center;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'][data-toolbar-animating='false'] [data-toolbar-content] {
+    gap: 8px !important;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-operations] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    row-gap: 8px !important;
+    transition: width 200ms ease-out, height 200ms ease-out, opacity 200ms ease-out;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'][data-toolbar-animating='false'] [data-toolbar-operations] {
+    width: max-content;
+    height: 88px;
+    overflow: hidden;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'][data-toolbar-collapsed='true'] [data-toolbar-operations] {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'][data-toolbar-dragging='true'] [data-toolbar-content] {
+    gap: 0 !important;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-operations] > [data-toolbar-row] {
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-operations] > [data-toolbar-row]::-webkit-scrollbar {
+    display: none;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-operations] > [data-toolbar-row] > * {
+    flex-shrink: 0;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal']:is([data-toolbar-placement='top'], [data-toolbar-placement='bottom']) {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal']:is([data-toolbar-placement='top'], [data-toolbar-placement='bottom']) [data-toolbar-content] {
+    width: 100%;
+  }
+
+  .toolbar-surface[data-toolbar-orientation='horizontal']:is([data-toolbar-placement='top'], [data-toolbar-placement='bottom']) [data-toolbar-operations] {
+    flex: 1;
+  }
+}
+
+/* Full two-row layout: 384px tool row + 40px handle + 8px gap + 16px chrome. */
+@container toolbar-space (448px <= width < 662px) {
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-tool-button][data-has-preset='true'] {
+    width: 56px !important;
+  }
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-tool-button][data-has-preset='true'] > span:first-child {
+    display: grid !important;
+  }
+  .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-operations] [data-toolbar-row] {
+    gap: 4px !important;
+  }
+}
+/* Main tools and persistent canvas controls have independent shells. */
+[data-main-toolbar]:is([data-main-placement='top'], [data-main-placement='bottom']) {
+  width: 100%;
+  justify-self: stretch;
+}
+
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] {
+  width: max-content;
+  margin-inline: 0;
+}
+
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'][data-toolbar-animating='false'] [data-toolbar-operations] {
+  display: flex;
+  height: 40px;
+  width: max-content;
+}
+
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-content] {
+  width: max-content;
+}
+
+[data-main-toolbar]:is([data-main-placement='top'], [data-main-placement='bottom']) .toolbar-surface[data-toolbar-orientation='horizontal'],
+[data-main-toolbar]:is([data-main-placement='top'], [data-main-placement='bottom']) .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-content] {
+  width: 100%;
+}
+
+.editor-header .canvas-utility-controls > [data-toolbar-row] > button,
+.editor-header .canvas-utility-controls [aria-label='历史操作'] button {
+  width: 32px;
+  height: 32px;
+}
+
+.editor-header .canvas-utility-controls [data-toolbar-row] {
+  height: 32px;
+}
+
+@media (max-width: 767px) {
+  .editor-header { gap: 4px; padding-inline: 0; }
+  .editor-header h1 { display: none; }
+  .editor-header-actions { gap: 2px; }
+  .header-zoom-toggle { display: block; }
+  .header-zoom-container [aria-label='画布缩放'] {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    padding: 8px;
+    height: auto !important;
+    border: 1px solid var(--color-editor-border);
+    background: var(--color-editor-elevated);
+    border-radius: 12px;
+  }
+  .header-zoom-container [data-zoom-open='true'] { display: none; }
+  .editor-header .canvas-utility-controls [data-toolbar-divider] { display: none; }
+}
+
+.header-control-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 224px;
+  padding: 12px;
+  border: 1px solid var(--color-editor-border);
+  border-radius: 16px;
+  background: var(--color-editor-elevated);
+  box-shadow: 0 10px 30px rgb(31 24 18 / 12%);
+}
+.header-menu-item {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--color-editor-strong);
+}
+.header-menu-step {
+  display: grid;
+  min-width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--color-editor-strong);
+}
+.header-menu-item:hover, .header-menu-step:hover:not(:disabled),
+.header-menu-step[aria-pressed='true'] {
+  background: var(--color-editor-accent-soft);
+  color: var(--color-editor-accent);
+}
+.header-menu-step:disabled { opacity: .35; }
+
+/* Header popovers sit above floating tools (50), below the work panel (65). */
+.canvas-utility-controls {
+  z-index: 60;
+}
+
+.canvas-utility-controls > [data-toolbar-row] {
+  gap: 4px;
+}
+
+.canvas-utility-controls > [data-toolbar-row] > [aria-label='历史操作'],
+.canvas-utility-controls > [data-toolbar-row] > [aria-label='画布缩放'] {
+  background: transparent;
+}
+
+.canvas-utility-controls > [data-toolbar-row] > button,
+.canvas-utility-controls > [data-toolbar-row] > div > button {
+  border-color: transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-editor-text);
+}
+
+.canvas-utility-controls > [data-toolbar-row] button:hover:not(:disabled),
+.canvas-utility-controls .utility-display-button[aria-expanded='true'] {
+  background: var(--color-editor-accent-soft);
+  color: var(--color-editor-accent);
+}
+
+.canvas-utility-controls > [data-toolbar-row] button:focus-visible {
+  outline: 2px solid var(--color-editor-accent);
+  outline-offset: 2px;
+}
+
+.canvas-utility-controls [aria-label='画布缩放'] input {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.canvas-utility-controls [data-toolbar-divider] {
+  display: block;
+  height: 14px;
+  margin-inline: 3px;
+  opacity: 0.6;
+}
+
+@container toolbar-space (width >= 448px) {
+  [data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-tool-button][data-has-preset='true'] {
+    width: 56px !important;
+  }
+  [data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-tool-button][data-has-preset='true'] > span:first-child {
+    display: grid !important;
+  }
+}
+
+/* Measured: main tools 448px + controls 328px + 16px separation = 792px. */
+@container toolbar-space (width < 800px) {
+  .canvas-utility-controls {
+    grid-row-start: 4;
+  }
+}
+
+.editor-workspace {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  margin-inline: auto;
+  max-width: 1920px;
+}
+
+.editor-workspace-layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+}
+
+.editor-work-panel {
+  border-radius: 20px 0 0 20px;
+  position: fixed;
+  z-index: 65;
+  inset: 0 0 0 auto;
+  width: min(360px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 72px;
+  border-left: 1px solid var(--color-editor-border);
+  background: var(--color-editor-surface);
+  box-shadow: -12px 0 40px rgb(31 24 18 / 8%);
+  transform: translateX(100%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 200ms ease-in-out, visibility 0s linear 200ms;
+}
+
+.editor-work-panel[data-open='true'] {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.work-panel-toggle {
+  position: relative;
+  z-index: 70;
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-work-panel { transition: none; }
+}
+
 @theme {
   --color-editor-bg: #f8f2e8;
   --color-editor-surface: #fffaf2;
@@ -361,39 +717,6 @@
     }
 
     .toolbar-surface[data-toolbar-orientation='vertical']
-      [data-toolbar-divider] {
-      display: none !important;
-    }
-  }
-
-  @media (max-width: 960px) {
-    .toolbar-surface[data-toolbar-orientation='horizontal']
-      [data-tool-button][data-has-preset='true'] {
-      width: 40px !important;
-    }
-
-    .toolbar-surface[data-toolbar-orientation='horizontal']
-      [data-tool-button][data-has-preset='true']
-      > span:first-child {
-      display: none !important;
-    }
-
-    .toolbar-surface[data-toolbar-orientation='horizontal']
-      .toolbar-operation-group {
-      gap: 2px !important;
-    }
-
-    .toolbar-surface[data-toolbar-orientation='horizontal']
-      [data-toolbar-content] {
-      gap: 2px !important;
-    }
-
-    .toolbar-surface[data-toolbar-orientation='horizontal']
-      [data-toolbar-row] {
-      gap: 2px !important;
-    }
-
-    .toolbar-surface[data-toolbar-orientation='horizontal']
       [data-toolbar-divider] {
       display: none !important;
     }
@@ -816,6 +1139,38 @@
       linear-gradient(0deg, var(--color-editor-accent) 64%, transparent 64%) 0 0 / 2px 14px repeat-y,
       linear-gradient(0deg, var(--color-editor-accent) 64%, transparent 64%) 100% 0 / 2px 14px repeat-y;
     animation: selection-marquee-move 650ms linear infinite;
+  }
+
+  .symmetry-axis--vertical {
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--color-editor-accent) 0 12px,
+      transparent 12px 18px
+    );
+    background-size: 2px 18px;
+    animation: symmetry-axis-vertical-move 720ms linear infinite;
+  }
+
+  .symmetry-axis--horizontal {
+    background: repeating-linear-gradient(
+      to right,
+      var(--color-editor-accent) 0 12px,
+      transparent 12px 18px
+    );
+    background-size: 18px 2px;
+    animation: symmetry-axis-horizontal-move 720ms linear infinite;
+  }
+
+  .symmetry-axis--static {
+    animation: none;
+  }
+
+  @keyframes symmetry-axis-vertical-move {
+    to { background-position: 0 18px; }
+  }
+
+  @keyframes symmetry-axis-horizontal-move {
+    to { background-position: 18px 0; }
   }
 
   @keyframes settings-backdrop-exit {

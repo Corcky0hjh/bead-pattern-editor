@@ -11,6 +11,7 @@ import {
   type SetStateAction,
 } from 'react'
 import { getDisplayCode } from '../../../core/color'
+import { ImageSquare } from '@phosphor-icons/react'
 import {
   conversionAlgorithmOptions,
   type ConversionAlgorithm,
@@ -34,6 +35,7 @@ import { BrandPicker, PaletteManagerModal } from './ColorPanel'
 
 type ImagePanelProps = {
   editor: EditorStateController
+  compact?: boolean
 }
 
 type ConversionDraft = {
@@ -69,7 +71,7 @@ const boardSizePresets = [
   { label: 'mini-2x2', cols: 104, rows: 104, name: 'Mini 2 × 2' },
 ]
 
-export function ImagePanel({ editor }: ImagePanelProps) {
+export function ImagePanel({ editor, compact = false }: ImagePanelProps) {
   const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -86,10 +88,12 @@ export function ImagePanel({ editor }: ImagePanelProps) {
       <button
         ref={importTriggerRef}
         type="button"
-        className="group grid min-h-24 cursor-pointer gap-2 rounded-3xl border border-editor-border bg-editor-elevated/70 px-4 py-4 text-left transition hover:-translate-y-0.5 hover:bg-editor-elevated hover:shadow-sm active:translate-y-0"
+        aria-label={compact ? '导入照片' : undefined}
+        title={compact ? '导入照片' : undefined}
+        className={compact ? 'grid h-8 w-8 shrink-0 place-items-center rounded-lg text-editor-text transition hover:bg-editor-accent-soft hover:text-editor-accent focus-visible:outline-2 focus-visible:outline-editor-accent' : 'group grid min-h-24 cursor-pointer gap-2 rounded-3xl border border-editor-border bg-editor-elevated/70 px-4 py-4 text-left transition hover:bg-editor-elevated hover:shadow-sm'}
         onClick={() => fileInputRef.current?.click()}
       >
-        <span className="flex items-center justify-between gap-3">
+        {compact ? <ImageSquare size={19} weight="regular" aria-hidden="true" /> : <><span className="flex items-center justify-between gap-3">
           <span className="text-sm font-black text-editor-strong">
             选择图片生成图纸
           </span>
@@ -100,6 +104,7 @@ export function ImagePanel({ editor }: ImagePanelProps) {
         <span className="text-xs leading-5 text-editor-text">
           选图后直接进入构图和转色预览
         </span>
+        </>}
       </button>
       <input
         ref={fileInputRef}

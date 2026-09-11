@@ -5,6 +5,7 @@ type CollapsibleSectionProps = {
   description?: string
   defaultOpen?: boolean
   children: ReactNode
+  integrated?: boolean
 }
 
 export function CollapsibleSection({
@@ -12,11 +13,12 @@ export function CollapsibleSection({
   description,
   defaultOpen = false,
   children,
+  integrated = false,
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <section className="shrink-0 rounded-3xl border border-editor-border bg-editor-surface">
+    <section className={integrated ? 'shrink-0 border-b border-editor-border last:border-b-0' : 'shrink-0 rounded-3xl border border-editor-border bg-editor-surface'}>
       <button
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
         type="button"

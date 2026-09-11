@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
+import { SidebarSimple } from '@phosphor-icons/react'
 import { CanvasStage } from '../../platform/web/CanvasStage'
-import { CollapsibleSection } from './components/CollapsibleSection'
 import { CanvasSettingsModal } from './panels/CanvasSettingsModal'
 import { ColorPanel } from './panels/ColorPanel'
 import { ImagePanel } from './panels/ImagePanel'
+import { BeadingLibraryPanel } from './panels/BeadingLibraryPanel'
 import { useEditorState, type EditorTool } from './useEditorState'
 
 const brushSizes = [1, 2, 3, 4, 5]
 
 export function EditorShell() {
   const editor = useEditorState()
+  const [headerControls, setHeaderControls] = useState<HTMLDivElement | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
+  const [panelTab, setPanelTab] = useState<'colors' | 'beading'>('colors')
   const previousToolRef = useRef<EditorTool | null>(null)
   // 记录"是否因为按住 Alt 而激活了临时吸管"。松开 Alt 时只关掉我们自己开的那次,
   // 不影响用户主动开/关的吸管状态。
@@ -34,7 +38,7 @@ export function EditorShell() {
 
       // 按住 Alt 临时激活吸管(松开恢复)。要在 meta/alt 早返回之前处理。
       // preventDefault 避免 Windows Chrome/Edge 把单按 Alt 解释成"聚焦菜单栏"
-      if (key === 'Alt' && !meta) {
+      if (key === 'Alt' && !meta && editor.editorMode === 'draw') {
         event.preventDefault()
         if (!editor.eyedropperActive && !altEyedropperRef.current) {
           altEyedropperRef.current = true
@@ -44,12 +48,14 @@ export function EditorShell() {
 
       if (meta && lower === 'z' && !event.shiftKey) {
         event.preventDefault()
-        editor.undo()
+        if (editor.editorMode === 'bead') editor.undoBeadingProgress()
+        else editor.undo()
         return
       }
       if ((meta && lower === 'y') || (meta && lower === 'z' && event.shiftKey)) {
         event.preventDefault()
-        editor.redo()
+        if (editor.editorMode === 'bead') editor.redoBeadingProgress()
+        else editor.redo()
         return
       }
 
@@ -63,6 +69,8 @@ export function EditorShell() {
         event.preventDefault()
         return
       }
+
+      if (editor.editorMode === 'bead') return
 
       switch (lower) {
         case 'b':
@@ -147,24 +155,57 @@ export function EditorShell() {
 
   return (
     <>
-      <div className="mx-auto grid max-w-[1760px] grid-cols-1 gap-5 2xl:h-full 2xl:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="order-1 min-w-0 2xl:min-h-0">
+      <div className="editor-workspace">
+        <header className="editor-header flex h-10 shrink-0 items-center justify-between gap-4 px-2 pb-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid h-8 w-8 shrink-0 place-content-center" aria-hidden="true">
+              <img src="/logo-bead-b.png" alt="" className="h-12 w-12 max-w-none object-contain" />
+            </span>
+            <h1 className="truncate font-serif text-[21px] font-semibold italic tracking-tight text-editor-strong" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>Bead Atelier</h1>
+          </div>
+          <div className="editor-header-actions flex shrink-0 items-center gap-2">
+          <div ref={setHeaderControls} />
+          {editor.editorMode === 'draw' ? <ImagePanel editor={editor} compact /> : null}
+          <div className="relative z-[70] shrink-0">
+          {panelOpen ? (
+            <div className="absolute right-12 top-0 flex h-8 w-48 items-center gap-1" role="tablist" aria-label="工作面板内容">
+              {([{ value: 'colors', label: '颜色' }, { value: 'beading', label: '记录' }] as const).map((tab) => (
+                <button key={tab.value} id={`work-tab-${tab.value}`} type="button" role="tab" aria-selected={panelTab === tab.value} aria-controls="work-panel-content" onClick={() => setPanelTab(tab.value)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${panelTab === tab.value ? 'bg-editor-accent-soft text-editor-accent' : 'text-editor-text hover:bg-editor-surface-soft'}`}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className={`work-panel-toggle flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${panelOpen ? 'text-editor-strong' : 'text-editor-text hover:bg-editor-surface-soft'}`}
+            aria-label={panelOpen ? '收起工作面板' : '展开工作面板'}
+            title={panelOpen ? '收起工作面板' : '展开工作面板'}
+            aria-expanded={panelOpen}
+            aria-controls="editor-work-panel"
+            onClick={() => setPanelOpen((open) => !open)}
+          >
+            <SidebarSimple size={21} weight={panelOpen ? 'fill' : 'regular'} />
+          </button>
+          </div>
+          </div>
+        </header>
+      <div className="editor-workspace-layout" data-panel-open={panelOpen}>
+        <section className="relative min-h-0 min-w-0">
           <CanvasStage
             editor={editor}
+            headerControls={headerControls}
             onOpenSettings={() => setSettingsOpen(true)}
           />
         </section>
 
-        <aside className="order-3 overflow-visible 2xl:min-h-0 2xl:max-h-full">
-          <div className="grid max-h-full content-start gap-3 overflow-visible 2xl:overflow-y-auto">
-            <CollapsibleSection title="照片转图纸">
-              <ImagePanel editor={editor} />
-            </CollapsibleSection>
-            <CollapsibleSection title="颜色" defaultOpen>
-              <ColorPanel editor={editor} />
-            </CollapsibleSection>
+        <aside id="editor-work-panel" aria-label="工作面板" className="editor-work-panel" data-open={panelOpen} aria-hidden={!panelOpen} inert={!panelOpen}>
+
+          <div id="work-panel-content" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" role="tabpanel" aria-labelledby={`work-tab-${panelTab}`}>
+            {panelTab === 'colors' ? <ColorPanel editor={editor} /> : <BeadingLibraryPanel editor={editor} />}
           </div>
         </aside>
+      </div>
       </div>
       {settingsOpen ? (
         <CanvasSettingsModal
@@ -181,8 +222,13 @@ function adjustBrushSize(
   step: number,
 ) {
   const tool = editor.currentTool
-  if (tool !== 'brush' && tool !== 'eraser') return
-  const current = tool === 'brush' ? editor.brushSize : editor.eraserSize
+  if (tool !== 'brush' && tool !== 'eraser' && tool !== 'shape') return
+  const current =
+    tool === 'eraser'
+      ? editor.eraserSize
+      : tool === 'shape'
+        ? editor.shapeStrokeSize
+        : editor.brushSize
   const currentIndex = brushSizes.indexOf(current)
   const baseIndex = currentIndex === -1 ? 0 : currentIndex
   const nextIndex = Math.min(
@@ -190,6 +236,15 @@ function adjustBrushSize(
     Math.max(0, baseIndex + step),
   )
   const next = brushSizes[nextIndex]
-  if (tool === 'brush') editor.setBrushSize(next)
-  else editor.setEraserSize(next)
+  if (tool === 'eraser') {
+    editor.setEraserMode('brush')
+    editor.setEraserSize(next)
+  } else {
+    if (tool === 'shape') {
+      editor.setShapeStyle('outline')
+      editor.setShapeStrokeSize(next)
+    } else {
+      editor.setBrushSize(next)
+    }
+  }
 }

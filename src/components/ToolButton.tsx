@@ -107,7 +107,7 @@ export function ToolButton({
         <span
           className={`absolute inset-0 rounded-2xl border border-transparent transition-[transform,background-color,border-color] duration-150 group-hover:border-editor-accent/25 group-active:scale-95 ${
             active || statusActive
-              ? 'bg-editor-accent shadow-sm'
+              ? 'bg-editor-accent'
               : 'bg-editor-surface-soft group-hover:bg-editor-elevated'
           }`}
         />
@@ -117,7 +117,7 @@ export function ToolButton({
         {colorIndicator ? (
           <span
             aria-hidden="true"
-            className="absolute bottom-0 left-0 z-20 h-2.5 w-2.5 rounded-full border border-white/85 shadow-[0_2px_6px_rgba(10,8,6,0.55),0_0_0_1px_rgba(31,24,18,0.18)]"
+            className="absolute bottom-0 left-0 z-20 h-2.5 w-2.5 rounded-full border border-white/85"
             style={{ backgroundColor: colorIndicator }}
           />
         ) : null}

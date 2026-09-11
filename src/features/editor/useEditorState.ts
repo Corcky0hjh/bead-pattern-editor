@@ -1,3 +1,4 @@
+import { buildBeadingLayers, connectedBeads, nextPendingLayer } from '../../core/pattern/beadingLayers'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   brands,
@@ -63,6 +64,7 @@ import {
   parsePatternGrid,
   type PatternCellChunkView,
   type PatternGrid,
+  type SerializedPatternGrid,
 } from '../../core/pattern/grid'
 
 export type EditorTool =
@@ -72,6 +74,8 @@ export type EditorTool =
   | 'eraser'
   | 'fill'
   | 'shape'
+export type EditorMode = 'draw' | 'bead'
+export type BeadingMode = 'free' | 'layer'
 export type SymmetryMode = 'off' | 'vertical' | 'horizontal' | 'both' | 'center'
 export type FillMode = 'region' | 'global'
 export type EraserMode = 'brush' | 'region'
@@ -114,6 +118,25 @@ type HistoryState = {
   pastExcluded: Set<string>[]
   futureExcluded: Set<string>[]
 }
+
+type BeadingHistoryState = {
+  past: Set<number>[]
+  present: Set<number>
+  future: Set<number>[]
+}
+
+export type BeadingProjectSummary = {
+  id: string
+  name: string
+  createdAt: number
+  updatedAt: number
+  pattern: SerializedPatternGrid
+  completed: number[]
+  beadingMode: BeadingMode
+}
+
+const beadingProjectsStorageKey = 'bead-pattern-editor:beading-projects'
+export const maxBeadingProjects = 10
 
 type PatternSummary = {
   counts: Map<string, number>
@@ -258,11 +281,33 @@ export function useEditorState() {
     futureExcluded: [],
   })
   const [currentTool, setCurrentTool] = useState<EditorTool>('brush')
+  const [editorMode, setEditorMode] = useState<EditorMode>('draw')
+  const [beadingProjects, setBeadingProjects] = useState<
+    BeadingProjectSummary[]
+  >(() => loadBeadingProjects())
+  const [activeBeadingProjectId, setActiveBeadingProjectId] = useState<
+    string | null
+  >(null)
+  const [activeBeadingPattern, setActiveBeadingPattern] =
+    useState<PatternGrid | null>(null)
+  const [beadingMode, setBeadingModeState] = useState<BeadingMode>('free')
+  const [beadingFillMode, setBeadingFillMode] = useState<'point' | 'connected'>('point')
+  const [beadingHistory, setBeadingHistory] = useState<BeadingHistoryState>({
+    past: [],
+    present: new Set(),
+    future: [],
+  })
+  const [beadingColor, setBeadingColor] = useState<string | null>(null)
+  const [activeBeadingLayerAnchor, setActiveBeadingLayerAnchor] = useState<
+    number | null
+  >(null)
+  const [hideCompletedBeads, setHideCompletedBeads] = useState(false)
   const [brushSymmetryMode, setBrushSymmetryMode] =
     useState<SymmetryMode>('off')
   const [eraserSymmetryMode, setEraserSymmetryMode] =
     useState<SymmetryMode>('off')
   const [brushSize, setBrushSize] = useState(1)
+  const [shapeStrokeSize, setShapeStrokeSize] = useState(1)
   const [eraserSize, setEraserSize] = useState(1)
   const [eraserMode, setEraserMode] = useState<EraserMode>('brush')
   const [fillMode, setFillMode] = useState<FillMode>('region')
@@ -314,6 +359,8 @@ export function useEditorState() {
   const strokePreviewListenerRef = useRef<
     ((changes: Array<{ index: number; color: string | null }>) => void) | null
   >(null)
+  const beadingStrokeBaselineRef = useRef<Set<number> | null>(null)
+  const beadingStrokeChangedRef = useRef(false)
 
   useEffect(() => {
     writeLocalStorage(customPaletteStorageKey, JSON.stringify(customPalette))
@@ -338,11 +385,21 @@ export function useEditorState() {
   }, [canvasSettings])
 
   useEffect(() => {
+    writeLocalStorage(
+      beadingProjectsStorageKey,
+      JSON.stringify(beadingProjects),
+    )
+  }, [beadingProjects])
+
+  useEffect(() => {
     applyTheme(currentTheme)
     writeLocalStorage(themeStorageKey, currentTheme)
   }, [currentTheme])
 
-  const pattern = history.present
+  const pattern =
+    editorMode === 'bead' && activeBeadingPattern
+      ? activeBeadingPattern
+      : history.present
   const canUndo = history.past.length > 0
   const canRedo = history.future.length > 0
 
@@ -428,6 +485,336 @@ export function useEditorState() {
     [colorStats],
   )
 
+  const completedBeadCount = useMemo(() => {
+    let count = 0
+    beadingHistory.present.forEach((index) => {
+      const cell = pattern.cells[index]
+      if (cell?.color && !cell.isExternal) count += 1
+    })
+    return count
+  }, [beadingHistory.present, pattern])
+
+  const completedBeadCountsByColor = useMemo(() => {
+    const counts = new Map<string, number>()
+    beadingHistory.present.forEach((index) => {
+      const cell = pattern.cells[index]
+      if (!cell?.color || cell.isExternal) return
+      const color = cell.color.toLowerCase()
+      counts.set(color, (counts.get(color) ?? 0) + 1)
+    })
+    return counts
+  }, [beadingHistory.present, pattern])
+
+  // Color layers include disconnected cells of the same color.
+  const beadingLayers = useMemo(() => buildBeadingLayers(pattern), [pattern])
+
+  const activeBeadingLayer = useMemo(() => {
+    const color = activeBeadingLayerAnchor === null ? null : pattern.cells[activeBeadingLayerAnchor]?.color?.toLowerCase()
+    return beadingLayers.find((layer) => layer.color === color)?.indices ??
+      beadingLayers.find((layer) => [...layer.indices].some((index) => !beadingHistory.present.has(index)))?.indices ??
+      beadingLayers[0]?.indices ?? null
+  }, [activeBeadingLayerAnchor, pattern, beadingLayers, beadingHistory.present])
+  const activeBeadingLayerCompletedCount = useMemo(() => {
+    if (!activeBeadingLayer) return 0
+    let count = 0
+    activeBeadingLayer.forEach((index) => {
+      if (beadingHistory.present.has(index)) count += 1
+    })
+    return count
+  }, [activeBeadingLayer, beadingHistory.present])
+
+  const activeBeadingProject = useMemo(
+    () =>
+      beadingProjects.find((project) => project.id === activeBeadingProjectId) ??
+      null,
+    [activeBeadingProjectId, beadingProjects],
+  )
+
+  function saveActiveBeadingProgress(
+    completed: Set<number>,
+    mode: BeadingMode = beadingMode,
+  ) {
+    if (!activeBeadingProjectId) return
+    setBeadingProjects((previous) =>
+      previous.map((project) =>
+        project.id === activeBeadingProjectId
+          ? {
+              ...project,
+              completed: [...completed],
+              beadingMode: mode,
+              updatedAt: Date.now(),
+            }
+          : project,
+      ),
+    )
+  }
+
+  function setBeadingMode(mode: BeadingMode) {
+    saveActiveBeadingProgress(beadingHistory.present, mode)
+    setBeadingModeState(mode)
+    setActiveBeadingLayerAnchor(null)
+    setBeadingColor(null)
+    if (mode === 'layer') {
+      const layer = beadingLayers.find((item) => [...item.indices].some((index) => !beadingHistory.present.has(index))) ?? beadingLayers[0]
+      if (layer) selectBeadingLayer(layer.indices.values().next().value!)
+    }
+  }
+
+  function selectBeadingLayer(index: number) {
+    const cell = pattern.cells[index]
+    if (!cell?.color || cell.isExternal) return
+    setActiveBeadingLayerAnchor(index)
+    setBeadingColor(cell.color.toLowerCase())
+  }
+
+  function selectBeadingColorLayer(color: string) {
+    const normalized = color.toLowerCase()
+    let fallback: number | null = null
+    for (let index = 0; index < pattern.cells.length; index += 1) {
+      const cell = pattern.cells[index]
+      if (
+        !cell?.color ||
+        cell.isExternal ||
+        cell.color.toLowerCase() !== normalized
+      ) {
+        continue
+      }
+      if (fallback === null) fallback = index
+      if (!beadingHistory.present.has(index)) {
+        selectBeadingLayer(index)
+        return
+      }
+    }
+    if (fallback !== null) selectBeadingLayer(fallback)
+  }
+
+  function selectAdjacentBeadingLayer(direction: -1 | 1, completed = beadingHistory.present) {
+    const current = beadingLayers.findIndex((layer) => layer.indices === activeBeadingLayer)
+    const layer = nextPendingLayer(beadingLayers, current, direction, completed)
+    if (layer) selectBeadingLayer(layer.indices.values().next().value!)
+  }
+
+  function completeActiveBeadingLayer() {
+    if (!activeBeadingLayer) return
+    const present = new Set(beadingHistory.present)
+    activeBeadingLayer.forEach((index) => present.add(index))
+    if (present.size === beadingHistory.present.size) return
+    setBeadingHistory((previous) => ({
+      past: [...previous.past, previous.present].slice(-maxHistorySteps),
+      present,
+      future: [],
+    }))
+    saveActiveBeadingProgress(present)
+    selectAdjacentBeadingLayer(1, present)
+  }
+
+  function createBeadingProject() {
+    if (beadingProjects.length >= maxBeadingProjects) return null
+    const timestamp = Date.now()
+    const serialized = serializePatternGrid(history.present)
+    const frozenPattern = parsePatternGrid(serialized)
+    if (!frozenPattern) return null
+    const id =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${timestamp}-${Math.random().toString(36).slice(2)}`
+    const project: BeadingProjectSummary = {
+      id,
+      name: `拼豆副本 ${formatBeadingProjectTime(timestamp)}`,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      pattern: serialized,
+      completed: [],
+      beadingMode: 'free',
+    }
+    setBeadingProjects((previous) => [project, ...previous])
+    setActiveBeadingProjectId(id)
+    setActiveBeadingPattern(frozenPattern)
+    setBeadingHistory({ past: [], present: new Set(), future: [] })
+    setBeadingModeState('free')
+    setActiveBeadingLayerAnchor(null)
+    setHighlightedColor(null)
+    setEyedropperActive(false)
+    setProtectedSelection(null)
+    setCurrentTool('brush')
+    setEditorMode('bead')
+    setViewportFitRequest((value) => value + 1)
+    return id
+  }
+
+  function openBeadingProject(id: string) {
+    const project = beadingProjects.find((item) => item.id === id)
+    if (!project) return
+    const frozenPattern = parsePatternGrid(project.pattern)
+    if (!frozenPattern) return
+    if (activeBeadingProjectId && activeBeadingProjectId !== id) {
+      const completed = [...beadingHistory.present]
+      setBeadingProjects((previous) =>
+        previous.map((item) =>
+          item.id === activeBeadingProjectId
+            ? { ...item, completed, beadingMode, updatedAt: Date.now() }
+            : item,
+        ),
+      )
+    }
+    setActiveBeadingProjectId(project.id)
+    setActiveBeadingPattern(frozenPattern)
+    setBeadingHistory({
+      past: [],
+      present: new Set(project.completed),
+      future: [],
+    })
+    setBeadingModeState(project.beadingMode)
+    const savedCompleted = new Set(project.completed)
+    const firstPending = frozenPattern.cells.findIndex((cell, index) => Boolean(cell.color && !cell.isExternal && !savedCompleted.has(index)))
+    setActiveBeadingLayerAnchor(firstPending >= 0 ? firstPending : null)
+    setBeadingColor(null)
+    setHighlightedColor(null)
+    setEyedropperActive(false)
+    setProtectedSelection(null)
+    setCurrentTool('brush')
+    setEditorMode('bead')
+    setViewportFitRequest((value) => value + 1)
+  }
+
+  function leaveBeadingMode() {
+    if (activeBeadingProjectId) {
+      const completed = [...beadingHistory.present]
+      setBeadingProjects((previous) =>
+        previous.map((project) =>
+          project.id === activeBeadingProjectId
+            ? { ...project, completed, beadingMode, updatedAt: Date.now() }
+            : project,
+        ),
+      )
+    }
+    setBeadingHistory({ past: [], present: new Set(), future: [] })
+    beadingStrokeBaselineRef.current = null
+    beadingStrokeChangedRef.current = false
+    setBeadingColor(null)
+    setBeadingModeState('free')
+    setActiveBeadingLayerAnchor(null)
+    setHideCompletedBeads(false)
+    setActiveBeadingProjectId(null)
+    setActiveBeadingPattern(null)
+    setEditorMode('draw')
+    setViewportFitRequest((value) => value + 1)
+  }
+
+  function deleteBeadingProject(id: string) {
+    if (id === activeBeadingProjectId) leaveBeadingMode()
+    setBeadingProjects((previous) =>
+      previous.filter((project) => project.id !== id),
+    )
+  }
+
+  function beginBeadingStroke() {
+    if (beadingStrokeBaselineRef.current) return
+    beadingStrokeBaselineRef.current = new Set(beadingHistory.present)
+    beadingStrokeChangedRef.current = false
+  }
+
+  function fillConnectedBeads(index: number) {
+    if (beadingMode === 'layer' && !activeBeadingLayer?.has(index)) return
+    const region = connectedBeads(pattern, index)
+    if (!region.size) return
+    const complete = [...region].some((cellIndex) => !beadingHistory.present.has(cellIndex))
+    const present = new Set(beadingHistory.present)
+    region.forEach((cellIndex) => {
+      if (complete) present.add(cellIndex)
+      else present.delete(cellIndex)
+    })
+    setBeadingHistory((previous) => ({
+      past: [...previous.past, previous.present].slice(-maxHistorySteps),
+      present,
+      future: [],
+    }))
+    saveActiveBeadingProgress(present)
+    if (beadingMode === 'layer' && activeBeadingLayer && [...activeBeadingLayer].every((cellIndex) => present.has(cellIndex))) {
+      selectAdjacentBeadingLayer(1, present)
+    }
+  }
+
+  function setBeadCompleted(index: number, completed: boolean) {
+    const cell = pattern.cells[index]
+    if (!cell?.color || cell.isExternal) return
+    if (
+      beadingMode === 'layer' &&
+      (!activeBeadingLayer || !activeBeadingLayer.has(index))
+    ) {
+      return
+    }
+    if (
+      beadingMode === 'layer' &&
+      beadingColor &&
+      cell.color.toLowerCase() !== beadingColor.toLowerCase()
+    ) {
+      return
+    }
+    setBeadingHistory((previous) => {
+      const alreadyCompleted = previous.present.has(index)
+      if (alreadyCompleted === completed) return previous
+      const present = new Set(previous.present)
+      if (completed) present.add(index)
+      else present.delete(index)
+      beadingStrokeChangedRef.current = true
+      return { ...previous, present }
+    })
+  }
+
+  function endBeadingStroke() {
+    const baseline = beadingStrokeBaselineRef.current
+    beadingStrokeBaselineRef.current = null
+    if (!baseline) return
+    setBeadingHistory((previous) => {
+      if (!beadingStrokeChangedRef.current) return previous
+      beadingStrokeChangedRef.current = false
+      queueMicrotask(() => {
+        saveActiveBeadingProgress(previous.present)
+        if (beadingMode === 'layer' && activeBeadingLayer && [...activeBeadingLayer].every((index) => previous.present.has(index))) {
+          selectAdjacentBeadingLayer(1, previous.present)
+        }
+      })
+      return {
+        past: [...previous.past, baseline].slice(-maxHistorySteps),
+        present: previous.present,
+        future: [],
+      }
+    })
+  }
+
+  function undoBeadingProgress() {
+    const previous = beadingHistory.past.at(-1)
+    if (!previous) return
+    setBeadingHistory((current) => ({
+      past: current.past.slice(0, -1),
+      present: previous,
+      future: [current.present, ...current.future].slice(0, maxHistorySteps),
+    }))
+    saveActiveBeadingProgress(previous)
+  }
+
+  function redoBeadingProgress() {
+    const next = beadingHistory.future[0]
+    if (!next) return
+    setBeadingHistory((current) => ({
+      past: [...current.past, current.present].slice(-maxHistorySteps),
+      present: next,
+      future: current.future.slice(1),
+    }))
+    saveActiveBeadingProgress(next)
+  }
+
+  function resetBeadingProgress() {
+    if (beadingHistory.present.size === 0) return
+    setBeadingHistory((previous) => ({
+      past: [...previous.past, previous.present].slice(-maxHistorySteps),
+      present: new Set(),
+      future: [],
+    }))
+    saveActiveBeadingProgress(new Set())
+  }
+
   useEffect(() => {
     if (
       highlightedColor &&
@@ -444,6 +831,10 @@ export function useEditorState() {
     setHighlightedColor((current) =>
       current?.toLowerCase() === normalized ? null : normalized,
     )
+  }
+
+  function clearHighlightedColor() {
+    setHighlightedColor(null)
   }
 
   function rememberColor(color: string) {
@@ -561,6 +952,7 @@ export function useEditorState() {
   }
 
   function commitPattern(next: PatternGrid, nextExcluded = excludedColorHexes) {
+    if (editorMode === 'bead') return
     const normalizedNext = ensureChunkedPatternGrid(next)
     setHistory((previous) => ({
       past: [...previous.past, previous.present].slice(-maxHistorySteps),
@@ -844,7 +1236,7 @@ export function useEditorState() {
       pattern.height,
       shapeKind,
       shapeStyle,
-      brushSize,
+      shapeStrokeSize,
     ).filter((index) =>
       isIndexInsideSelection(index, pattern.width, protectedSelection),
     )
@@ -1369,12 +1761,51 @@ export function useEditorState() {
     pattern,
     currentTool,
     setCurrentTool,
+    editorMode,
+    beadingProjects,
+    activeBeadingProject,
+    activeBeadingProjectId,
+    createBeadingProject,
+    openBeadingProject,
+    deleteBeadingProject,
+    leaveBeadingMode,
+    completedBeads: beadingHistory.present,
+    beadingMode,
+    setBeadingMode,
+    beadingFillMode,
+    setBeadingFillMode,
+    fillConnectedBeads,
+    activeBeadingLayer,
+    activeBeadingLayerAnchor,
+    activeBeadingLayerCompletedCount,
+    selectBeadingLayer,
+    selectBeadingColorLayer,
+    selectAdjacentBeadingLayer,
+    completeActiveBeadingLayer,
+    completedBeadCount,
+    completedBeadCountsByColor,
+    beadingColor: beadingMode === 'layer' && activeBeadingLayer
+      ? pattern.cells[activeBeadingLayer.values().next().value!]?.color?.toLowerCase() ?? null
+      : beadingColor,
+    setBeadingColor,
+    hideCompletedBeads,
+    setHideCompletedBeads,
+    beginBeadingStroke,
+    setBeadCompleted,
+    endBeadingStroke,
+    canUndoBeading: beadingHistory.past.length > 0,
+    canRedoBeading: beadingHistory.future.length > 0,
+    undoBeadingProgress,
+    redoBeadingProgress,
+    resetBeadingProgress,
     brushSymmetryMode,
     setBrushSymmetryMode,
     eraserSymmetryMode,
     setEraserSymmetryMode,
     brushSize,
     setBrushSize,
+    shapeStrokeSize,
+    setShapeStrokeSize,
     eraserSize,
     setEraserSize,
     eraserMode,
@@ -1390,6 +1821,7 @@ export function useEditorState() {
     currentColor,
     highlightedColor,
     toggleHighlightedColor,
+    clearHighlightedColor,
     updateCurrentColor,
     selectDrawingColor,
     previewCurrentColor,
@@ -1821,6 +2253,53 @@ function loadCustomPalette(): BeadColor[] {
   } catch {
     return []
   }
+}
+
+function loadBeadingProjects(): BeadingProjectSummary[] {
+  try {
+    const saved = localStorage.getItem(beadingProjectsStorageKey)
+    if (!saved) return []
+    const parsed = JSON.parse(saved) as unknown
+    if (!Array.isArray(parsed)) return []
+    const projects: BeadingProjectSummary[] = []
+    parsed.slice(0, maxBeadingProjects).forEach((value) => {
+      if (!value || typeof value !== 'object') return
+      const candidate = value as Partial<BeadingProjectSummary>
+      if (
+        typeof candidate.id !== 'string' ||
+        typeof candidate.name !== 'string' ||
+        typeof candidate.createdAt !== 'number' ||
+        typeof candidate.updatedAt !== 'number' ||
+        !Array.isArray(candidate.completed) ||
+        !parsePatternGrid(candidate.pattern)
+      ) {
+        return
+      }
+      projects.push({
+        id: candidate.id,
+        name: candidate.name,
+        createdAt: candidate.createdAt,
+        updatedAt: candidate.updatedAt,
+        pattern: candidate.pattern as SerializedPatternGrid,
+        completed: candidate.completed.filter(
+          (index): index is number =>
+            Number.isInteger(index) && index >= 0,
+        ),
+        beadingMode: ['layer', 'block'].includes(String(candidate.beadingMode)) ? 'layer' : 'free',
+      })
+    })
+    return projects
+  } catch {
+    return []
+  }
+}
+
+function formatBeadingProjectTime(timestamp: number) {
+  const date = new Date(timestamp)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`
 }
 
 function loadHexSet(storageKey: string): Set<string> {
