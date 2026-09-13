@@ -2962,6 +2962,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
           ref={toolbarSurfaceRef}
           data-toolbar-placement={displayedToolbarLayout.placement}
           data-toolbar-vertical-roomy={toolbarAvailableHeight >= 410}
+          data-toolbar-progress-compact={toolbarAvailableHeight < 448}
           data-toolbar-animating={Boolean(toolbarDragSession || toolbarRevealSize)}
           data-toolbar-priming={Boolean(
             (toolbarDragSession && !toolbarDragSession.animatePlaceholder) || toolbarRevealOrientation,
@@ -3050,13 +3051,13 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                     if (toolbarRect) setToolOptionsAnchor({ x: buttonRect.left - toolbarRect.left + buttonRect.width / 2, y: buttonRect.top - toolbarRect.top + buttonRect.height / 2 })
                     setOpenToolOptions((current) => current === 'beading-fill' ? null : 'beading-fill')
                   }} />
-                  <div className={`beading-toolbar-progress flex shrink-0 items-center justify-center rounded-2xl border border-editor-border/60 bg-editor-surface-soft/50 text-xs ${toolbarContentSide ? 'w-10 flex-col gap-2 px-1 py-2 text-center' : 'h-10 gap-3 px-3'}`} title={`${beadingProgressDone} / ${beadingProgressTotal} 颗`}>
+                  <div className="beading-toolbar-progress" title={`${beadingProgressDone} / ${beadingProgressTotal} 颗`}>
                     <span className="beading-progress-label text-[11px] font-medium text-editor-text">{editor.beadingMode === 'layer' ? '当前图层' : '拼豆进度'}</span>
-                    {!toolbarContentSide ? <span className="flex items-baseline gap-1 whitespace-nowrap tabular-nums"><strong className="text-sm font-semibold text-editor-strong">{beadingProgressDone}</strong><span className="text-editor-text/50">/</span><span className="text-[11px] text-editor-text">{beadingProgressTotal}</span></span> : null}
-                    <div role="progressbar" aria-label={editor.beadingMode === 'layer' ? '当前图层进度' : '拼豆进度'} aria-valuemin={0} aria-valuemax={100} aria-valuenow={beadingProgressPercent} aria-valuetext={`${beadingProgressDone} / ${beadingProgressTotal} 颗`} className={`h-1.5 shrink-0 overflow-hidden rounded-full bg-editor-accent/10 ${toolbarContentSide ? 'w-7' : 'w-16'}`}>
-                      <div className="h-full rounded-full bg-editor-accent transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${beadingProgressPercent}%` }} />
+                    <span className="flex items-baseline gap-1 whitespace-nowrap tabular-nums"><strong className="text-sm font-semibold text-editor-strong">{beadingProgressDone}</strong><span className="text-editor-text/50">/</span><span className="text-[11px] text-editor-text">{beadingProgressTotal}</span></span>
+                    <div role="progressbar" aria-label={editor.beadingMode === 'layer' ? '当前图层进度' : '拼豆进度'} aria-valuemin={0} aria-valuemax={100} aria-valuenow={beadingProgressPercent} aria-valuetext={`${beadingProgressDone} / ${beadingProgressTotal} 颗`} className="beading-progress-track shrink-0 overflow-hidden rounded-full bg-editor-accent/10">
+                      <div className="beading-progress-fill rounded-full bg-editor-accent" style={{ inlineSize: `${beadingProgressPercent}%` }} />
                     </div>
-                    <span className="whitespace-nowrap font-semibold tabular-nums text-editor-accent">{beadingProgressPercent}<span className="ml-0.5 text-[10px] font-medium opacity-70">%</span></span>
+                    <span className="whitespace-nowrap font-semibold tabular-nums text-editor-accent">{beadingProgressPercent}<span className="ms-0.5 text-[10px] font-medium opacity-70">%</span></span>
                   </div>
                 </>}
               </div>

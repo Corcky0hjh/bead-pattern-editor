@@ -4,6 +4,38 @@
   container: toolbar-space / inline-size;
 }
 
+/* One progress strip, with its inline axis following the toolbar direction. */
+.beading-toolbar-progress {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  block-size: 40px;
+  inline-size: max-content;
+  padding-inline: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-editor-border) 60%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-editor-surface-soft) 50%, transparent);
+  font-size: 12px;
+}
+.toolbar-surface[data-toolbar-orientation='vertical'] .beading-toolbar-progress {
+  writing-mode: vertical-rl;
+}
+.beading-progress-track { inline-size: 64px; block-size: 6px; }
+.beading-progress-fill {
+  block-size: 100%;
+  transition: inline-size 200ms ease-out;
+}
+.toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-progress-compact='true'] .beading-progress-label { display: none; }
+.toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-progress-compact='true'] .beading-toolbar-progress {
+  gap: 8px;
+  padding-inline: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .beading-progress-fill { transition: none; }
+}
+
 @container toolbar-space (width < 448px) {
   .toolbar-surface[data-toolbar-orientation='horizontal'] .beading-progress-label {
     display: none;
