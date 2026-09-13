@@ -1,6 +1,11 @@
 export type ToolbarAxis = 'horizontal' | 'vertical'
 export type ToolbarDockEdge = 'top' | 'right' | 'bottom' | 'left'
 
+// A 16px grip strip rotates with the toolbar; both axes share one anchor rule.
+export function getToolbarGripAnchor(axis: ToolbarAxis, size: { width: number; height: number }) {
+  return axis === 'horizontal' ? { x: 8, y: size.height / 2 } : { x: size.width / 2, y: 8 }
+}
+
 export type ContentBounds = {
   left: number
   top: number
@@ -90,14 +95,11 @@ export function measureToolbarNaturalExtent(
   axis: ToolbarAxis,
   availableExtent: number,
 ) {
-  const handle = content.querySelector<HTMLElement>('[data-toolbar-drag-handle]')
   const operations = content.querySelector<HTMLElement>(
     '[data-toolbar-operations]',
   )
   const dimension = axis === 'horizontal' ? 'width' : 'height'
   const gapProperty = axis === 'horizontal' ? 'columnGap' : 'rowGap'
-  const contentStyle = window.getComputedStyle(content)
-  const contentGap = Number.parseFloat(contentStyle[gapProperty]) || 0
   const operationChildren = operations
     ? (Array.from(operations.children) as HTMLElement[])
     : []
@@ -117,17 +119,21 @@ export function measureToolbarNaturalExtent(
       (total, child) => total + child.getBoundingClientRect()[dimension],
       0,
     ) + Math.max(0, operationChildren.length - 1) * operationsGap
-  const childrenExtent =
-    (handle?.getBoundingClientRect()[dimension] ?? 0) + operationsExtent
+  // The grip is absolutely positioned in the shell's top padding. It consumes
+  // no row/column space; include shell padding exactly once below.
+  const childrenExtent = operationsExtent
   const surface = content.parentElement
   const style = surface ? window.getComputedStyle(surface) : null
+  // During the shell animation its padding moves to the content, so the
+  // expanded size remains measurable even while the outer shell is 36px.
+  const contentStyle = window.getComputedStyle(content)
   const chrome = style
     ? axis === 'horizontal'
-      ? Number.parseFloat(style.paddingLeft) +
+      ? Number.parseFloat(contentStyle.paddingLeft) + Number.parseFloat(contentStyle.paddingRight) + Number.parseFloat(style.paddingLeft) +
         Number.parseFloat(style.paddingRight) +
         Number.parseFloat(style.borderLeftWidth) +
         Number.parseFloat(style.borderRightWidth)
-      : Number.parseFloat(style.paddingTop) +
+      : Number.parseFloat(contentStyle.paddingTop) + Number.parseFloat(contentStyle.paddingBottom) + Number.parseFloat(style.paddingTop) +
         Number.parseFloat(style.paddingBottom) +
         Number.parseFloat(style.borderTopWidth) +
         Number.parseFloat(style.borderBottomWidth)
@@ -135,6 +141,6 @@ export function measureToolbarNaturalExtent(
 
   return Math.min(
     availableExtent,
-    Math.ceil(childrenExtent + contentGap + chrome),
+    Math.ceil(childrenExtent + chrome),
   )
 }

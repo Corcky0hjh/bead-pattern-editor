@@ -324,6 +324,10 @@
   gap: 12px;
 }
 
+@media (width < 640px) {
+  .editor-workspace { gap: 8px; }
+}
+
 .editor-work-panel {
   border-radius: 20px 0 0 20px;
   position: fixed;
@@ -1275,4 +1279,140 @@
 
 
   }
+}
+
+/* The narrow grip rotates 90 degrees with the toolbar. */
+[data-main-toolbar] .toolbar-surface {
+  --toolbar-grip-padding: 7px 7px 7px 16px;
+  --grip-width: 16px;
+  --grip-height: 100%;
+  --mark-width: 3px;
+  --mark-height: 24px;
+  padding: var(--toolbar-grip-padding);
+  transition: width 200ms ease-out, height 200ms ease-out, transform 200ms ease-out, border-radius 200ms ease-out;
+}
+[data-main-toolbar] [data-toolbar-content] {
+  gap: 0 !important;
+  min-width: 0;
+}
+[data-main-toolbar] [data-toolbar-drag-handle] {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  width: var(--grip-width);
+  height: var(--grip-height);
+  padding: 0;
+  border: 0;
+  border-radius: 12px 12px 0 0;
+  pointer-events: auto;
+  transition: width 200ms ease-out, height 200ms ease-out, background-color 150ms ease-out;
+}
+.toolbar-grip-mark {
+  width: var(--mark-width);
+  height: var(--mark-height);
+  border-radius: 3px;
+  background: currentColor;
+  opacity: .45;
+  transition: width 200ms ease-out, height 200ms ease-out, opacity 150ms ease-out;
+}
+[data-toolbar-drag-handle]:hover .toolbar-grip-mark,
+[data-toolbar-drag-handle]:focus-visible .toolbar-grip-mark { opacity: 1; }
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'] {
+  --toolbar-grip-padding: 16px 7px 7px;
+  --grip-width: 100%;
+  --grip-height: 16px;
+  --mark-width: 24px;
+  --mark-height: 3px;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-vertical-roomy='true'] [data-tool-button][data-has-preset='true'] {
+  height: 56px !important;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-vertical-roomy='true'] [data-tool-button][data-has-preset='true'] > span:first-child {
+  display: grid !important;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-vertical-roomy='false'] [data-tool-button][data-has-preset='true'] {
+  height: 40px !important;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-vertical-roomy='false'] [data-tool-button][data-has-preset='true'] > span:first-child {
+  display: none !important;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'] [data-toolbar-content] {
+  display: flex;
+  flex-direction: column;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-operations] {
+  flex: none;
+}
+/* Only the shell animates its dimensions. Nested width/height transitions
+   otherwise restart when reveal state is cleaned up and briefly collapse it. */
+[data-main-toolbar] .toolbar-surface [data-toolbar-operations] {
+  transition: opacity 150ms ease-out;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-animating='false'],
+[data-main-toolbar] .toolbar-surface[data-toolbar-priming='true'] {
+  transition: none;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-priming='true'] [data-toolbar-drag-handle],
+[data-main-toolbar] .toolbar-surface[data-toolbar-animating='false'] [data-toolbar-drag-handle] {
+  transition: background-color 150ms ease-out;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-animating='true'],
+[data-main-toolbar][data-toolbar-revealing='true'] .toolbar-surface {
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 18px;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-animating='true'] [data-toolbar-content],
+[data-main-toolbar][data-toolbar-revealing='true'] [data-toolbar-content] {
+  padding: var(--toolbar-grip-padding);
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-animating='true'] [data-toolbar-operations],
+[data-main-toolbar][data-toolbar-revealing='true'] [data-toolbar-operations] {
+  width: max-content;
+  height: max-content;
+  overflow: visible;
+  flex: none;
+  transition: opacity 150ms ease-out;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-collapsed='true'] [data-toolbar-operations] {
+  opacity: 0;
+  pointer-events: none;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-collapsed='true'] [data-toolbar-drag-handle] {
+  /* Never center the grip in the still-expanded main axis. Its 16 -> 36px
+     transition cancels the shell's 10 -> 0px translation at every frame. */
+  width: 36px;
+  height: 100%;
+  border-radius: 18px;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-collapsed='true'] [data-toolbar-drag-handle] {
+  width: 100%;
+  height: 36px;
+}
+[data-main-toolbar] .toolbar-surface[data-toolbar-collapsed='true'] .toolbar-grip-mark { width: 3px; height: 16px; }
+[data-main-toolbar] .toolbar-surface[data-toolbar-orientation='vertical'][data-toolbar-collapsed='true'] .toolbar-grip-mark { width: 16px; height: 3px; }
+@container toolbar-space (width >= 410px) {
+  [data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-tool-button][data-has-preset='true'] { width: 56px !important; }
+  [data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-tool-button][data-has-preset='true'] > span:first-child { display: grid !important; }
+}
+/* Seven 40px buttons + six 2px gaps + 25px shell chrome = 317px.
+   Below this measured minimum wrap the tools instead of clipping the last one. */
+@container toolbar-space (width < 317px) {
+  [data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'][data-toolbar-animating='false'] [data-toolbar-operations] {
+    height: auto;
+    width: 100%;
+  }
+  [data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-operations] {
+    width: 100%;
+    max-width: 100%;
+  }
+  [data-main-toolbar] .toolbar-surface[data-toolbar-orientation='horizontal'] [data-toolbar-row] {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-main-toolbar] .toolbar-surface, [data-main-toolbar] [data-toolbar-drag-handle], .toolbar-grip-mark { transition: none; }
 }

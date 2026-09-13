@@ -17,7 +17,6 @@ import {
   Circle,
   Copy,
   Crosshair,
-  DotsSixVertical,
   Eyedropper,
   Eye,
   Eraser,
@@ -50,6 +49,7 @@ import {
   getElementContentBounds,
   getToolbarDockEdge,
   measureToolbarNaturalExtent,
+  getToolbarGripAnchor,
 } from './toolbarDrag'
 import {
   getAnchoredViewPosition,
@@ -244,7 +244,7 @@ const maxCanvasBitmapSide = 2048
 const minViewportZoom = 5
 const maxViewportZoom = 500
 const worldPaddingAt100 = 32
-const toolbarDragPuckSize = 56
+const toolbarDragPuckSize = 36
 type PaintChunkCanvasCacheEntry = {
   token: object
   key: string
@@ -384,6 +384,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   const [pointerOutsideSelection, setPointerOutsideSelection] = useState(false)
   const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null)
   const [toolbarLayout, setToolbarLayout] = useState(getInitialToolbarLayout)
+  const [toolbarAvailableHeight, setToolbarAvailableHeight] = useState(0)
   const [toolbarDragSession, setToolbarDragSession] =
     useState<ToolbarDragSession | null>(null)
   const [toolbarRevealOrientation, setToolbarRevealOrientation] =
@@ -486,6 +487,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   const utilityControlsRef = useRef<HTMLDivElement | null>(null)
   const [utilityDisplayOpen, setUtilityDisplayOpen] = useState(false)
   const [headerZoomOpen, setHeaderZoomOpen] = useState(false)
+  const [toolbarRevealSize, setToolbarRevealSize] = useState<{width: number; height: number} | null>(null)
   const pattern = editor.pattern
   const beadingProgressTotal = editor.beadingMode === 'layer'
     ? (editor.activeBeadingLayer?.size ?? 0)
@@ -997,9 +999,10 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     const toolbar = toolbarRef.current
     if (!stage || !toolbar) return
 
-    const observer = new ResizeObserver(() =>
-      reconcileFloatingToolbarPosition(),
-    )
+    const observer = new ResizeObserver(() => {
+      setToolbarAvailableHeight(getMainToolbarBounds(stage).height)
+      reconcileFloatingToolbarPosition()
+    })
     observer.observe(stage)
     observer.observe(toolbar)
     return () => observer.disconnect()
@@ -2409,39 +2412,26 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     const stageRect = stage.getBoundingClientRect()
     const contentBounds = getMainToolbarBounds(stage)
     const origin = toolbarLayoutRef.current
-    const naturalExtent = toolbarContentRef.current
-      ? measureToolbarNaturalExtent(
-          toolbarContentRef.current,
-          origin.orientation,
-          origin.orientation === 'horizontal'
-            ? contentBounds.width
-            : contentBounds.height,
-        )
-      : toolbarDragPuckSize
-    const floatingWidth =
-      origin.orientation === 'horizontal' ? naturalExtent : toolbarDragPuckSize
-    const floatingHeight =
-      origin.orientation === 'vertical' ? naturalExtent : rect.height
-    const initialDock =
-      origin.placement !== 'floating' ? origin.placement : null
-    const originIsSide =
-      origin.placement === 'left' || origin.placement === 'right'
-    const puckInsetX = originIsSide
-      ? Math.max(0, (rect.width - toolbarDragPuckSize) / 2)
-      : 0
+    const floatingWidth = toolbarContentRef.current
+      ? measureToolbarNaturalExtent(toolbarContentRef.current, 'horizontal', contentBounds.width)
+      : rect.width
+    const floatingHeight = toolbarContentRef.current
+      ? measureToolbarNaturalExtent(toolbarContentRef.current, 'vertical', contentBounds.height)
+      : rect.height
+    const initialDock = origin.placement !== 'floating' ? origin.placement : null
     const id = ++toolbarDragIdRef.current
     const initialPosition = clampToolbarPosition(
       contentBounds,
       { width: toolbarDragPuckSize, height: toolbarDragPuckSize },
       {
-        x: clientX - stageRect.left - toolbarDragPuckSize / 2 - puckInsetX,
+        x: clientX - stageRect.left - toolbarDragPuckSize / 2,
         y: clientY - stageRect.top - toolbarDragPuckSize / 2,
       },
     )
     const session: ToolbarDragSession = {
       id,
       origin,
-      offsetX: toolbarDragPuckSize / 2 + puckInsetX,
+      offsetX: toolbarDragPuckSize / 2,
       offsetY: toolbarDragPuckSize / 2,
       pointerClientX: clientX,
       pointerClientY: clientY,
@@ -2462,6 +2452,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     toolbarResizeGuardRef.current = false
     toolbarRevealOrientationRef.current = null
     setToolbarRevealOrientation(null)
+    setToolbarRevealSize(null)
     updateToolbarDragSession(session)
     scheduleToolbarFrame(() => {
       const current = toolbarDragSessionRef.current
@@ -2568,21 +2559,22 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         : dockTarget === 'top' || dockTarget === 'bottom'
           ? 'horizontal'
           : drag.origin.orientation
-    const floatingWidth =
-      orientation === 'horizontal'
-        ? Math.min(drag.width, contentBounds.width)
-        : toolbarDragPuckSize
-    const floatingHeight =
-      orientation === 'vertical'
-        ? Math.min(drag.height, contentBounds.height)
-        : drag.origin.orientation === 'horizontal'
-          ? Math.min(drag.height, contentBounds.height)
-          : toolbarDragPuckSize
+    const floatingWidth = Math.min(drag.width, contentBounds.width)
+    const floatingHeight = Math.min(drag.height, contentBounds.height)
+    const anchor = getToolbarGripAnchor(orientation, { width: floatingWidth, height: floatingHeight })
     const position = clampToolbarPosition(
       contentBounds,
       { width: floatingWidth, height: floatingHeight },
-      drag,
+      { x: clientX - stage.getBoundingClientRect().left - anchor.x,
+        y: clientY - stage.getBoundingClientRect().top - anchor.y },
     )
+    setToolbarRevealSize({
+      width: placement === 'floating' ? floatingWidth
+        : orientation === 'horizontal' ? contentBounds.width
+        : Math.min(floatingWidth, floatingHeight),
+      height: placement !== 'floating' && orientation === 'horizontal'
+        ? Math.min(floatingWidth, floatingHeight) : floatingHeight,
+    })
     const nextLayout: ToolbarLayout = { placement, orientation, ...position }
     clearToolbarDockTimer()
     clearToolbarAnimationFrames()
@@ -2597,13 +2589,29 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     setToolbarLayout(nextLayout)
     localStorage.setItem(toolbarLayoutStorageKey, JSON.stringify(nextLayout))
     scheduleToolbarFrame(() => {
+      // Measure after the dock changes the tool direction. A vertical source's
+      // height cannot be reused as the height of a horizontal dock (or vice versa).
+      const content = toolbarContentRef.current
+      if (content && placement !== 'floating') {
+        setToolbarRevealSize({
+          width: orientation === 'horizontal'
+            ? contentBounds.width
+            : measureToolbarNaturalExtent(content, 'horizontal', contentBounds.width),
+          height: orientation === 'vertical'
+            ? toolbarRef.current?.getBoundingClientRect().height ?? contentBounds.height
+            : measureToolbarNaturalExtent(content, 'vertical', contentBounds.height),
+        })
+      }
       scheduleToolbarFrame(() => {
         toolbarRevealOrientationRef.current = null
         setToolbarRevealOrientation(null)
         toolbarResizeGuardTimerRef.current = window.setTimeout(() => {
           toolbarResizeGuardTimerRef.current = null
           toolbarResizeGuardRef.current = false
-          reconcileFloatingToolbarPosition(true)
+          setToolbarRevealSize(null)
+          // Reconcile after React restores natural layout, not against the
+          // temporary animated shell.
+          scheduleToolbarFrame(() => reconcileFloatingToolbarPosition(true))
         }, 220)
       })
     })
@@ -2625,7 +2633,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   return (
     <section
       ref={stageRef}
-      className="editor-canvas-stage relative grid h-full min-h-0 max-h-full grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_minmax(0,1fr)_auto] rounded-[24px] border border-editor-border bg-editor-surface p-4 md:p-5"
+      className="editor-canvas-stage relative grid h-full min-h-0 max-h-full grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_minmax(0,1fr)_auto] rounded-[24px] border border-editor-border bg-editor-surface p-2 sm:p-4 md:p-5"
       aria-label="拼豆图纸编辑区"
     >
       {pendingToolbarDock ? (
@@ -2722,6 +2730,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
       <div
         data-main-toolbar
         data-main-placement={displayedToolbarLayout.placement}
+        data-toolbar-revealing={Boolean(toolbarRevealSize)}
         ref={toolbarRef}
         onMouseDownCapture={(event) => {
           if ((event.target as HTMLElement).closest('button'))
@@ -2755,6 +2764,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
               }
             : displayedToolbarLayout.placement === 'floating'
               ? {
+                  width: toolbarRevealSize?.width,
                   left:
                     (stageViewportOrigin?.left ?? 0) +
                     Math.min(
@@ -2939,9 +2949,23 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         ) : null}
 
         <div
+          style={toolbarDragSession ? {
+            width: toolbarDragSession.animatePlaceholder ? toolbarDragPuckSize : toolbarDragSession.width,
+            height: toolbarDragSession.animatePlaceholder ? toolbarDragPuckSize : toolbarDragSession.height,
+            transform: toolbarDragSession.animatePlaceholder ? 'translate(0, 0)' : `translate(${toolbarDragPuckSize / 2 - getToolbarGripAnchor(toolbarDragSession.origin.orientation, toolbarDragSession).x}px, ${toolbarDragPuckSize / 2 - getToolbarGripAnchor(toolbarDragSession.origin.orientation, toolbarDragSession).y}px)`,
+          } : toolbarRevealSize ? {
+            width: toolbarRevealOrientation ? toolbarDragPuckSize : toolbarRevealSize.width,
+            height: toolbarRevealOrientation ? toolbarDragPuckSize : toolbarRevealSize.height,
+            marginInline: 0,
+            transform: toolbarRevealOrientation ? `translate(${getToolbarGripAnchor(toolbarRevealOrientation, toolbarRevealSize).x - toolbarDragPuckSize / 2}px, ${getToolbarGripAnchor(toolbarRevealOrientation, toolbarRevealSize).y - toolbarDragPuckSize / 2}px)` : 'translate(0, 0)',
+          } : undefined}
           ref={toolbarSurfaceRef}
           data-toolbar-placement={displayedToolbarLayout.placement}
-          data-toolbar-animating={Boolean(toolbarDragSession || toolbarRevealOrientation)}
+          data-toolbar-vertical-roomy={toolbarAvailableHeight >= 410}
+          data-toolbar-animating={Boolean(toolbarDragSession || toolbarRevealSize)}
+          data-toolbar-priming={Boolean(
+            (toolbarDragSession && !toolbarDragSession.animatePlaceholder) || toolbarRevealOrientation,
+          )}
           data-toolbar-dragging={Boolean(toolbarDragSession)}
           data-toolbar-collapsed={Boolean(toolbarDragSession?.animatePlaceholder || toolbarRevealOrientation)}
           data-toolbar-orientation={
@@ -2964,6 +2988,10 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
           <div
             ref={toolbarContentRef}
             data-toolbar-content
+            style={toolbarDragSession || toolbarRevealSize ? {
+              width: (toolbarDragSession?.width ?? toolbarRevealSize!.width) - 2,
+              maxWidth: 'none',
+            } : undefined}
             className={`${toolbarDragSession ? 'pointer-events-none gap-0' : 'gap-2'} ${
               toolbarContentSide
                 ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] justify-items-center'
@@ -2980,42 +3008,21 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
               data-toolbar-drag-handle
               className={`grid shrink-0 touch-none cursor-grab place-items-center rounded-xl border text-editor-text transition-[background-color,border-color,color,box-shadow] hover:bg-editor-surface-soft hover:text-editor-strong active:cursor-grabbing ${
                 toolbarDragSession
-                  ? 'toolbar-drag-handle-active h-14 w-14 border-transparent'
+                  ? 'toolbar-drag-handle-active border-transparent'
                   : 'h-10 w-10 border-transparent'
               }`}
               aria-label="拖动工具栏"
               title="拖动工具栏"
             >
-              <DotsSixVertical
-                className={`toolbar-drag-grip-icon transition-transform duration-200 ${
-                  toolbarContentSide ? 'rotate-90' : 'rotate-0'
-                }`}
-                size={16}
-                weight="bold"
-              />
+              <span className="toolbar-grip-mark" aria-hidden="true" />
             </button>
             <div
               data-toolbar-operations
               onScrollCapture={() => setOpenToolOptions(null)}
-              className={`toolbar-operation-group flex gap-2 ${
-                toolbarDragSession
-                  ? !toolbarDragSession.animatePlaceholder
-                    ? `${toolbarDragOriginSide ? 'h-fit w-fit flex-col items-center' : 'h-fit w-fit'} overflow-hidden opacity-100 transition-none`
-                    : toolbarDragOriginSide
-                      ? 'h-0 w-fit flex-col items-center overflow-hidden opacity-0 transition-[height,opacity] duration-200 ease-out'
-                      : 'h-fit w-0 overflow-hidden opacity-0 transition-[width,opacity] duration-200 ease-out'
-                  : toolbarRevealOrientation
-                    ? toolbarRevealOrientation === 'vertical'
-                      ? 'h-0 w-fit flex-col items-center overflow-hidden opacity-0 transition-none'
-                      : 'h-fit w-0 overflow-hidden opacity-0 transition-none'
-                    : toolbarContentSide
-                      ? 'h-full min-h-0 w-fit flex-col items-center overflow-x-hidden overflow-y-auto opacity-100 [scrollbar-width:none] transition-[height,opacity] duration-200 ease-out [&::-webkit-scrollbar]:hidden'
-                      : `h-fit max-w-full overflow-x-auto overflow-y-hidden opacity-100 [scrollbar-width:none] transition-[width,opacity] duration-200 ease-out [&::-webkit-scrollbar]:hidden ${
-                          displayedToolbarLayout.placement === 'top' ||
-                          displayedToolbarLayout.placement === 'bottom'
-                            ? 'w-full'
-                            : 'w-fit'
-                        }`
+              className={`toolbar-operation-group flex gap-2 opacity-100 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+                toolbarContentSide
+                  ? 'h-full min-h-0 w-fit flex-col items-center overflow-x-hidden overflow-y-auto'
+                  : 'h-fit max-w-full w-fit overflow-x-auto overflow-y-hidden'
               }`}
             >
               <div data-toolbar-row aria-label="主要工具" className={`flex items-center gap-1 ${toolbarContentSide ? 'flex-col' : ''}`}>

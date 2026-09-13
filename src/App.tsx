@@ -16,7 +16,7 @@ function App() {
 
   return (
     <>
-      <main className="box-border h-svh overflow-hidden bg-editor-bg p-3 text-editor-text md:p-5">
+      <main className="box-border h-svh overflow-hidden bg-editor-bg p-2 text-editor-text sm:p-3 md:p-5">
         <EditorShell />
       </main>
       <ToastViewport />
