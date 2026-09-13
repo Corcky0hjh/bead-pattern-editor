@@ -310,10 +310,12 @@
   gap: 12px;
   height: 100%;
   margin-inline: auto;
-  max-width: 1920px;
 }
 
 .editor-workspace-layout {
+  width: 100%;
+  max-width: 1920px;
+  margin-inline: auto;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -351,6 +353,20 @@
 .work-panel-toggle {
   position: relative;
   z-index: 70;
+}
+
+.work-panel-tabs {
+  position: absolute;
+  top: 22px;
+  left: 20px;
+  right: 76px;
+}
+
+@media (max-width: 767px) {
+  .work-panel-tabs {
+    top: 14px;
+    right: 60px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .editor-work-panel { transition: none; }

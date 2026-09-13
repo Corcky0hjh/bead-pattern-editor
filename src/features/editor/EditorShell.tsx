@@ -13,7 +13,7 @@ export function EditorShell() {
   const editor = useEditorState()
   const [headerControls, setHeaderControls] = useState<HTMLDivElement | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [panelOpen, setPanelOpen] = useState(true)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [panelTab, setPanelTab] = useState<'colors' | 'beading'>('colors')
   const previousToolRef = useRef<EditorTool | null>(null)
   // 记录"是否因为按住 Alt 而激活了临时吸管"。松开 Alt 时只关掉我们自己开的那次,
@@ -167,15 +167,7 @@ export function EditorShell() {
           <div ref={setHeaderControls} />
           {editor.editorMode === 'draw' ? <ImagePanel editor={editor} compact /> : null}
           <div className="relative z-[70] shrink-0">
-          {panelOpen ? (
-            <div className="absolute right-12 top-0 flex h-8 w-48 items-center gap-1" role="tablist" aria-label="工作面板内容">
-              {([{ value: 'colors', label: '颜色' }, { value: 'beading', label: '记录' }] as const).map((tab) => (
-                <button key={tab.value} id={`work-tab-${tab.value}`} type="button" role="tab" aria-selected={panelTab === tab.value} aria-controls="work-panel-content" onClick={() => setPanelTab(tab.value)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${panelTab === tab.value ? 'bg-editor-accent-soft text-editor-accent' : 'text-editor-text hover:bg-editor-surface-soft'}`}>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
+
           <button
             type="button"
             className={`work-panel-toggle flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${panelOpen ? 'text-editor-strong' : 'text-editor-text hover:bg-editor-surface-soft'}`}
@@ -200,6 +192,13 @@ export function EditorShell() {
         </section>
 
         <aside id="editor-work-panel" aria-label="工作面板" className="editor-work-panel" data-open={panelOpen} aria-hidden={!panelOpen} inert={!panelOpen}>
+            <div className="work-panel-tabs flex h-8 items-center gap-1" role="tablist" aria-label="工作面板内容">
+              {([{ value: 'colors', label: '颜色' }, { value: 'beading', label: '记录' }] as const).map((tab) => (
+                <button key={tab.value} id={`work-tab-${tab.value}`} type="button" role="tab" aria-selected={panelTab === tab.value} aria-controls="work-panel-content" onClick={() => setPanelTab(tab.value)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${panelTab === tab.value ? 'bg-editor-accent-soft text-editor-accent' : 'text-editor-text hover:bg-editor-surface-soft'}`}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
           <div id="work-panel-content" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" role="tabpanel" aria-labelledby={`work-tab-${panelTab}`}>
             {panelTab === 'colors' ? <ColorPanel editor={editor} /> : <BeadingLibraryPanel editor={editor} />}
