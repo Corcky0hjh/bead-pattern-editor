@@ -2,8 +2,6 @@ import {
   FileArrowDown,
   FileArrowUp,
   FileCsv,
-  FloppyDisk,
-  FolderOpen,
   Image,
   ListChecks,
 } from '@phosphor-icons/react'
@@ -53,11 +51,11 @@ export function ExportPanel({ editor }: { editor: EditorStateController }) {
         />
       </ExportSection>
 
-      <ExportSection title="工程与存档" description="保留可继续编辑的完整工程">
+      <ExportSection title="工程文件" description="保留可继续编辑的完整工程">
         <ExportAction
           icon={<FileArrowDown />}
           title="导出工程文件"
-          description="下载当前画布和设置"
+          description="下载当前作品的图纸内容"
           action="导出文件"
           onClick={editor.exportJson}
         />
@@ -81,20 +79,6 @@ export function ExportPanel({ editor }: { editor: EditorStateController }) {
             }}
           />
         </label>
-        <ExportAction
-          icon={<FloppyDisk />}
-          title="保存到此浏览器"
-          description="在当前设备保留一份快速存档"
-          action="保存"
-          onClick={editor.saveLocal}
-        />
-        <ExportAction
-          icon={<FolderOpen />}
-          title="读取上次保存"
-          description="恢复当前设备上的最近存档"
-          action="读取"
-          onClick={editor.restoreLocal}
-        />
       </ExportSection>
     </div>
   )

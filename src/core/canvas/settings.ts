@@ -24,9 +24,7 @@ export type CanvasSettings = {
   showPointerGuides: boolean
   /** 是否显示右下角指针行列坐标 */
   showPointerCoordinates: boolean
-  /** 选区旁是否显示尺寸和豆数 */
-  showSelectionStats: boolean
-  /** 是否在色块上显示当前品牌豆子型号 */
+  /** 是否在色块上显示当前品牌豆子色号 */
   showBeadCodes: boolean
 }
 
@@ -41,7 +39,6 @@ export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
   showRulers: true,
   showPointerGuides: true,
   showPointerCoordinates: true,
-  showSelectionStats: true,
   showBeadCodes: true,
 }
 
@@ -96,10 +93,6 @@ export function parseCanvasSettings(raw: unknown): CanvasSettings {
       typeof r.showPointerCoordinates === 'boolean'
         ? r.showPointerCoordinates
         : DEFAULT_CANVAS_SETTINGS.showPointerCoordinates,
-    showSelectionStats:
-      typeof r.showSelectionStats === 'boolean'
-        ? r.showSelectionStats
-        : DEFAULT_CANVAS_SETTINGS.showSelectionStats,
     showBeadCodes:
       typeof r.showBeadCodes === 'boolean'
         ? r.showBeadCodes

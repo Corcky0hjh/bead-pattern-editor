@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   Check,
@@ -49,30 +50,9 @@ export function ColorPanel({ editor }: ColorPanelProps) {
   return (
     <div className="grid gap-4">
       {editor.editorMode === 'bead' ? (
-        <section className="grid gap-2">
-          <p className="text-xs font-bold text-editor-text">拼豆模式</p>
-          <div role="group" aria-label="拼豆模式" className="grid grid-cols-2 gap-1 rounded-2xl bg-editor-surface-soft p-1">
-            {([
-              { value: 'free', label: '自由拼豆' },
-              { value: 'layer', label: '图层拼豆' },
-            ] as const).map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={editor.beadingMode === value}
-                className={`rounded-xl px-3 py-2 text-xs font-bold transition ${editor.beadingMode === value ? 'bg-editor-accent text-white' : 'text-editor-text hover:bg-editor-elevated hover:text-editor-strong'}`}
-                onClick={() => editor.setBeadingMode(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-      {editor.editorMode === 'bead' ? (
         <section className="grid gap-2 rounded-2xl bg-editor-surface-soft/60 p-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-bold text-editor-text">整体进度</p>
+            <p className="text-xs font-bold text-editor-text">{editor.isBeadingComplete ? '已完成' : '整体进度'}</p>
             <button
               type="button"
               aria-label="重置拼豆进度"
@@ -111,13 +91,10 @@ export function ColorPanel({ editor }: ColorPanelProps) {
               }}
             />
           </div>
-          {editor.beadingMode === 'free' && editor.beadingColor ? (
-            <button
-              type="button"
-              className="justify-self-start rounded-full bg-editor-elevated px-3 py-1.5 text-[11px] font-black text-editor-strong"
-              onClick={() => editor.setBeadingColor(null)}
-            >
-              显示全部颜色
+
+          {editor.isBeadingComplete ? (
+            <button type="button" className="h-9 rounded-xl bg-editor-accent-soft text-xs font-bold text-editor-accent" onClick={editor.showingBeadingResult ? editor.continueBeadingAdjustment : editor.showBeadingResult}>
+              {editor.showingBeadingResult ? '继续调整' : '查看完整作品'}
             </button>
           ) : null}
         </section>
@@ -216,7 +193,7 @@ export function ColorPanel({ editor }: ColorPanelProps) {
       </> : null}
       <section className="grid gap-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-bold text-editor-text">{editor.editorMode === 'bead' && editor.beadingMode === 'layer' ? '颜色图层' : '本图用色'}</span>
+          <span className="text-xs font-bold text-editor-text">{editor.editorMode === 'bead' ? '颜色图层' : '本图用色'}</span>
           <span className="rounded-full bg-editor-surface-soft px-2 py-1 text-[11px] font-bold text-editor-text">
             共 {editor.colorStats.length} 色
           </span>
@@ -262,15 +239,7 @@ export function ColorPanel({ editor }: ColorPanelProps) {
                   }
                   onPickCurrent={() => {
                     if (editor.editorMode === 'bead') {
-                      if (editor.beadingMode === 'layer') {
-                        editor.selectBeadingColorLayer(item.color)
-                      } else {
-                        editor.setBeadingColor((current) =>
-                          current?.toLowerCase() === item.color.toLowerCase()
-                            ? null
-                            : item.color.toLowerCase(),
-                        )
-                      }
+                      editor.selectBeadingColorLayer(item.color)
                     } else {
                       editor.toggleHighlightedColor(item.color)
                     }
@@ -356,7 +325,7 @@ export function PaletteManagerModal({
     [editor.brand, filteredPalette],
   )
 
-  return (
+  return createPortal(
     <ModalDialog
       label="色卡管理"
       onClose={onClose}
@@ -467,7 +436,8 @@ export function PaletteManagerModal({
             )
           })}
         </div>
-    </ModalDialog>
+    </ModalDialog>,
+    document.body,
   )
 }
 

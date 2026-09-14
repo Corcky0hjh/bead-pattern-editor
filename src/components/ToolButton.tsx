@@ -13,6 +13,7 @@ type ToolButtonProps = {
   presetValue?: ReactNode
   presetIcon?: ToolButtonIcon | null
   colorIndicator?: string | null
+  progress?: number
   vertical?: boolean
   onClick: MouseEventHandler<HTMLButtonElement>
 }
@@ -27,6 +28,7 @@ export function ToolButton({
   presetValue,
   presetIcon: PresetIcon,
   colorIndicator = null,
+  progress,
   vertical = false,
   onClick,
 }: ToolButtonProps) {
@@ -113,6 +115,12 @@ export function ToolButton({
         />
 
         <Icon className="relative z-10" size={18} weight="regular" />
+        {progress !== undefined ? (
+          <svg className={`pointer-events-none absolute inset-0 h-10 w-10 -rotate-90 ${active || statusActive ? 'text-white' : 'text-editor-accent'}`} viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="2" opacity="0.16" />
+            <circle cx="20" cy="20" r="16" pathLength="100" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="100" strokeDashoffset={100 - Math.max(0, Math.min(100, progress))} opacity={progress > 0 ? 1 : 0} className="transition-[stroke-dashoffset] duration-200 motion-reduce:transition-none" />
+          </svg>
+        ) : null}
 
         {colorIndicator ? (
           <span

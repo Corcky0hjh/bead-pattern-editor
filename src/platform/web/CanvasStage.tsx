@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -9,12 +10,15 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  Stack,
   ArrowClockwise,
   ArrowCounterClockwise,
   ArrowsOutCardinal,
   BoundingBox,
   Broom,
   Circle,
+  CheckCircle,
+  XCircle,
   Copy,
   Crosshair,
   Eyedropper,
@@ -48,6 +52,7 @@ import {
   clampToolbarPosition,
   getElementContentBounds,
   getToolbarDockEdge,
+  toolbarDockDelay,
   measureToolbarNaturalExtent,
   getToolbarGripAnchor,
 } from './toolbarDrag'
@@ -57,6 +62,9 @@ import {
   getFitZoom,
   normalizeWheelDelta,
 } from './viewportCamera'
+import { useBeadingPanelDrag } from './useBeadingPanelDrag'
+import { BeadingControls } from '../../features/editor/BeadingControls'
+import { BeadingStepBar } from '../../features/editor/BeadingStepBar'
 import { ToolButton, type ToolButtonIcon } from '../../components/ToolButton'
 import type { CanvasSettings } from '../../core/canvas/settings'
 import { getDisplayCode } from '../../core/color'
@@ -82,7 +90,7 @@ type CanvasStageProps = {
 
 type StageTool = { value: EditorTool; label: string; icon: ToolButtonIcon }
 type SelectionMode = 'select' | 'move'
-type ToolOptionsTarget = EditorTool | 'display' | 'beading-fill'
+type ToolOptionsTarget = EditorTool | 'display'
 type ToolbarPlacement = 'top' | 'right' | 'bottom' | 'left' | 'floating'
 type ToolbarDockPlacement = Exclude<ToolbarPlacement, 'floating'>
 type ToolbarOrientation = 'horizontal' | 'vertical'
@@ -345,7 +353,7 @@ function getPaintChunkCanvas(
   })
   return canvas
 }
-const toolbarDockDelay = 400
+
 
 /** 把 hex 色 + alpha(0-1) 拼成 rgba() 字符串。失败时退回 paperColor 原值。 */
 function withAlpha(hex: string, alpha: number): string {
@@ -376,6 +384,8 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   const [renderedOptionsTool, setRenderedOptionsTool] =
     useState<ToolOptionsTarget | null>(null)
   const [toolOptionsClosing, setToolOptionsClosing] = useState(false)
+  const [selectedOptionsTarget, setSelectedOptionsTarget] = useState<ToolOptionsTarget | null>(null)
+  const toolbarScrollGestureRef = useRef<{ x: number; y: number; moved: boolean } | null>(null)
   const [renderedEraserMode, setRenderedEraserMode] =
     useState<EraserMode>(editor.eraserMode)
   const [toolOptionsAnchor, setToolOptionsAnchor] = useState({ x: 28, y: 28 })
@@ -465,6 +475,13 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     zoomViewportAt,
   }
   const viewportRef = useRef<HTMLDivElement | null>(null)
+  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null)
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
+  const beadingPanelDrag = useBeadingPanelDrag(editor.editorMode === 'bead', toolbarRef, stageRef, () => setOpenToolOptions(null))
+  const attachViewport = useCallback((element: HTMLDivElement | null) => {
+    viewportRef.current = element
+    setViewportElement(element)
+  }, [])
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const beadCodeCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const colorHighlightCanvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -489,15 +506,27 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   const [headerZoomOpen, setHeaderZoomOpen] = useState(false)
   const [toolbarRevealSize, setToolbarRevealSize] = useState<{width: number; height: number} | null>(null)
   const pattern = editor.pattern
-  const beadingProgressTotal = editor.beadingMode === 'layer'
-    ? (editor.activeBeadingLayer?.size ?? 0)
-    : editor.usedCount
-  const beadingProgressDone = editor.beadingMode === 'layer'
-    ? editor.activeBeadingLayerCompletedCount
-    : editor.completedBeadCount
-  const beadingProgressPercent = beadingProgressTotal > 0
-    ? Math.round(beadingProgressDone / beadingProgressTotal * 100)
-    : 0
+  const [hoveredBeadingColor, setHoveredBeadingColor] = useState<string | null>(null)
+  const hoveredBeadingLayer = useMemo(() => {
+    if (!editor.isBeadingLayerPicker || !hoveredBeadingColor) return null
+    return new Set(pattern.cells.flatMap((cell, index) =>
+      !cell.isExternal && cell.color?.toLowerCase() === hoveredBeadingColor ? [index] : [],
+    ))
+  }, [editor.isBeadingLayerPicker, hoveredBeadingColor, pattern.cells])
+  useEffect(() => {
+    if (!editor.isBeadingLayerPicker) setHoveredBeadingColor(null)
+  }, [editor.isBeadingLayerPicker, editor.activeBeadingProjectId])
+  const visibleBeadingCells = useMemo(() => {
+    return new Set(pattern.cells.flatMap((cell, index) => {
+      if (!cell.color || cell.isExternal) return []
+      if (editor.isBeadingPreview) return editor.completedBeads.has(index) ? [index] : []
+      const visible = editor.showingBeadingResult || editor.isBeadingLayerPicker || editor.beadingViewMode === 'all'
+        || editor.activeBeadingLayer?.has(index)
+        || (editor.beadingViewMode === 'reference' && editor.completedBeads.has(index))
+      return visible ? [index] : []
+    }))
+  }, [pattern.cells, editor.showingBeadingResult, editor.isBeadingPreview,
+    editor.isBeadingLayerPicker, editor.beadingViewMode, editor.activeBeadingLayer, editor.completedBeads])
   const cellSize = Math.max(
     1,
     Math.min(
@@ -611,6 +640,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   useEffect(() => stopContinuousZoom, [])
 
   useEffect(() => {
+    setSelectedOptionsTarget(null)
     if (editor.editorMode !== 'bead') return
     floatingSelectionRef.current = null
     selectionRef.current = null
@@ -625,13 +655,16 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   }, [editor.editorMode])
 
   useLayoutEffect(() => {
+    if (editor.editorMode === 'bead') return
     toolbarRef.current
       ?.querySelectorAll('button')
       .forEach((button) => (button.tabIndex = -1))
   })
   toolbarRevealOrientationRef.current = toolbarRevealOrientation
   viewPositionRef.current = viewPosition
-  const displayedToolbarLayout = toolbarDragSession
+  const displayedToolbarLayout = editor.editorMode === 'bead'
+    ? { placement: 'bottom' as const, orientation: 'horizontal' as const, x: 0, y: 0 }
+    : toolbarDragSession
     ? {
         placement: 'floating' as const,
         orientation: toolbarDragSession.origin.orientation,
@@ -639,20 +672,17 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         y: toolbarDragSession.y,
       }
     : toolbarLayout
-  const activeOptionsTool =
-    openToolOptions === 'beading-fill' && editor.editorMode === 'bead' && editor.currentTool !== 'pan'
-      ? 'beading-fill'
-      : openToolOptions === 'display'
-      ? 'display'
-      : !editor.eyedropperActive && openToolOptions === editor.currentTool
-        ? openToolOptions
-        : null
+  const activeOptionsTool = editor.editorMode === 'bead' ? null
+    : openToolOptions === 'display' ? 'display'
+    : !editor.eyedropperActive && openToolOptions === editor.currentTool ? openToolOptions : null
   const canRotateSelection = Boolean(
     selection &&
     selection.height <= pattern.width &&
     selection.width <= pattern.height,
   )
-  const toolbarOptionsAbove =
+  const toolbarOptionsAbove = editor.editorMode === 'bead'
+    ? viewportSize.height + beadingPanelDrag.offset.y - (toolbarRef.current?.offsetHeight ?? 140) / 2 > viewportSize.height / 2
+    :
     displayedToolbarLayout.placement === 'bottom' ||
     (displayedToolbarLayout.placement === 'floating' &&
       displayedToolbarLayout.y >
@@ -705,6 +735,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         setRenderedOptionsTool(null)
         setToolOptionsClosing(false)
         toolOptionsCloseTimerRef.current = null
+
       }, 180)
     })
     return () => {
@@ -719,7 +750,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   useLayoutEffect(() => {
     const popover = toolOptionsPopoverRef.current
     const toolbar = toolbarRef.current
-    const toolbarSurface = toolbarSurfaceRef.current
+    const toolbarSurface = editor.editorMode === 'bead' ? toolbarRef.current : toolbarSurfaceRef.current
     const stage = stageRef.current
     if (
       !renderedOptionsTool ||
@@ -798,9 +829,13 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     popover.style.marginTop = `${shiftY}px`
   }, [
     renderedOptionsTool,
+    viewportSize,
+    editor.editorMode,
     displayedToolbarLayout.placement,
     toolOptionsAnchor,
     toolbarOptionsSide,
+    toolbarOptionsAbove,
+    beadingPanelDrag.offset,
   ])
   const holdingToolbarOrigin = Boolean(
     toolbarDragSession &&
@@ -809,7 +844,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     (!toolbarDragSession.animatePlaceholder ||
       toolbarDragSession.candidate === toolbarDragSession.origin.placement),
   )
-  const activeToolbarDock = toolbarDragSession
+  const activeToolbarDock = editor.editorMode === 'bead' ? null : toolbarDragSession
     ? holdingToolbarOrigin
       ? (toolbarDragSession.origin.placement as ToolbarDockPlacement)
       : toolbarDragSession.dockTarget
@@ -820,11 +855,12 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     activeToolbarDock === 'left' || activeToolbarDock === 'right'
       ? activeToolbarDock
       : null
-  const pendingToolbarDock =
+  const drawingPendingToolbarDock =
     toolbarDragSession?.candidate &&
     toolbarDragSession.candidate !== toolbarDragSession.dockTarget
       ? toolbarDragSession.candidate
       : null
+  const pendingToolbarDock = editor.editorMode === 'bead' ? beadingPanelDrag.candidate : drawingPendingToolbarDock
   const dockPlaceholderHeight = toolbarDragPuckSize
   const dockPlaceholderWidth = toolbarDragPuckSize
   const stageContentBounds = stageRef.current
@@ -857,13 +893,16 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
 
   useEffect(() => {
     function handlePointerDown(event: globalThis.PointerEvent) {
+
       const target = event.target as Node | null
       if (!target) return
       if (!utilityControlsRef.current?.contains(target)) {
         setUtilityDisplayOpen(false)
         setHeaderZoomOpen(false)
       }
-      if (toolbarRef.current?.contains(target) || utilityControlsRef.current?.contains(target)) return
+      if (toolbarRef.current?.contains(target)) return
+      setSelectedOptionsTarget(null)
+      if (utilityControlsRef.current?.contains(target)) return
       setOpenToolOptions(null)
       if (
         editorRef.current.currentTool === 'select' &&
@@ -918,6 +957,17 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         return
       }
       if (event.key === 'Escape') {
+
+        if (editorRef.current.isBeadingPreview) {
+          event.preventDefault()
+          editorRef.current.toggleBeadingPreview()
+          return
+        }
+        if (editorRef.current.isBeadingLayerPicker) {
+          event.preventDefault()
+          editorRef.current.setCurrentTool('brush')
+          return
+        }
         if (toolbarDragSessionRef.current) {
           event.preventDefault()
           canvasActionsRef.current.cancelToolbarDrag()
@@ -1033,26 +1083,31 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     return () => window.cancelAnimationFrame(frame)
   }, [editor.viewportFitRequest, canvasHeight, canvasWidth])
 
-  useEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
-    const observer = new ResizeObserver(([entry]) => {
-      if (!entry) return
+  useLayoutEffect(() => {
+    if (!viewportElement) return
+    const updateSize = () => {
+      // Read the same CSS pixel dimensions used by every overlay renderer.
       const next = {
-        width: entry.contentRect.width,
-        height: entry.contentRect.height,
+        width: viewportElement.clientWidth,
+        height: viewportElement.clientHeight,
       }
       const previous = viewportSizeRef.current
       viewportSizeRef.current = next
+      setViewportSize((size) =>
+        size.width === next.width && size.height === next.height ? size : next,
+      )
       if (previous.width === 0 || previous.height === 0) return
+      if (previous.width === next.width && previous.height === next.height) return
       updateViewPosition({
         x: viewPositionRef.current.x + (next.width - previous.width) / 2,
         y: viewPositionRef.current.y + (next.height - previous.height) / 2,
       })
-    })
-    observer.observe(viewport)
+    }
+    updateSize()
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(viewportElement)
     return () => observer.disconnect()
-  }, [])
+  }, [viewportElement])
 
   useEffect(() => {
     if (!selection) return
@@ -1221,7 +1276,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
           continue
         }
         const cell = pattern.cells[y * pattern.width + x]
-        if (editor.editorMode === 'bead' && editor.beadingMode === 'layer' && !editor.activeBeadingLayer?.has(y * pattern.width + x)) continue
+        if (editor.editorMode === 'bead' && !visibleBeadingCells.has(y * pattern.width + x)) continue
         if (cell?.color && !cell.isExternal) paintLabel(x, y, cell.color)
       }
     }
@@ -1234,8 +1289,9 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         paintLabel(x, y, cell.color)
       })
     }
-  }, [
+  }, [viewportSize,
     beadCodeByHex,
+    visibleBeadingCells,
     editor.editorMode,
     editor.beadingMode,
     editor.activeBeadingLayer,
@@ -1365,7 +1421,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     context.setLineDash([])
     context.shadowColor = 'rgba(0, 0, 0, 0)'
     context.shadowBlur = 0
-  }, [
+  }, [viewportSize,
     canvasScreenHeight,
     canvasScreenLeft,
     canvasScreenTop,
@@ -1396,7 +1452,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     if (!context) return
     context.setTransform(dpr, 0, 0, dpr, 0, 0)
     context.clearRect(0, 0, width, height)
-    if (editor.editorMode !== 'bead') return
+    if (editor.editorMode !== 'bead' || editor.showingBeadingResult || editor.isBeadingPreview || editor.isBeadingLayerPicker) return
 
     const activeColor = editor.beadingColor?.toLowerCase() ?? null
     const activeBlock =
@@ -1417,6 +1473,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         const index = y * pattern.width + x
         const cell = pattern.cells[index]
         if (!cell?.color || cell.isExternal) continue
+        if (!visibleBeadingCells.has(index)) continue
         const left = canvasScreenLeft + x * visualCellSize
         const top = canvasScreenTop + y * visualCellSize
         const completed = editor.completedBeads.has(index)
@@ -1428,11 +1485,11 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         if (editor.beadingMode === 'layer' && filtered) {
           // Other pending layers are omitted by the base canvas renderer.
           // Completed layers remain as a subdued reference beneath this layer.
-          if (completed) {
+          if (completed && editor.beadingViewMode === 'reference') {
             context.fillStyle = 'rgba(22, 18, 15, 0.48)'
             context.fillRect(left, top, visualCellSize, visualCellSize)
           }
-          continue
+          if (editor.beadingViewMode === 'reference') continue
         }
         if (!completed) {
           context.fillStyle = filtered ? 'rgba(22, 18, 15, 0.55)' : 'rgba(22, 18, 15, 0.24)'
@@ -1442,7 +1499,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     }
 
 
-  }, [
+  }, [viewportSize,
     canvasScreenLeft,
     canvasScreenTop,
     editor.beadingColor,
@@ -1450,6 +1507,11 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     editor.activeBeadingLayer,
     editor.completedBeads,
     editor.editorMode,
+    editor.showingBeadingResult,
+    editor.isBeadingPreview,
+    editor.isBeadingLayerPicker,
+    editor.beadingViewMode,
+    visibleBeadingCells,
     editor.hideCompletedBeads,
     pattern.cells,
     pattern.height,
@@ -1475,10 +1537,11 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     if (!context) return
     context.setTransform(dpr, 0, 0, dpr, 0, 0)
     context.clearRect(0, 0, width, height)
-    if (editor.editorMode !== 'bead') return
+    if (editor.editorMode !== 'bead' || editor.showingBeadingResult || editor.isBeadingPreview) return
 
-    const activeBlock =
-      editor.beadingMode === 'layer' ? editor.activeBeadingLayer : null
+    const activeBlock = editor.isBeadingLayerPicker
+      ? hoveredBeadingLayer
+      : editor.beadingMode === 'layer' ? editor.activeBeadingLayer : null
     const minX = Math.max(0, Math.floor(-canvasScreenLeft / visualCellSize))
     const minY = Math.max(0, Math.floor(-canvasScreenTop / visualCellSize))
     const maxX = Math.min(
@@ -1554,9 +1617,9 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         reducedMotion.removeEventListener('change', restart)
       }
     }
-  }, [canvasScreenLeft, canvasScreenTop, editor.beadingMode,
-    editor.activeBeadingLayer, editor.editorMode, editor.currentTheme,
-    pattern.height, pattern.width, visualCellSize])
+  }, [viewportSize, canvasScreenLeft, canvasScreenTop, editor.beadingMode,
+    editor.activeBeadingLayer, editor.editorMode, editor.showingBeadingResult, editor.isBeadingPreview, editor.isBeadingLayerPicker, editor.beadingViewMode, editor.currentTheme,
+    pattern.height, pattern.width, visualCellSize, hoveredBeadingLayer])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -1575,7 +1638,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     if (editor.editorMode === 'bead' && editor.beadingMode === 'layer') {
       pattern.cells.forEach((cell, index) => {
         if (!cell.color || cell.isExternal) return
-        if (!editor.activeBeadingLayer?.has(index) && !editor.completedBeads.has(index)) return
+        if (!visibleBeadingCells.has(index)) return
         context.fillStyle = cell.color
         context.fillRect((index % pattern.width) * cellSize, Math.floor(index / pattern.width) * cellSize, cellSize, cellSize)
       })
@@ -1609,6 +1672,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     cellSize,
     floatingSelection,
     editor.paintChunks,
+    visibleBeadingCells,
     editor.editorMode,
     editor.beadingMode,
     editor.activeBeadingLayer,
@@ -1704,12 +1768,19 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
 
   // Ctrl/Cmd + wheel zooms around the pointer anchor.
   useEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
+    const stage = stageRef.current
+    if (!stage) return
 
     function handleWheel(event: WheelEvent) {
       const currentViewport = viewportRef.current
       if (!currentViewport) return
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const overSteps = Boolean(target.closest('[data-beading-step-bar]'))
+      if (!currentViewport.contains(target) && !overSteps) return
+      // Plain and Shift scrolling belong to the hovered step panel.
+      // Ctrl/Cmd retains pointer-anchored canvas zoom.
+      if (event.defaultPrevented || (overSteps && !event.ctrlKey && !event.metaKey)) return
       event.preventDefault()
       const deltaX = normalizeWheelDelta(
         event.deltaX,
@@ -1723,7 +1794,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
       )
       if (!event.ctrlKey && !event.metaKey) {
         const current = viewPositionRef.current
-        const horizontalDelta = event.shiftKey ? deltaY : deltaX
+        const horizontalDelta = event.shiftKey ? deltaX || deltaY : deltaX
         const verticalDelta = event.shiftKey ? 0 : deltaY
         updateViewPosition({
           x: current.x - horizontalDelta,
@@ -1744,8 +1815,8 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
       )
     }
 
-    viewport.addEventListener('wheel', handleWheel, { passive: false })
-    return () => viewport.removeEventListener('wheel', handleWheel)
+    stage.addEventListener('wheel', handleWheel, { passive: false })
+    return () => stage.removeEventListener('wheel', handleWheel)
   }, [])
 
   function paintFromPointer(
@@ -1791,10 +1862,15 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   }
 
   function startBeadingStroke(event: PointerEvent<HTMLCanvasElement>) {
+    if (editor.showingBeadingResult || editor.isBeadingPreview) return
     const index = getPointerCellIndex(event)
     if (index === null) return
     const cell = pattern.cells[index]
     if (!cell?.color || cell.isExternal) return
+    if (editor.isBeadingLayerPicker) {
+      editor.selectBeadingColorLayer(cell.color)
+      return
+    }
     if (
       editor.beadingMode === 'layer' &&
       !editor.activeBeadingLayer?.has(index)
@@ -2293,30 +2369,41 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     lastPaintedIndexRef.current = null
   }
 
+  // Select first, open second. Never queue an open during another drawer's exit.
+  function toggleToolbarOptions(target: ToolOptionsTarget, button: HTMLButtonElement, activate?: () => void, toolActive = true) {
+    const alreadySelected = selectedOptionsTarget === target && toolActive
+    setSelectedOptionsTarget(target)
+    if (!toolActive) activate?.()
+    if (openToolOptions || renderedOptionsTool || !alreadySelected) {
+      setOpenToolOptions(null)
+      return
+    }
+    const toolbarRect = toolbarRef.current?.getBoundingClientRect()
+    const buttonRect = button.getBoundingClientRect()
+    if (toolbarRect) {
+      setToolOptionsAnchor({
+        x: buttonRect.left - toolbarRect.left + buttonRect.width / 2,
+        y: buttonRect.top - toolbarRect.top + buttonRect.height / 2,
+      })
+    }
+    setOpenToolOptions(target)
+  }
+
   function handleToolClick(tool: StageTool, button: HTMLButtonElement) {
     const isActive =
       !editor.eyedropperActive && editor.currentTool === tool.value
 
-    if (isActive) {
-      if (toolsWithOptions.has(tool.value)) {
-        if (tool.value === 'eraser') {
-          setRenderedEraserMode(editor.eraserMode)
-        }
-        const toolbarRect = toolbarRef.current?.getBoundingClientRect()
-        const buttonRect = button.getBoundingClientRect()
-        if (toolbarRect) {
-          setToolOptionsAnchor({
-            x: buttonRect.left - toolbarRect.left + buttonRect.width / 2,
-            y: buttonRect.top - toolbarRect.top + buttonRect.height / 2,
-          })
-        }
-        setOpenToolOptions((current) =>
-          current === tool.value ? null : tool.value,
-        )
-      }
+    if (toolsWithOptions.has(tool.value)) {
+      if (tool.value === 'eraser') setRenderedEraserMode(editor.eraserMode)
+      toggleToolbarOptions(tool.value, button, () => {
+        if (editor.currentTool === 'select') commitFloatingSelection()
+        cancelShape()
+        editor.setCurrentTool(tool.value)
+        editor.setEyedropperActive(false)
+      }, isActive)
       return
     }
-
+    setSelectedOptionsTarget(null)
     if (editor.currentTool === 'select') commitFloatingSelection()
     cancelShape()
     setOpenToolOptions(null)
@@ -2356,6 +2443,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   }
 
   function reconcileFloatingToolbarPosition(force = false) {
+    if (editorRef.current.editorMode === 'bead') return
     const stage = stageRef.current
     const toolbar = toolbarRef.current
     const layout = toolbarLayoutRef.current
@@ -2660,7 +2748,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         }`}
         style={{
           height: activeToolbarDock === 'top' ? dockPlaceholderHeight : 0,
-          marginBottom: activeToolbarDock === 'top' ? 16 : 0,
+          marginBottom: activeToolbarDock === 'top' ? 'var(--toolbar-canvas-gap)' : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -2680,7 +2768,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         }`}
         style={{
           width: sideDockPlacement === 'left' ? dockPlaceholderWidth : 0,
-          marginRight: sideDockPlacement === 'left' ? 16 : 0,
+          marginRight: sideDockPlacement === 'left' ? 'var(--toolbar-canvas-gap)' : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -2698,7 +2786,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         }`}
         style={{
           width: sideDockPlacement === 'right' ? dockPlaceholderWidth : 0,
-          marginLeft: sideDockPlacement === 'right' ? 16 : 0,
+          marginLeft: sideDockPlacement === 'right' ? 'var(--toolbar-canvas-gap)' : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -2716,7 +2804,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         }`}
         style={{
           height: activeToolbarDock === 'bottom' ? dockPlaceholderHeight : 0,
-          marginTop: activeToolbarDock === 'bottom' ? 16 : 0,
+          marginTop: activeToolbarDock === 'bottom' ? 'var(--toolbar-canvas-gap)' : 0,
           opacity:
             toolbarDragSession &&
             !holdingToolbarOrigin &&
@@ -2727,16 +2815,20 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
       >
         <div className="h-full w-full rounded-[18px] border border-dashed border-editor-accent/65 bg-editor-accent-soft shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]" />
       </div>
+      {editor.editorMode === 'bead' ? (['top', 'bottom'] as const).map(edge => {
+        const active = beadingPanelDrag.dock === edge || beadingPanelDrag.ready === edge
+        return <div key={edge} aria-hidden="true" style={{ height: active ? (beadingPanelDrag.collapsed ? 44 : beadingPanelDrag.panelHeight) : 0, marginTop: edge === 'bottom' && active ? 'var(--toolbar-canvas-gap)' : 0, marginBottom: edge === 'top' && active ? 'var(--toolbar-canvas-gap)' : 0 }} className={`pointer-events-none col-[1/4] overflow-hidden transition-[height,margin] duration-200 ease-out motion-reduce:transition-none ${edge === 'top' ? 'row-start-1' : 'row-start-3'}`}><div className={`h-full rounded-[18px] border border-dashed border-editor-accent/65 bg-editor-accent-soft transition-opacity duration-150 ${beadingPanelDrag.ready === edge && beadingPanelDrag.dragging ? 'opacity-100' : 'opacity-0'}`} /></div>
+      }) : null}
       <div
         data-main-toolbar
-        data-main-placement={displayedToolbarLayout.placement}
+        data-main-placement={editor.editorMode === 'bead' ? 'beading' : displayedToolbarLayout.placement}
         data-toolbar-revealing={Boolean(toolbarRevealSize)}
         ref={toolbarRef}
         onMouseDownCapture={(event) => {
           if ((event.target as HTMLElement).closest('button'))
             event.preventDefault()
         }}
-        className={`max-w-full ${
+        className={editor.editorMode === 'bead' ? `pointer-events-none z-40 min-w-0 ${beadingPanelDrag.dock ? `relative col-[1/4] w-full ${beadingPanelDrag.dock === 'top' ? 'row-start-1 mb-[var(--toolbar-canvas-gap)]' : 'row-start-3 mt-[var(--toolbar-canvas-gap)]'}` : 'absolute left-0 top-0 w-[calc(100%-16px)] sm:w-[calc(100%-32px)] max-w-[520px]'}` : `max-w-full ${
           displayedToolbarLayout.placement === 'floating' &&
           !stageViewportOrigin
             ? 'invisible '
@@ -2749,15 +2841,15 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
             : displayedToolbarLayout.placement === 'floating'
               ? 'fixed z-50 max-w-[calc(100%_-_2rem)]'
               : displayedToolbarLayout.placement === 'bottom'
-                ? 'relative z-40 col-[1/4] row-start-3 mt-4 w-full self-center'
+                ? 'relative z-40 col-[1/4] row-start-3 mt-[var(--toolbar-canvas-gap)] w-full self-center'
                 : displayedToolbarLayout.placement === 'top'
-                  ? 'relative z-40 col-[1/4] row-start-1 mb-4 w-full self-center'
+                  ? 'relative z-40 col-[1/4] row-start-1 mb-[var(--toolbar-canvas-gap)] w-full self-center'
                   : displayedToolbarLayout.placement === 'left'
-                    ? 'relative z-40 col-start-1 row-start-2 mr-4 h-full w-14 self-stretch'
-                    : 'relative z-40 col-start-3 row-start-2 ml-4 h-full w-14 self-stretch'
+                    ? 'relative z-40 col-start-1 row-start-2 mr-[var(--toolbar-canvas-gap)] h-full w-14 self-stretch'
+                    : 'relative z-40 col-start-3 row-start-2 ml-[var(--toolbar-canvas-gap)] h-full w-14 self-stretch'
         }`}
         style={
-          toolbarDragSession
+          editor.editorMode === 'bead' ? { height: beadingPanelDrag.dock && beadingPanelDrag.collapsed ? 44 : undefined, transform: beadingPanelDrag.dock ? undefined : `translate3d(${beadingPanelDrag.offset.x}px, ${beadingPanelDrag.offset.y}px, 0)` } : toolbarDragSession
             ? {
                 left: (stageViewportOrigin?.left ?? 0) + toolbarDragSession.x,
                 top: (stageViewportOrigin?.top ?? 0) + toolbarDragSession.y,
@@ -2818,7 +2910,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                 : { left: toolOptionsAnchor.x }
             }
             role="group"
-            aria-label={renderedOptionsTool === 'beading-fill' ? '拼豆填充设置' : renderedOptionsTool === 'display' ? '显示设置' : `${stageTools.find((tool) => tool.value === renderedOptionsTool)?.label ?? ''}设置`}
+            aria-label={renderedOptionsTool === 'display' ? '显示设置' : `${stageTools.find((tool) => tool.value === renderedOptionsTool)?.label ?? ''}设置`}
             onClick={() => setOpenToolOptions(null)}
           >
             <div
@@ -2828,17 +2920,6 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                   : 'h-10 w-max'
               }`}
             >
-              {renderedOptionsTool === 'beading-fill' ? (
-                <ToolModePicker
-                  value={editor.beadingFillMode}
-                  onChange={editor.setBeadingFillMode}
-                  label="拼豆填充方式"
-                  options={[
-                    { value: 'point', label: '单点填充', icon: PaintBrush },
-                    { value: 'connected', label: '区块填充', icon: PaintBucket },
-                  ]}
-                />
-              ) : null}
               {renderedOptionsTool === 'eraser' ? (
                 <EraserStrokePicker
                   mode={renderedEraserMode}
@@ -2948,6 +3029,11 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
           </div>
         ) : null}
 
+        {editor.editorMode === 'bead' ? (
+          <><BeadingStepBar editor={editor} collapsed={beadingPanelDrag.visualCollapsed} dragHandle={<button type="button" aria-label="拖动拼豆面板" title="拖动调整位置，单击收起" {...beadingPanelDrag.handleProps} className={`grid h-8 w-5 shrink-0 touch-none select-none place-items-center rounded-lg text-editor-text hover:bg-editor-surface-soft ${beadingPanelDrag.dragging ? 'cursor-grabbing' : 'cursor-grab'}`}><span aria-hidden="true" className="h-4 w-[3px] rounded-full bg-current opacity-40" /></button>} tools={<BeadingControls editor={editor} />} />
+          <button type="button" aria-label="展开拼豆面板" title="点击展开，拖动调整位置" aria-hidden={!beadingPanelDrag.visualCollapsed} tabIndex={beadingPanelDrag.collapsed ? 0 : -1} {...beadingPanelDrag.handleProps}
+            className={`absolute left-0 top-0 z-20 grid h-11 w-11 touch-none select-none place-items-center rounded-full border border-editor-border bg-editor-elevated text-editor-accent shadow-md transition-opacity duration-200 motion-reduce:transition-none ${beadingPanelDrag.visualCollapsed ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'} ${beadingPanelDrag.dragging ? 'cursor-grabbing' : 'cursor-grab'}`}><Stack size={20} /></button></>
+        ) : (
         <div
           style={toolbarDragSession ? {
             width: toolbarDragSession.animatePlaceholder ? toolbarDragPuckSize : toolbarDragSession.width,
@@ -3019,7 +3105,22 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
             </button>
             <div
               data-toolbar-operations
-              onScrollCapture={() => setOpenToolOptions(null)}
+              onPointerDownCapture={(event) => {
+                toolbarScrollGestureRef.current = { x: event.clientX, y: event.clientY, moved: false }
+              }}
+              onPointerMoveCapture={(event) => {
+                const gesture = toolbarScrollGestureRef.current
+                if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8) gesture.moved = true
+              }}
+              onPointerUpCapture={() => { toolbarScrollGestureRef.current = null }}
+              onPointerCancelCapture={() => { toolbarScrollGestureRef.current = null }}
+              onWheelCapture={() => { setOpenToolOptions(null) }}
+              onScrollCapture={() => {
+                if (toolbarScrollGestureRef.current?.moved) {
+
+                  setOpenToolOptions(null)
+                }
+              }}
               className={`toolbar-operation-group flex gap-2 opacity-100 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
                 toolbarContentSide
                   ? 'h-full min-h-0 w-fit flex-col items-center overflow-x-hidden overflow-y-auto'
@@ -3027,7 +3128,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
               }`}
             >
               <div data-toolbar-row aria-label="主要工具" className={`flex items-center gap-1 ${toolbarContentSide ? 'flex-col' : ''}`}>
-                {editor.editorMode === 'draw' ? <>
+                <>
                   {stageTools.map((tool) => (
                     <ToolButton key={tool.value} icon={tool.icon} label={tool.label}
                       active={!editor.eyedropperActive && editor.currentTool === tool.value}
@@ -3041,29 +3142,13 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                       onClick={(event) => handleToolClick(tool, event.currentTarget)}
                     />
                   ))}
-                  <ToolButton icon={Eyedropper} label="吸管" active={editor.eyedropperActive} vertical={toolbarContentSide} onClick={() => { setOpenToolOptions(null); editor.setEyedropperActive((value) => !value) }} />
-                </> : <>
-                  <ToolButton icon={Hand} label="移动画布" active={editor.currentTool === 'pan'} vertical={toolbarContentSide} onClick={() => { setOpenToolOptions(null); editor.setCurrentTool('pan') }} />
-                  <ToolButton icon={PaintBrush} presetIcon={editor.beadingFillMode === 'point' ? PaintBrush : PaintBucket} label="拼豆填充" active={editor.currentTool !== 'pan'} hasOptions optionsOpen={activeOptionsTool === 'beading-fill'} vertical={toolbarContentSide} onClick={(event) => {
-                    editor.setCurrentTool('brush')
-                    const toolbarRect = toolbarRef.current?.getBoundingClientRect()
-                    const buttonRect = event.currentTarget.getBoundingClientRect()
-                    if (toolbarRect) setToolOptionsAnchor({ x: buttonRect.left - toolbarRect.left + buttonRect.width / 2, y: buttonRect.top - toolbarRect.top + buttonRect.height / 2 })
-                    setOpenToolOptions((current) => current === 'beading-fill' ? null : 'beading-fill')
-                  }} />
-                  <div className="beading-toolbar-progress" title={`${beadingProgressDone} / ${beadingProgressTotal} 颗`}>
-                    <span className="beading-progress-label text-[11px] font-medium text-editor-text">{editor.beadingMode === 'layer' ? '当前图层' : '拼豆进度'}</span>
-                    <span className="flex items-baseline gap-1 whitespace-nowrap tabular-nums"><strong className="text-sm font-semibold text-editor-strong">{beadingProgressDone}</strong><span className="text-editor-text/50">/</span><span className="text-[11px] text-editor-text">{beadingProgressTotal}</span></span>
-                    <div role="progressbar" aria-label={editor.beadingMode === 'layer' ? '当前图层进度' : '拼豆进度'} aria-valuemin={0} aria-valuemax={100} aria-valuenow={beadingProgressPercent} aria-valuetext={`${beadingProgressDone} / ${beadingProgressTotal} 颗`} className="beading-progress-track shrink-0 overflow-hidden rounded-full bg-editor-accent/10">
-                      <div className="beading-progress-fill rounded-full bg-editor-accent" style={{ inlineSize: `${beadingProgressPercent}%` }} />
-                    </div>
-                    <span className="whitespace-nowrap font-semibold tabular-nums text-editor-accent">{beadingProgressPercent}<span className="ms-0.5 text-[10px] font-medium opacity-70">%</span></span>
-                  </div>
-                </>}
+                  <ToolButton icon={Eyedropper} label="吸管" active={editor.eyedropperActive} vertical={toolbarContentSide} onClick={() => { setSelectedOptionsTarget(null); setOpenToolOptions(null); editor.setEyedropperActive((value) => !value) }} />
+                </>
               </div>
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {headerControls ? createPortal(<div ref={utilityControlsRef} className="canvas-utility-controls relative z-50" role="toolbar" aria-label="画布通用控制">
@@ -3255,7 +3340,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
       </div>, headerControls) : null}
 
       <div
-        ref={viewportRef}
+        ref={attachViewport}
         className={`relative col-start-2 row-start-2 min-h-0 min-w-0 overflow-hidden rounded-[18px] [clip-path:inset(0_round_18px)] [touch-action:none] [overscroll-behavior:contain] ${cursorClass}`}
         style={{ backgroundColor: settings.bgColor }}
         onPointerDown={(event) => {
@@ -3320,6 +3405,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         }}
         onPointerLeave={() => {
           endStroke()
+          setHoveredBeadingColor(null)
           setPointerOutsideSelection(false)
           setHoveredCell(null)
         }}
@@ -3371,6 +3457,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
               <canvas
                 ref={canvasRef}
                 aria-label="像素网格"
+                onPointerLeave={() => setHoveredBeadingColor(null)}
                 width={canvasWidth}
                 height={canvasHeight}
                 className={`block select-none touch-none ${
@@ -3437,6 +3524,12 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                 }}
                 onPointerMove={(event) => {
                   if (editor.editorMode === 'bead') {
+                    if (editor.isBeadingLayerPicker) {
+                      const index = getPointerCellIndex(event)
+                      const cell = index === null ? null : pattern.cells[index]
+                      setHoveredBeadingColor(cell?.color && !cell.isExternal ? cell.color.toLowerCase() : null)
+                      return
+                    }
                     updateBeadingStroke(event)
                     return
                   }
@@ -3694,7 +3787,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
             列 {hoveredCell.x + 1} · 行 {hoveredCell.y + 1}
           </div>
         ) : null}
-        {settings.showSelectionStats !== false && selection ? (
+        {selection ? (
           <div
             className={`pointer-events-none absolute z-30 rounded-lg bg-editor-strong px-2.5 py-1.5 text-[10px] font-bold tabular-nums text-editor-surface shadow-md ${
               selectionStatsBelow ? '' : '-translate-y-full'
@@ -3760,6 +3853,11 @@ function HeaderControlPopover({ title, children, compactOnly = false }: { title:
   return <div role="group" aria-label={title} className={`header-control-popover ${compactOnly ? "md:hidden" : ""}`}><p className="mb-2 px-2 text-[11px] font-semibold text-editor-text">{title}</p>{children}</div>
 }
 
+function ViewToggleStatus({ active }: { active: boolean }) {
+  const Icon = active ? CheckCircle : XCircle
+  return <Icon size={15} aria-hidden="true" className={`shrink-0 ${active ? 'text-editor-accent' : 'text-editor-text/40'}`} />
+}
+
 function DisplayOptions({
   panel = false,
   showRulers,
@@ -3797,13 +3895,13 @@ function DisplayOptions({
       partial: { showGrid: !showGrid },
     },
     {
-      label: '右下角行列',
+      label: '指针坐标',
       icon: Hash,
       active: showPointerCoordinates,
       partial: { showPointerCoordinates: !showPointerCoordinates },
     },
     {
-      label: '豆子型号',
+      label: '豆子色号',
       icon: Tag,
       active: showBeadCodes,
       partial: { showBeadCodes: !showBeadCodes },
@@ -3818,7 +3916,7 @@ function DisplayOptions({
   if (panel) return <div className="grid gap-1">{options.map((option) => {
     const Icon = option.icon
     return <button key={option.label} type="button" className="header-menu-item" aria-pressed={option.active} onClick={() => onChange(option.partial)}>
-      <Icon size={17} /><span className="flex-1 text-left">{option.label}</span><span aria-hidden="true" className={option.active ? 'text-editor-accent' : 'text-editor-text/40'}>{option.active ? '开启' : '关闭'}</span>
+      <Icon size={17} /><span className="flex-1 text-left">{option.label}</span><ViewToggleStatus active={option.active} />
     </button>
   })}</div>
   return (

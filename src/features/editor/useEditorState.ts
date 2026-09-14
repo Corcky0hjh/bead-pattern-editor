@@ -1,3 +1,5 @@
+import { toast } from 'sonner'
+import { draftStorageKey, workStorageKey, loadWorkLibrary, loadWorkDraft, sameWorkPattern, updateWorkPattern, type Work } from './workLibrary'
 import { buildBeadingLayers, connectedBeads, nextPendingLayer } from '../../core/pattern/beadingLayers'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -64,7 +66,6 @@ import {
   parsePatternGrid,
   type PatternCellChunkView,
   type PatternGrid,
-  type SerializedPatternGrid,
 } from '../../core/pattern/grid'
 
 export type EditorTool =
@@ -75,7 +76,7 @@ export type EditorTool =
   | 'fill'
   | 'shape'
 export type EditorMode = 'draw' | 'bead'
-export type BeadingMode = 'free' | 'layer'
+export type BeadingMode = 'layer'
 export type SymmetryMode = 'off' | 'vertical' | 'horizontal' | 'both' | 'center'
 export type FillMode = 'region' | 'global'
 export type EraserMode = 'brush' | 'region'
@@ -125,18 +126,7 @@ type BeadingHistoryState = {
   future: Set<number>[]
 }
 
-export type BeadingProjectSummary = {
-  id: string
-  name: string
-  createdAt: number
-  updatedAt: number
-  pattern: SerializedPatternGrid
-  completed: number[]
-  beadingMode: BeadingMode
-}
-
-const beadingProjectsStorageKey = 'bead-pattern-editor:beading-projects'
-export const maxBeadingProjects = 10
+export type BeadingProjectSummary = Work
 
 type PatternSummary = {
   counts: Map<string, number>
@@ -270,12 +260,20 @@ const initialPattern = createSolidPatternGrid({
 })
 
 export function useEditorState() {
-  const [rows, setRows] = useState<number>(defaultConversionPreset.size)
+  const [bootstrap] = useState(() => {
+    try { return { works: loadWorkLibrary(localStorage), draft: loadWorkDraft(localStorage), error: '' } }
+    catch (error) { return { works: [] as Work[], draft: null, error: String(error) } }
+  })
+  const [activeWorkId, setActiveWorkId] = useState<string | null>(() =>
+    bootstrap.works.some(work => work.id === bootstrap.draft?.workId) ? bootstrap.draft!.workId : null,
+  )
+  const draftPattern = bootstrap.draft?.pattern ?? initialPattern
+  const [rows, setRows] = useState<number>(draftPattern.height)
   const [cols, setCols] = useState<number>(defaultConversionPreset.size)
   const [viewportFitRequest, setViewportFitRequest] = useState(0)
   const [history, setHistory] = useState<HistoryState>({
     past: [],
-    present: initialPattern,
+    present: draftPattern,
     future: [],
     pastExcluded: [],
     futureExcluded: [],
@@ -284,14 +282,17 @@ export function useEditorState() {
   const [editorMode, setEditorMode] = useState<EditorMode>('draw')
   const [beadingProjects, setBeadingProjects] = useState<
     BeadingProjectSummary[]
-  >(() => loadBeadingProjects())
+  >(() => bootstrap.works)
   const [activeBeadingProjectId, setActiveBeadingProjectId] = useState<
     string | null
   >(null)
   const [activeBeadingPattern, setActiveBeadingPattern] =
     useState<PatternGrid | null>(null)
-  const [beadingMode, setBeadingModeState] = useState<BeadingMode>('free')
+  const beadingMode: BeadingMode = 'layer'
   const [beadingFillMode, setBeadingFillMode] = useState<'point' | 'connected'>('point')
+  const [beadingViewMode, setBeadingViewMode] = useState<'all' | 'focus' | 'reference'>('reference')
+  const [beadingPreviewProjectId, setBeadingPreviewProjectId] = useState<string | null>(null)
+  const isBeadingPreview = editorMode === 'bead' && activeBeadingProjectId !== null && beadingPreviewProjectId === activeBeadingProjectId
   const [beadingHistory, setBeadingHistory] = useState<BeadingHistoryState>({
     past: [],
     present: new Set(),
@@ -385,11 +386,16 @@ export function useEditorState() {
   }, [canvasSettings])
 
   useEffect(() => {
-    writeLocalStorage(
-      beadingProjectsStorageKey,
-      JSON.stringify(beadingProjects),
-    )
-  }, [beadingProjects])
+    if (bootstrap.error) { toast.error('作品库读取失败，已停止写入以保留原数据'); return }
+    try { localStorage.setItem(workStorageKey, JSON.stringify(beadingProjects)) }
+    catch { toast.error('作品保存失败：浏览器存储空间不足，请导出备份') }
+  }, [beadingProjects, bootstrap.error])
+
+  useEffect(() => {
+    if (bootstrap.error) return
+    try { localStorage.setItem(draftStorageKey, JSON.stringify({ workId: activeWorkId, pattern: serializePatternGrid(history.present) })) }
+    catch { toast.error('草稿暂存失败，请保存或导出作品') }
+  }, [history.present, activeWorkId, bootstrap.error])
 
   useEffect(() => {
     applyTheme(currentTheme)
@@ -494,6 +500,21 @@ export function useEditorState() {
     return count
   }, [beadingHistory.present, pattern])
 
+  const [beadingAdjustment, setBeadingAdjustment] = useState<{
+    projectId: string | null
+    progress: Set<number>
+  } | null>(null)
+  const isBeadingComplete = editorMode === 'bead' && usedCount > 0 && completedBeadCount === usedCount
+  const showingBeadingResult = isBeadingComplete && !(
+    beadingAdjustment?.projectId === activeBeadingProjectId &&
+    beadingAdjustment?.progress === beadingHistory.present
+  )
+  function continueBeadingAdjustment() {
+    setBeadingPreviewProjectId(null)
+    setBeadingAdjustment({ projectId: activeBeadingProjectId, progress: beadingHistory.present })
+    setCurrentTool('brush')
+  }
+
   const completedBeadCountsByColor = useMemo(() => {
     const counts = new Map<string, number>()
     beadingHistory.present.forEach((index) => {
@@ -507,6 +528,9 @@ export function useEditorState() {
 
   // Color layers include disconnected cells of the same color.
   const beadingLayers = useMemo(() => buildBeadingLayers(pattern), [pattern])
+  const completedBeadingLayerCount = useMemo(() =>
+    beadingLayers.filter((layer) => [...layer.indices].every((index) => beadingHistory.present.has(index))).length,
+  [beadingLayers, beadingHistory.present])
 
   const activeBeadingLayer = useMemo(() => {
     const color = activeBeadingLayerAnchor === null ? null : pattern.cells[activeBeadingLayerAnchor]?.color?.toLowerCase()
@@ -541,23 +565,13 @@ export function useEditorState() {
           ? {
               ...project,
               completed: [...completed],
+              progressRevision: project.revision,
               beadingMode: mode,
               updatedAt: Date.now(),
             }
           : project,
       ),
     )
-  }
-
-  function setBeadingMode(mode: BeadingMode) {
-    saveActiveBeadingProgress(beadingHistory.present, mode)
-    setBeadingModeState(mode)
-    setActiveBeadingLayerAnchor(null)
-    setBeadingColor(null)
-    if (mode === 'layer') {
-      const layer = beadingLayers.find((item) => [...item.indices].some((index) => !beadingHistory.present.has(index))) ?? beadingLayers[0]
-      if (layer) selectBeadingLayer(layer.indices.values().next().value!)
-    }
   }
 
   function selectBeadingLayer(index: number) {
@@ -568,6 +582,8 @@ export function useEditorState() {
   }
 
   function selectBeadingColorLayer(color: string) {
+    setBeadingPreviewProjectId(null)
+    setCurrentTool('brush')
     const normalized = color.toLowerCase()
     let fallback: number | null = null
     for (let index = 0; index < pattern.cells.length; index += 1) {
@@ -608,104 +624,148 @@ export function useEditorState() {
     selectAdjacentBeadingLayer(1, present)
   }
 
-  function createBeadingProject() {
-    if (beadingProjects.length >= maxBeadingProjects) return null
-    const timestamp = Date.now()
-    const serialized = serializePatternGrid(history.present)
-    const frozenPattern = parsePatternGrid(serialized)
-    if (!frozenPattern) return null
-    const id =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${timestamp}-${Math.random().toString(36).slice(2)}`
-    const project: BeadingProjectSummary = {
-      id,
-      name: `拼豆副本 ${formatBeadingProjectTime(timestamp)}`,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      pattern: serialized,
-      completed: [],
-      beadingMode: 'free',
-    }
-    setBeadingProjects((previous) => [project, ...previous])
-    setActiveBeadingProjectId(id)
-    setActiveBeadingPattern(frozenPattern)
-    setBeadingHistory({ past: [], present: new Set(), future: [] })
-    setBeadingModeState('free')
-    setActiveBeadingLayerAnchor(null)
-    setHighlightedColor(null)
-    setEyedropperActive(false)
-    setProtectedSelection(null)
-    setCurrentTool('brush')
-    setEditorMode('bead')
-    setViewportFitRequest((value) => value + 1)
-    return id
+  const currentWork = beadingProjects.find(work => work.id === activeWorkId) ?? null
+  const serializedDraft = useMemo(() => serializePatternGrid(history.present), [history.present])
+  const isWorkDirty = useMemo(() => editorMode === 'draw' && (currentWork
+    ? !sameWorkPattern(currentWork.pattern, serializedDraft)
+    : history.past.length > 0 || history.present.cells.some(cell => Boolean(cell.color))),
+  [editorMode, currentWork, serializedDraft, history.past.length, history.present])
+
+  const [workDialog, setWorkDialog] = useState<{ message: string; name?: string; title: string; confirmLabel: string; resolve: (value: string | null) => void } | null>(null)
+  const workDialogBusy = useRef(false)
+  function askWorkDialog(message: string, name?: string, labels = { title: '保存作品', confirmLabel: name === undefined ? '确认保存' : '保存' }): Promise<string | null> {
+    if (workDialogBusy.current) return Promise.resolve(null)
+    workDialogBusy.current = true
+    return new Promise(resolve => setWorkDialog({ message, name, ...labels, resolve: value => {
+      workDialogBusy.current = false
+      setWorkDialog(null)
+      resolve(value)
+    } }))
+  }
+  function persistWorks(next: Work[]) {
+    if (bootstrap.error) { toast.error('作品库读取失败，不能覆盖保存'); return false }
+    try { localStorage.setItem(workStorageKey, JSON.stringify(next)); setBeadingProjects(next); return true }
+    catch { toast.error('保存失败，请释放浏览器存储空间或导出作品'); return false }
   }
 
-  function openBeadingProject(id: string) {
-    const project = beadingProjects.find((item) => item.id === id)
-    if (!project) return
-    const frozenPattern = parsePatternGrid(project.pattern)
-    if (!frozenPattern) return
-    if (activeBeadingProjectId && activeBeadingProjectId !== id) {
-      const completed = [...beadingHistory.present]
-      setBeadingProjects((previous) =>
-        previous.map((item) =>
-          item.id === activeBeadingProjectId
-            ? { ...item, completed, beadingMode, updatedAt: Date.now() }
-            : item,
-        ),
-      )
+  async function saveWork(asCopy = false): Promise<Work | null> {
+    const source = editorMode === 'bead' && activeBeadingPattern ? serializePatternGrid(activeBeadingPattern) : serializedDraft
+    const existing = asCopy ? null : currentWork
+    const changed = existing && !sameWorkPattern(existing.pattern, source)
+    if (changed && existing.completed.length && (await askWorkDialog('保存修改将重置这份作品的拼豆进度。取消可保留草稿，也可以另存为新作品。')) === null) return null
+    const now = Date.now()
+    const name = existing?.name ?? (await askWorkDialog(asCopy ? '保存为新作品' : '保存作品', asCopy && currentWork ? currentWork.name + ' 副本' : '未命名作品'))?.trim()
+    if (!name) return null
+    const work: Work = existing ? updateWorkPattern(existing, source, now) : {
+      id: crypto.randomUUID(), name, createdAt: now, updatedAt: now, pattern: source,
+      revision: 1, progressRevision: 1, completed: [], beadingMode: 'layer',
     }
-    setActiveBeadingProjectId(project.id)
-    setActiveBeadingPattern(frozenPattern)
-    setBeadingHistory({
-      past: [],
-      present: new Set(project.completed),
-      future: [],
-    })
-    setBeadingModeState(project.beadingMode)
-    const savedCompleted = new Set(project.completed)
-    const firstPending = frozenPattern.cells.findIndex((cell, index) => Boolean(cell.color && !cell.isExternal && !savedCompleted.has(index)))
-    setActiveBeadingLayerAnchor(firstPending >= 0 ? firstPending : null)
-    setBeadingColor(null)
-    setHighlightedColor(null)
-    setEyedropperActive(false)
-    setProtectedSelection(null)
-    setCurrentTool('brush')
-    setEditorMode('bead')
-    setViewportFitRequest((value) => value + 1)
+    const next = existing ? beadingProjects.map(item => item.id === work.id ? work : item) : [work, ...beadingProjects]
+    if (!persistWorks(next)) return null
+    setActiveWorkId(work.id)
+    if (changed || !existing) setBeadingHistory({ past: [], present: new Set(), future: [] })
+    if (editorMode === 'bead') {
+      setActiveBeadingProjectId(work.id)
+      if (asCopy) setBeadingHistory({ past: [], present: new Set(), future: [] })
+    }
+    toast.success('作品已保存')
+    return work
+  }
+
+  async function canLeaveDrawing() {
+    if (editorMode !== 'draw' || !isWorkDirty) return true
+    if ((await askWorkDialog('当前作品有未保存修改，保存后再切换？取消将留在当前作品。')) === null) return false
+    return Boolean(await saveWork())
+  }
+
+  function enterWork(work: Work, mode: EditorMode) {
+    const nextPattern = parsePatternGrid(work.pattern)
+    if (!nextPattern) return false
+    beadingStrokeBaselineRef.current = null
+    beadingStrokeChangedRef.current = false
+    strokeBaselineRef.current = null
+    strokeDraftRef.current = null
+    strokeChangedRef.current = false
+    setActiveWorkId(work.id)
+    setHistory({ past: [], present: nextPattern, future: [], pastExcluded: [], futureExcluded: [] })
+    setRows(nextPattern.height); setCols(nextPattern.width)
+    setExcludedColorHexes(new Set())
+    setActiveBeadingProjectId(mode === 'bead' ? work.id : null)
+    setActiveBeadingPattern(mode === 'bead' ? nextPattern : null)
+    setBeadingHistory({ past: [], present: new Set(work.completed), future: [] })
+    setBeadingPreviewProjectId(null)
+    setBeadingAdjustment(null)
+    setActiveBeadingLayerAnchor(null)
+    setBeadingColor(null); setHighlightedColor(null); setProtectedSelection(null)
+    setEyedropperActive(false); setCurrentTool('brush')
+    setEditorMode(mode)
+    setViewportFitRequest(value => value + 1)
+    return true
+  }
+
+  async function openWork(id: string, mode: EditorMode) {
+    let work = beadingProjects.find(item => item.id === id)
+    if (!work) return false
+    if (id === activeWorkId && mode === editorMode) return true
+    if (id === activeWorkId && editorMode === 'draw' && isWorkDirty) {
+      const saved = await saveWork()
+      if (!saved) return false
+      work = saved
+    } else if (!(await canLeaveDrawing())) return false
+    if (mode === 'bead' && !parsePatternGrid(work.pattern)?.cells.some(cell => cell.color && !cell.isExternal)) {
+      toast.error('作品还没有豆子，请先绘制'); return false
+    }
+    return enterWork(work, mode)
+  }
+
+  async function startBeadingWork() {
+    if (editorMode === 'bead') return true
+    if (currentWork) return openWork(currentWork.id, 'bead')
+    if (!history.present.cells.some(cell => cell.color && !cell.isExternal)) { toast.error('请先绘制作品'); return false }
+    const saved = await saveWork()
+    return saved ? enterWork(saved, 'bead') : false
   }
 
   function leaveBeadingMode() {
-    if (activeBeadingProjectId) {
-      const completed = [...beadingHistory.present]
-      setBeadingProjects((previous) =>
-        previous.map((project) =>
-          project.id === activeBeadingProjectId
-            ? { ...project, completed, beadingMode, updatedAt: Date.now() }
-            : project,
-        ),
-      )
-    }
-    setBeadingHistory({ past: [], present: new Set(), future: [] })
-    beadingStrokeBaselineRef.current = null
-    beadingStrokeChangedRef.current = false
-    setBeadingColor(null)
-    setBeadingModeState('free')
-    setActiveBeadingLayerAnchor(null)
-    setHideCompletedBeads(false)
-    setActiveBeadingProjectId(null)
-    setActiveBeadingPattern(null)
-    setEditorMode('draw')
-    setViewportFitRequest((value) => value + 1)
+    if (currentWork) enterWork(currentWork, 'draw')
   }
 
+  function resetDrawingWorkspace() {
+    beadingStrokeBaselineRef.current = null
+    beadingStrokeChangedRef.current = false
+    strokeBaselineRef.current = null
+    strokeDraftRef.current = null
+    strokeChangedRef.current = false
+    setActiveWorkId(null); setActiveBeadingProjectId(null); setActiveBeadingPattern(null)
+    setBeadingHistory({ past: [], present: new Set(), future: [] })
+    setBeadingPreviewProjectId(null); setBeadingAdjustment(null); setActiveBeadingLayerAnchor(null)
+    setBeadingColor(null); setHighlightedColor(null); setProtectedSelection(null); setExcludedColorHexes(new Set())
+    setEyedropperActive(false); setCurrentTool('brush'); setEditorMode('draw')
+    setHistory({ past: [], present: initialPattern, future: [], pastExcluded: [], futureExcluded: [] })
+    setRows(initialPattern.height); setCols(initialPattern.width)
+    setViewportFitRequest(value => value + 1)
+  }
+  async function newWork() {
+    if (!(await canLeaveDrawing())) return false
+    resetDrawingWorkspace(); return true
+  }
+  async function discardWorkChanges() {
+    if (!currentWork || (await askWorkDialog('放弃未保存的图纸修改，恢复上次保存的作品？', undefined, { title: '放弃修改', confirmLabel: '放弃修改' })) === null) return
+    enterWork(currentWork, 'draw')
+  }
+  async function requestRenameWork(id: string) {
+    const work = beadingProjects.find(item => item.id === id)
+    if (!work) return
+    const name = await askWorkDialog('输入新的作品名称', work.name, { title: '重命名作品', confirmLabel: '保存名称' })
+    if (name !== null) renameWork(id, name)
+  }
+  function renameWork(id: string, name: string) {
+    if (!name.trim()) return
+    persistWorks(beadingProjects.map(work => work.id === id ? { ...work, name: name.trim(), updatedAt: Date.now() } : work))
+  }
   function deleteBeadingProject(id: string) {
-    if (id === activeBeadingProjectId) leaveBeadingMode()
-    setBeadingProjects((previous) =>
-      previous.filter((project) => project.id !== id),
-    )
+    if (!persistWorks(beadingProjects.filter(work => work.id !== id))) return
+    if (activeWorkId === id) resetDrawingWorkspace()
   }
 
   function beginBeadingStroke() {
@@ -715,6 +775,7 @@ export function useEditorState() {
   }
 
   function fillConnectedBeads(index: number) {
+    if (showingBeadingResult || isBeadingPreview || currentTool === 'select') return
     if (beadingMode === 'layer' && !activeBeadingLayer?.has(index)) return
     const region = connectedBeads(pattern, index)
     if (!region.size) return
@@ -736,6 +797,7 @@ export function useEditorState() {
   }
 
   function setBeadCompleted(index: number, completed: boolean) {
+    if (showingBeadingResult || isBeadingPreview || currentTool === 'select') return
     const cell = pattern.cells[index]
     if (!cell?.color || cell.isExternal) return
     if (
@@ -1532,6 +1594,13 @@ export function useEditorState() {
     return buildConvertedPattern(file, options, new Set())
   }
 
+  async function createWorkFromImage(nextPattern: PatternGrid, options: ImageConversionOptions, metadata: { file?: File | null; excludedColors?: Set<string>; status?: string }) {
+    if (!(await canLeaveDrawing())) return false
+    resetDrawingWorkspace()
+    applyImagePattern(nextPattern, options, { ...metadata, freshWork: true })
+    return true
+  }
+
   function applyImagePattern(
     nextPattern: PatternGrid,
     options: ImageConversionOptions,
@@ -1539,6 +1608,7 @@ export function useEditorState() {
       file?: File | null
       excludedColors?: Set<string>
       status?: string
+      freshWork?: boolean
     } = {},
   ) {
     if (metadata.file) setImageFile(metadata.file)
@@ -1554,7 +1624,10 @@ export function useEditorState() {
     const nextExcluded = new Set(
       [...(metadata.excludedColors ?? new Set())].map(normalizeHex),
     )
-    commitPattern(nextPattern, nextExcluded)
+    if (metadata.freshWork) {
+      setHistory({ past: [], present: nextPattern, future: [], pastExcluded: [], futureExcluded: [] })
+      setExcludedColorHexes(nextExcluded)
+    } else commitPattern(nextPattern, nextExcluded)
     setImageStatus(
       metadata.status ??
         `已应用 ${nextPattern.width} × ${nextPattern.height} 图纸`,
@@ -1720,38 +1793,6 @@ export function useEditorState() {
     }
   }
 
-  function saveLocal() {
-    try {
-      localStorage.setItem(
-        'bead-pattern-editor',
-        JSON.stringify(serializePatternGrid(pattern)),
-      )
-      setImageStatus('已保存到当前浏览器')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      setImageStatus(`保存失败：${message}`)
-    }
-  }
-
-  function restoreLocal() {
-    try {
-      const saved = localStorage.getItem('bead-pattern-editor')
-      if (!saved) {
-        setImageStatus('当前浏览器没有保存过的图纸')
-        return
-      }
-      const payload = JSON.parse(saved) as unknown
-      const nextPattern = parsePatternGrid(payload)
-      if (!nextPattern) throw new Error('保存的图纸结构或尺寸无效')
-      setRows(nextPattern.height)
-      setCols(nextPattern.width)
-      commitPattern(nextPattern, new Set())
-      setImageStatus('已恢复上次的图纸')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      setImageStatus(`恢复失败：${message}`)
-    }
-  }
 
   return {
     rows,
@@ -1759,25 +1800,52 @@ export function useEditorState() {
     cols,
     setCols,
     pattern,
-    currentTool,
-    setCurrentTool,
+    currentTool: showingBeadingResult || isBeadingPreview ? 'pan' as const : currentTool,
+    isBeadingPreview,
+    setBeadingPreview: (active: boolean) => setBeadingPreviewProjectId(active ? activeBeadingProjectId : null),
+    toggleBeadingPreview: () => setBeadingPreviewProjectId(isBeadingPreview ? null : activeBeadingProjectId),
+    beadingViewMode,
+    setBeadingViewMode: (mode: 'all' | 'focus' | 'reference') => {
+      setBeadingPreviewProjectId(null)
+      setBeadingViewMode(mode)
+    },
+    isBeadingLayerPicker: editorMode === 'bead' && !showingBeadingResult && !isBeadingPreview && currentTool === 'select',
+    isBeadingComplete,
+    showingBeadingResult,
+    continueBeadingAdjustment,
+    showBeadingResult: () => setBeadingAdjustment(null),
+    setCurrentTool: (tool: Parameters<typeof setCurrentTool>[0]) => {
+      setBeadingPreviewProjectId(null)
+      setCurrentTool(tool)
+    },
     editorMode,
     beadingProjects,
     activeBeadingProject,
     activeBeadingProjectId,
-    createBeadingProject,
-    openBeadingProject,
+    currentWork,
+    isWorkDirty,
+    workDialog,
+    saveWork,
+    openWork,
+    newWork,
+    discardWorkChanges,
+    renameWork,
+    requestRenameWork,
+    startBeadingWork,
+
     deleteBeadingProject,
     leaveBeadingMode,
     completedBeads: beadingHistory.present,
     beadingMode,
-    setBeadingMode,
     beadingFillMode,
     setBeadingFillMode,
     fillConnectedBeads,
     activeBeadingLayer,
     activeBeadingLayerAnchor,
     activeBeadingLayerCompletedCount,
+    beadingLayerCount: beadingLayers.length,
+    beadingLayers,
+    completedBeadingLayerCount,
     selectBeadingLayer,
     selectBeadingColorLayer,
     selectAdjacentBeadingLayer,
@@ -1893,6 +1961,7 @@ export function useEditorState() {
     removeIsolatedCells,
     convertImage,
     generateImagePattern,
+    createWorkFromImage,
     applyImagePattern,
     exportPng,
     exportPatternImage,
@@ -1900,8 +1969,8 @@ export function useEditorState() {
     exportJson,
     exportColorList,
     importJson,
-    saveLocal,
-    restoreLocal,
+
+
   }
 }
 
@@ -2255,52 +2324,6 @@ function loadCustomPalette(): BeadColor[] {
   }
 }
 
-function loadBeadingProjects(): BeadingProjectSummary[] {
-  try {
-    const saved = localStorage.getItem(beadingProjectsStorageKey)
-    if (!saved) return []
-    const parsed = JSON.parse(saved) as unknown
-    if (!Array.isArray(parsed)) return []
-    const projects: BeadingProjectSummary[] = []
-    parsed.slice(0, maxBeadingProjects).forEach((value) => {
-      if (!value || typeof value !== 'object') return
-      const candidate = value as Partial<BeadingProjectSummary>
-      if (
-        typeof candidate.id !== 'string' ||
-        typeof candidate.name !== 'string' ||
-        typeof candidate.createdAt !== 'number' ||
-        typeof candidate.updatedAt !== 'number' ||
-        !Array.isArray(candidate.completed) ||
-        !parsePatternGrid(candidate.pattern)
-      ) {
-        return
-      }
-      projects.push({
-        id: candidate.id,
-        name: candidate.name,
-        createdAt: candidate.createdAt,
-        updatedAt: candidate.updatedAt,
-        pattern: candidate.pattern as SerializedPatternGrid,
-        completed: candidate.completed.filter(
-          (index): index is number =>
-            Number.isInteger(index) && index >= 0,
-        ),
-        beadingMode: ['layer', 'block'].includes(String(candidate.beadingMode)) ? 'layer' : 'free',
-      })
-    })
-    return projects
-  } catch {
-    return []
-  }
-}
-
-function formatBeadingProjectTime(timestamp: number) {
-  const date = new Date(timestamp)
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
-    date.getHours(),
-  )}:${pad(date.getMinutes())}`
-}
 
 function loadHexSet(storageKey: string): Set<string> {
   try {

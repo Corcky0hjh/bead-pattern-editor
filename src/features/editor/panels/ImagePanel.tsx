@@ -11,7 +11,9 @@ import {
   type SetStateAction,
 } from 'react'
 import { getDisplayCode } from '../../../core/color'
-import { ImageSquare } from '@phosphor-icons/react'
+import { createPortal } from 'react-dom'
+import { ModalDialog } from '../../../components/ModalDialog'
+import { Plus, FilePlus, ImageSquare } from '@phosphor-icons/react'
 import {
   conversionAlgorithmOptions,
   type ConversionAlgorithm,
@@ -72,6 +74,7 @@ const boardSizePresets = [
 ]
 
 export function ImagePanel({ editor, compact = false }: ImagePanelProps) {
+  const [newMenuOpen, setNewMenuOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -88,24 +91,29 @@ export function ImagePanel({ editor, compact = false }: ImagePanelProps) {
       <button
         ref={importTriggerRef}
         type="button"
-        aria-label={compact ? '导入照片' : undefined}
+        aria-label={'新建作品'}
         title={compact ? '导入照片' : undefined}
         className={compact ? 'grid h-8 w-8 shrink-0 place-items-center rounded-lg text-editor-text transition hover:bg-editor-accent-soft hover:text-editor-accent focus-visible:outline-2 focus-visible:outline-editor-accent' : 'group grid min-h-24 cursor-pointer gap-2 rounded-3xl border border-editor-border bg-editor-elevated/70 px-4 py-4 text-left transition hover:bg-editor-elevated hover:shadow-sm'}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => setNewMenuOpen(true)}
       >
-        {compact ? <ImageSquare size={19} weight="regular" aria-hidden="true" /> : <><span className="flex items-center justify-between gap-3">
+        {compact ? <Plus size={19} weight="regular" aria-hidden="true" /> : <><span className="flex items-center justify-between gap-3">
           <span className="text-sm font-black text-editor-strong">
-            选择图片生成图纸
+            新建作品
           </span>
           <span className="grid h-9 w-9 place-items-center rounded-full bg-editor-accent text-lg font-black text-white transition group-hover:scale-105">
             +
           </span>
         </span>
         <span className="text-xs leading-5 text-editor-text">
-          选图后直接进入构图和转色预览
+          创建空白画布，或从图片生成作品
         </span>
         </>}
       </button>
+      {newMenuOpen ? createPortal(<ModalDialog label="新建作品" onClose={() => setNewMenuOpen(false)} panelClassName="w-full max-w-sm rounded-3xl bg-editor-surface p-4 shadow-xl">
+        <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-semibold text-editor-strong">新建作品</h2><button type="button" data-modal-close className="rounded-lg px-2 py-1 text-sm text-editor-text">取消</button></div>
+        <button type="button" className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-editor-strong hover:bg-editor-accent-soft" onClick={async () => { setNewMenuOpen(false); await editor.newWork() }}><FilePlus size={24}/><span>空白画布<span className="block text-xs text-editor-text">从空白开始绘制</span></span></button>
+        <button type="button" className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-editor-strong hover:bg-editor-accent-soft" onClick={() => { setNewMenuOpen(false); fileInputRef.current?.click() }}><ImageSquare size={24}/><span>从图片创建<span className="block text-xs text-editor-text">选择图片、调整构图并转换豆色</span></span></button>
+      </ModalDialog>, document.body) : null}
       <input
         ref={fileInputRef}
         className="hidden"
@@ -120,12 +128,12 @@ export function ImagePanel({ editor, compact = false }: ImagePanelProps) {
         }}
       />
 
-      {importOpen ? (
+      {importOpen ? createPortal(
         <ImageImportModal
           editor={editor}
           initialFile={importFile}
           onClose={closeImport}
-        />
+        />, document.body
       ) : null}
     </div>
   )
@@ -359,14 +367,14 @@ function ImageImportModal({
     }
   }
 
-  function applyToEditor() {
+  async function applyToEditor() {
     if (!previewPattern || previewPendingRef.current) return
-    editor.applyImagePattern(previewPattern, conversionOptions, {
+    const created = await editor.createWorkFromImage(previewPattern, conversionOptions, {
       file,
       excludedColors,
       status: `已应用 ${previewPattern.width} × ${previewPattern.height} 图纸`,
     })
-    onClose()
+    if (created) onClose()
   }
 
   const canContinue =

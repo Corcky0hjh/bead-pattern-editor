@@ -1,3 +1,4 @@
+export const toolbarDockDelay = 400
 export type ToolbarAxis = 'horizontal' | 'vertical'
 export type ToolbarDockEdge = 'top' | 'right' | 'bottom' | 'left'
 
@@ -51,6 +52,7 @@ export function getToolbarDockEdge({
   currentEdge,
   entryDistance = 64,
   retentionDistance = 80,
+  allowedEdges,
 }: {
   pointerX: number
   pointerY: number
@@ -58,6 +60,7 @@ export function getToolbarDockEdge({
   currentEdge: ToolbarDockEdge | null
   entryDistance?: number
   retentionDistance?: number
+  allowedEdges?: readonly ToolbarDockEdge[]
 }): ToolbarDockEdge | null {
   if (currentEdge === 'top' && pointerY <= bounds.top + retentionDistance) {
     return 'top'
@@ -84,7 +87,9 @@ export function getToolbarDockEdge({
     { edge: 'bottom', distance: Math.max(0, bounds.bottom - pointerY) },
     { edge: 'left', distance: Math.max(0, pointerX - bounds.left) },
   ]
-  const nearest = edges.reduce((best, edge) =>
+  const candidates = allowedEdges ? edges.filter(({ edge }) => allowedEdges.includes(edge)) : edges
+  if (!candidates.length) return null
+  const nearest = candidates.reduce((best, edge) =>
     edge.distance < best.distance ? edge : best,
   )
   return nearest.distance <= entryDistance ? nearest.edge : null

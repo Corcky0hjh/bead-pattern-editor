@@ -1,6 +1,9 @@
+import { WorkSaveDialog } from './WorkSaveDialog'
+import { WorkBar } from './WorkBar'
 import { useEffect, useRef, useState } from 'react'
 import { SidebarSimple } from '@phosphor-icons/react'
 import { CanvasStage } from '../../platform/web/CanvasStage'
+import { BeadingCelebration } from './BeadingCelebration'
 import { CanvasSettingsModal } from './panels/CanvasSettingsModal'
 import { ColorPanel } from './panels/ColorPanel'
 import { ImagePanel } from './panels/ImagePanel'
@@ -15,6 +18,16 @@ export function EditorShell() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelTab, setPanelTab] = useState<'colors' | 'beading'>('colors')
+  const activePanelTab = editor.editorMode === 'bead' ? 'beading' : panelTab
+  const panelTabs = editor.editorMode === 'bead'
+    ? [{ value: 'beading', label: '作品库' }] as const
+    : [{ value: 'colors', label: '颜色' }, { value: 'beading', label: '作品库' }] as const
+
+  function enterBeadingPanel(_id: string) {
+    setPanelTab('beading')
+    setPanelOpen(false)
+  }
+
   const previousToolRef = useRef<EditorTool | null>(null)
   // 记录"是否因为按住 Alt 而激活了临时吸管"。松开 Alt 时只关掉我们自己开的那次,
   // 不影响用户主动开/关的吸管状态。
@@ -30,11 +43,14 @@ export function EditorShell() {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (isTypingTarget(event.target)) return
+      if (event.defaultPrevented || isTypingTarget(event.target)) return
+      if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return
 
       const key = event.key
       const lower = key.toLowerCase()
       const meta = event.ctrlKey || event.metaKey
+
+      if (meta && lower === 's') { event.preventDefault(); editor.saveWork(); return }
 
       // 按住 Alt 临时激活吸管(松开恢复)。要在 meta/alt 早返回之前处理。
       // preventDefault 避免 Windows Chrome/Edge 把单按 Alt 解释成"聚焦菜单栏"
@@ -62,6 +78,7 @@ export function EditorShell() {
       if (meta || event.altKey) return
 
       if (key === ' ') {
+        if (event.target instanceof Element && event.target.closest('button')) return
         if (editor.currentTool !== 'pan' && previousToolRef.current === null) {
           previousToolRef.current = editor.currentTool
           editor.setCurrentTool('pan')
@@ -155,6 +172,11 @@ export function EditorShell() {
 
   return (
     <>
+      <BeadingCelebration
+        projectId={editor.editorMode === 'bead' ? editor.activeBeadingProjectId : null}
+        done={editor.completedBeadCount}
+        total={editor.usedCount}
+      />
       <div className="editor-workspace">
         <header className="editor-header flex h-10 shrink-0 items-center justify-between gap-4 px-2 pb-1">
           <div className="flex min-w-0 items-center gap-2">
@@ -165,7 +187,7 @@ export function EditorShell() {
           </div>
           <div className="editor-header-actions flex shrink-0 items-center gap-2">
           <div ref={setHeaderControls} />
-          {editor.editorMode === 'draw' ? <ImagePanel editor={editor} compact /> : null}
+          <ImagePanel editor={editor} compact />
           <div className="relative z-[70] shrink-0">
 
           <button
@@ -182,6 +204,8 @@ export function EditorShell() {
           </div>
           </div>
         </header>
+        {editor.workDialog ? <WorkSaveDialog key={editor.workDialog.message} dialog={editor.workDialog} /> : null}
+        <WorkBar editor={editor} onOpenLibrary={() => { setPanelTab('beading'); setPanelOpen(true) }} />
       <div className="editor-workspace-layout" data-panel-open={panelOpen}>
         <section className="relative min-h-0 min-w-0">
           <CanvasStage
@@ -193,15 +217,20 @@ export function EditorShell() {
 
         <aside id="editor-work-panel" aria-label="工作面板" className="editor-work-panel" data-open={panelOpen} aria-hidden={!panelOpen} inert={!panelOpen}>
             <div className="work-panel-tabs flex h-8 items-center gap-1" role="tablist" aria-label="工作面板内容">
-              {([{ value: 'colors', label: '颜色' }, { value: 'beading', label: '记录' }] as const).map((tab) => (
-                <button key={tab.value} id={`work-tab-${tab.value}`} type="button" role="tab" aria-selected={panelTab === tab.value} aria-controls="work-panel-content" onClick={() => setPanelTab(tab.value)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${panelTab === tab.value ? 'bg-editor-accent-soft text-editor-accent' : 'text-editor-text hover:bg-editor-surface-soft'}`}>
+              {panelTabs.map((tab) => (
+                <button key={tab.value} id={`work-tab-${tab.value}`} type="button" role="tab" aria-selected={activePanelTab === tab.value} aria-controls={`work-panel-${tab.value}`} onClick={() => setPanelTab(tab.value)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${activePanelTab === tab.value ? 'bg-editor-accent-soft text-editor-accent' : 'text-editor-text hover:bg-editor-surface-soft'}`}>
                   {tab.label}
                 </button>
               ))}
             </div>
 
-          <div id="work-panel-content" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" role="tabpanel" aria-labelledby={`work-tab-${panelTab}`}>
-            {panelTab === 'colors' ? <ColorPanel editor={editor} /> : <BeadingLibraryPanel editor={editor} />}
+          <div id="work-panel-content" className="flex min-h-0 flex-1 flex-col">
+            {editor.editorMode === 'draw' ? <div id="work-panel-colors" hidden={activePanelTab !== 'colors'} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" role="tabpanel" aria-labelledby="work-tab-colors">
+              <ColorPanel editor={editor} />
+            </div> : null}
+            <div id="work-panel-beading" hidden={activePanelTab !== 'beading'} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" role="tabpanel" aria-labelledby="work-tab-beading">
+              <BeadingLibraryPanel editor={editor} onEnterProject={enterBeadingPanel} />
+            </div>
           </div>
         </aside>
       </div>
