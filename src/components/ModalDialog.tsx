@@ -6,19 +6,21 @@ export function ModalDialog({
   onClose,
   panelClassName,
   children,
+  dismissDisabled = false,
 }: {
   label: string
   onClose: () => void
   panelClassName: string
+  dismissDisabled?: boolean
   children: ReactNode
 }) {
   const [closing, setClosing] = useState(false)
   const closeTimerRef = useRef<number | null>(null)
   const requestClose = useCallback(() => {
-    if (closeTimerRef.current !== null) return
+    if (dismissDisabled || closeTimerRef.current !== null) return
     setClosing(true)
     closeTimerRef.current = window.setTimeout(onClose, 180)
-  }, [onClose])
+  }, [onClose, dismissDisabled])
   const dialogRef = useModalDialog(requestClose)
 
   useEffect(
@@ -39,6 +41,7 @@ export function ModalDialog({
       data-closing={closing ? 'true' : 'false'}
       onClickCapture={(event) => {
         if (!(event.target instanceof Element)) return
+        if (event.target.closest('[role="dialog"]') !== event.currentTarget) return
         if (!event.target.closest('[data-modal-close]')) return
         event.preventDefault()
         event.stopPropagation()
@@ -48,7 +51,7 @@ export function ModalDialog({
         if (event.target === event.currentTarget) requestClose()
       }}
     >
-      <section ref={dialogRef} tabIndex={-1} className={panelClassName}>
+      <section ref={dialogRef} tabIndex={-1} className={`${panelClassName} outline-none`}>
         {children}
       </section>
     </div>

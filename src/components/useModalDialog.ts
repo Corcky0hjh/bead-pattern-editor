@@ -9,6 +9,9 @@ const focusableSelector = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
+let bodyLocks = 0
+let savedOverflow = ''
+
 export function useModalDialog(onClose: () => void) {
   const dialogRef = useRef<HTMLDivElement | null>(null)
   const closeDialog = useEffectEvent(onClose)
@@ -18,7 +21,7 @@ export function useModalDialog(onClose: () => void) {
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
-    const previousOverflow = document.body.style.overflow
+    if (bodyLocks++ === 0) savedOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
     const dialog = dialogRef.current
@@ -65,8 +68,8 @@ export function useModalDialog(onClose: () => void) {
     return () => {
       window.cancelAnimationFrame(initialFocusFrame)
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-      window.requestAnimationFrame(() => previousFocus?.focus())
+      if (--bodyLocks === 0) document.body.style.overflow = savedOverflow
+      window.requestAnimationFrame(() => previousFocus?.isConnected && previousFocus.focus())
     }
   }, [])
 

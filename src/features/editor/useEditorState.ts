@@ -1,3 +1,5 @@
+import { resizeWithAnchor, type ResizeAnchor } from '../../core/pattern/resize'
+import { readBox, boxLabel, includeUsedColors, toBoxColor, type BoxColor } from './beadBox'
 import { toast } from 'sonner'
 import { draftStorageKey, workStorageKey, loadWorkLibrary, loadWorkDraft, sameWorkPattern, updateWorkPattern, type Work } from './workLibrary'
 import { buildBeadingLayers, connectedBeads, nextPendingLayer } from '../../core/pattern/beadingLayers'
@@ -55,10 +57,8 @@ import {
   ensureChunkedPatternGrid,
   floodFillPatternGrid,
   getPatternCellChunks,
-  getUniformPatternCell,
   mapPatternCells,
   replacePatternColor,
-  resizePatternGrid,
   serializePatternGrid,
   CANVAS_BG_COLOR,
   MAX_PATTERN_SIDE,
@@ -113,6 +113,8 @@ const themeStorageKey = 'bead-pattern-editor:theme'
 const disabledPaletteStorageKey = 'bead-pattern-editor:disabled-palette-colors'
 
 type HistoryState = {
+  pastBoxes?: BoxColor[][]
+  futureBoxes?: BoxColor[][]
   past: PatternGrid[]
   present: PatternGrid
   future: PatternGrid[]
@@ -316,6 +318,9 @@ export function useEditorState() {
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>('outline')
   const [protectedSelection, setProtectedSelection] =
     useState<SelectionRect | null>(null)
+  const [canvasSizeDialog, setCanvasSizeDialog] = useState<'new' | 'resize' | null>(null)
+  const [workBox, setWorkBox] = useState<BoxColor[]>(() => bootstrap.draft?.beadBox ?? [])
+  const [boxPickerOpen, setBoxPickerOpen] = useState(false)
   const [currentColor, setCurrentColor] = useState(initialColor)
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null)
   const [eyedropperActive, setEyedropperActive] = useState(false)
@@ -386,16 +391,16 @@ export function useEditorState() {
   }, [canvasSettings])
 
   useEffect(() => {
-    if (bootstrap.error) { toast.error('作品库读取失败，已停止写入以保留原数据'); return }
+    if (bootstrap.error) { toast.error('作品读取失败，已停止写入以保留原数据'); return }
     try { localStorage.setItem(workStorageKey, JSON.stringify(beadingProjects)) }
     catch { toast.error('作品保存失败：浏览器存储空间不足，请导出备份') }
   }, [beadingProjects, bootstrap.error])
 
   useEffect(() => {
     if (bootstrap.error) return
-    try { localStorage.setItem(draftStorageKey, JSON.stringify({ workId: activeWorkId, pattern: serializePatternGrid(history.present) })) }
+    try { localStorage.setItem(draftStorageKey, JSON.stringify({ workId: activeWorkId, pattern: serializePatternGrid(history.present), beadBox: workBox })) }
     catch { toast.error('草稿暂存失败，请保存或导出作品') }
-  }, [history.present, activeWorkId, bootstrap.error])
+  }, [history.present, workBox, activeWorkId, bootstrap.error])
 
   useEffect(() => {
     applyTheme(currentTheme)
@@ -418,6 +423,49 @@ export function useEditorState() {
     () => mergePaletteWithCustomPriority(brandColors, customPalette),
     [brandColors, customPalette],
   )
+  const boxCatalog = useMemo(() => [
+    ...customPalette.map(color => toBoxColor(color)),
+    ...brands.flatMap(brand => getBrandColors(brand.id).map(color => toBoxColor(color, brand.id))),
+  ], [customPalette])
+  const beadBox = useMemo(() => includeUsedColors(workBox, history.present, boxCatalog), [workBox, history.present, boxCatalog])
+  // Preserve automatically discovered colors before committing this render.
+  if (beadBox.length !== workBox.length) setWorkBox(beadBox)
+  const boxDirty = JSON.stringify(beadBox) !== JSON.stringify(includeUsedColors(beadingProjects.find(w => w.id === activeWorkId)?.beadBox ?? [], history.present, boxCatalog))
+  function addBoxColor(color: BoxColor) {
+    setWorkBox(previous => previous.some(item => item.hex.toLowerCase() === color.hex.toLowerCase()) ? previous : [...previous, color])
+    setCurrentColor(color.hex)
+  }
+  function addBoxColors(colors: BoxColor[]) {
+    if (editorMode !== 'draw') return
+    setWorkBox(previous => {
+      const ids = new Set(previous.map(color => color.hex.toLowerCase()))
+      return [...previous, ...colors.filter(color => { if (ids.has(color.hex.toLowerCase())) return false; ids.add(color.hex.toLowerCase()); return true })]
+    })
+  }
+  function removeBoxColors(ids: string[]) {
+    if (editorMode !== 'draw') return
+    const selected = new Set(ids)
+    const hexes = new Set(beadBox.filter(color => selected.has(color.id)).map(color => color.hex))
+    if (!hexes.size) return
+    if (history.present.cells.some(cell => cell.color && hexes.has(cell.color) && !cell.isExternal)) {
+      commitPattern({ ...history.present, cells: mapPatternCells(history.present.cells, cell =>
+        cell.color && hexes.has(cell.color) && !cell.isExternal ? { color: null } : cell) })
+    }
+    const remaining = beadBox.filter(color => !selected.has(color.id))
+    setWorkBox(remaining)
+    if (hexes.has(currentColor) && remaining.length) setCurrentColor(remaining[0].hex)
+  }
+  function removeBoxColor(id: string) { removeBoxColors([id]) }
+  async function createCustomBoxColor(hex: string, suppliedName?: string) {
+    if (!/^#[0-9a-f]{6}$/i.test(hex)) return
+    const name = suppliedName ?? await askWorkDialog('给这颗豆色起个名字，保存到我的豆色卡并加入当前豆盒', '', { title: '新建豆色', confirmLabel: '添加豆色' })
+    if (!name?.trim()) return
+    const color = { hex: hex.toLowerCase(), codes: {}, nameZh: name.trim() }
+    setCustomPalette(previous => [...previous.filter(c => c.hex !== color.hex), color])
+    const entry = toBoxColor(color)
+    setWorkBox(previous => [...previous.filter(c => c.hex.toLowerCase() !== entry.hex.toLowerCase()), entry])
+    setCurrentColor(color.hex)
+  }
   const availablePalette = useMemo<BeadColor[]>(
     () =>
       palette.filter(
@@ -477,6 +525,7 @@ export function useEditorState() {
         getDisplayCode(color, currentBrand),
       )
     })
+    beadBox.forEach(color => codeByHex.set(color.hex.toLowerCase(), (color.brand ? color.codes[color.brand] : null) ?? boxLabel(color)))
     return [...patternSummary.counts.entries()]
       .map(([color, count]) => ({
         color,
@@ -484,7 +533,7 @@ export function useEditorState() {
         code: codeByHex.get(color.toLowerCase()) ?? null,
       }))
       .sort((left, right) => right.count - left.count)
-  }, [patternSummary, palette, currentBrand])
+  }, [patternSummary, palette, currentBrand, beadBox])
 
   const usedCount = useMemo(
     () => colorStats.reduce((total, item) => total + item.count, 0),
@@ -627,9 +676,9 @@ export function useEditorState() {
   const currentWork = beadingProjects.find(work => work.id === activeWorkId) ?? null
   const serializedDraft = useMemo(() => serializePatternGrid(history.present), [history.present])
   const isWorkDirty = useMemo(() => editorMode === 'draw' && (currentWork
-    ? !sameWorkPattern(currentWork.pattern, serializedDraft)
-    : history.past.length > 0 || history.present.cells.some(cell => Boolean(cell.color))),
-  [editorMode, currentWork, serializedDraft, history.past.length, history.present])
+    ? boxDirty || !sameWorkPattern(currentWork.pattern, serializedDraft)
+    : workBox.length > 0 || history.past.length > 0 || history.present.cells.some(cell => Boolean(cell.color))),
+  [editorMode, currentWork, serializedDraft, history.past.length, history.present, boxDirty, workBox.length])
 
   const [workDialog, setWorkDialog] = useState<{ message: string; name?: string; title: string; confirmLabel: string; resolve: (value: string | null) => void } | null>(null)
   const workDialogBusy = useRef(false)
@@ -643,7 +692,7 @@ export function useEditorState() {
     } }))
   }
   function persistWorks(next: Work[]) {
-    if (bootstrap.error) { toast.error('作品库读取失败，不能覆盖保存'); return false }
+    if (bootstrap.error) { toast.error('作品读取失败，不能覆盖保存'); return false }
     try { localStorage.setItem(workStorageKey, JSON.stringify(next)); setBeadingProjects(next); return true }
     catch { toast.error('保存失败，请释放浏览器存储空间或导出作品'); return false }
   }
@@ -656,8 +705,8 @@ export function useEditorState() {
     const now = Date.now()
     const name = existing?.name ?? (await askWorkDialog(asCopy ? '保存为新作品' : '保存作品', asCopy && currentWork ? currentWork.name + ' 副本' : '未命名作品'))?.trim()
     if (!name) return null
-    const work: Work = existing ? updateWorkPattern(existing, source, now) : {
-      id: crypto.randomUUID(), name, createdAt: now, updatedAt: now, pattern: source,
+    const work: Work = existing ? { ...updateWorkPattern(existing, source, now), beadBox, updatedAt: now } : {
+      id: crypto.randomUUID(), name, beadBox, createdAt: now, updatedAt: now, pattern: source,
       revision: 1, progressRevision: 1, completed: [], beadingMode: 'layer',
     }
     const next = existing ? beadingProjects.map(item => item.id === work.id ? work : item) : [work, ...beadingProjects]
@@ -670,6 +719,20 @@ export function useEditorState() {
     }
     toast.success('作品已保存')
     return work
+  }
+
+  function copyWork(id: string) {
+    const source = beadingProjects.find(work => work.id === id)
+    if (!source) return null
+    const baseName = source.name + ' 副本'
+    let name = baseName
+    let suffix = 2
+    while (beadingProjects.some(work => work.name === name)) name = baseName + ' ' + suffix++
+    const now = Date.now()
+    const copy: Work = { ...source, id: crypto.randomUUID(), name, pattern: structuredClone(source.pattern), beadBox: structuredClone(source.beadBox ?? []), createdAt: now, updatedAt: now, revision: 1, progressRevision: 1, completed: [], beadingMode: 'layer' }
+    if (!persistWorks([copy, ...beadingProjects])) return null
+    toast.success('已创建副本')
+    return copy
   }
 
   async function canLeaveDrawing() {
@@ -687,6 +750,7 @@ export function useEditorState() {
     strokeDraftRef.current = null
     strokeChangedRef.current = false
     setActiveWorkId(work.id)
+    setWorkBox(work.beadBox ?? [])
     setHistory({ past: [], present: nextPattern, future: [], pastExcluded: [], futureExcluded: [] })
     setRows(nextPattern.height); setCols(nextPattern.width)
     setExcludedColorHexes(new Set())
@@ -736,6 +800,7 @@ export function useEditorState() {
     strokeBaselineRef.current = null
     strokeDraftRef.current = null
     strokeChangedRef.current = false
+    setWorkBox([])
     setActiveWorkId(null); setActiveBeadingProjectId(null); setActiveBeadingPattern(null)
     setBeadingHistory({ past: [], present: new Set(), future: [] })
     setBeadingPreviewProjectId(null); setBeadingAdjustment(null); setActiveBeadingLayerAnchor(null)
@@ -745,13 +810,35 @@ export function useEditorState() {
     setRows(initialPattern.height); setCols(initialPattern.width)
     setViewportFitRequest(value => value + 1)
   }
-  async function newWork() {
+  async function newWork(width?: number, height?: number) {
+    if ((width !== undefined || height !== undefined) && (!Number.isFinite(width) || !Number.isFinite(height))) return false
     if (!(await canLeaveDrawing())) return false
-    resetDrawingWorkspace(); return true
+    resetDrawingWorkspace()
+    if (width !== undefined && height !== undefined) {
+      const w = Math.max(MIN_PATTERN_SIDE, Math.min(MAX_PATTERN_SIDE, Math.round(width)))
+      const h = Math.max(MIN_PATTERN_SIDE, Math.min(MAX_PATTERN_SIDE, Math.round(height)))
+      if (!Number.isFinite(w) || !Number.isFinite(h)) return false
+      const blank = { width: w, height: h, cells: createUniformPatternCells(w, h, { color: null }) }
+      setHistory({ past: [], present: blank, future: [], pastExcluded: [], futureExcluded: [] })
+      setRows(h); setCols(w)
+    }
+    return true
   }
   async function discardWorkChanges() {
-    if (!currentWork || (await askWorkDialog('放弃未保存的图纸修改，恢复上次保存的作品？', undefined, { title: '放弃修改', confirmLabel: '放弃修改' })) === null) return
-    enterWork(currentWork, 'draw')
+    if (!isWorkDirty) return
+    const message = currentWork
+      ? '放弃未保存的图纸修改，恢复上次保存的作品？'
+      : '这份作品尚未保存。放弃后将清空当前图纸和豆盒，保留画板尺寸。'
+    if ((await askWorkDialog(message, undefined, { title: '放弃修改', confirmLabel: '放弃修改' })) === null) return
+    if (currentWork) {
+      enterWork(currentWork, 'draw')
+    } else {
+      const { width, height } = history.present
+      resetDrawingWorkspace()
+      setHistory({ past: [], present: { width, height, cells: createUniformPatternCells(width, height, { color: null }) }, future: [], pastExcluded: [], futureExcluded: [] })
+      setRows(height); setCols(width)
+    }
+    toast.success('已放弃未保存修改')
   }
   async function requestRenameWork(id: string) {
     const work = beadingProjects.find(item => item.id === id)
@@ -884,6 +971,8 @@ export function useEditorState() {
         (item) => item.color.toLowerCase() === highlightedColor.toLowerCase(),
       )
     ) {
+      // Clear a hover target invalidated by a canvas edit.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHighlightedColor(null)
     }
   }, [colorStats, highlightedColor])
@@ -911,6 +1000,8 @@ export function useEditorState() {
 
   function updateCurrentColor(color: string) {
     const normalized = color.toLowerCase()
+    const known = boxCatalog.find(item => item.hex === normalized)
+    if (known) setWorkBox(previous => previous.some(c => c.hex === known.hex) ? previous : [...previous, known])
     setCurrentColor(normalized)
     rememberColor(normalized)
   }
@@ -1025,6 +1116,8 @@ export function useEditorState() {
         new Set(excludedColorHexes),
       ].slice(-maxHistorySteps),
       futureExcluded: [],
+      pastBoxes: [...(previous.pastBoxes ?? []), beadBox].slice(-maxHistorySteps),
+      futureBoxes: [],
     }))
     setExcludedColorHexes(new Set(nextExcluded))
   }
@@ -1034,9 +1127,12 @@ export function useEditorState() {
     if (!nextPresent) return
     setRows(nextPresent.height)
     setCols(nextPresent.width)
+    setWorkBox(history.pastBoxes?.at(-1) ?? beadBox)
     const nextExcluded = history.pastExcluded.at(-1)
     setExcludedColorHexes(new Set(nextExcluded ?? []))
     setHistory({
+      pastBoxes: (history.pastBoxes ?? []).slice(0, -1),
+      futureBoxes: [beadBox, ...(history.futureBoxes ?? [])].slice(0, maxHistorySteps),
       past: history.past.slice(0, -1),
       present: nextPresent,
       future: [history.present, ...history.future].slice(0, maxHistorySteps),
@@ -1053,6 +1149,7 @@ export function useEditorState() {
     if (!nextPresent) return
     setRows(nextPresent.height)
     setCols(nextPresent.width)
+    setWorkBox(history.futureBoxes?.[0] ?? beadBox)
     const nextExcluded = history.futureExcluded[0]
     setExcludedColorHexes(new Set(nextExcluded ?? []))
     setHistory({
@@ -1064,36 +1161,19 @@ export function useEditorState() {
         new Set(excludedColorHexes),
       ].slice(-maxHistorySteps),
       futureExcluded: history.futureExcluded.slice(1),
+      pastBoxes: [...(history.pastBoxes ?? []), beadBox].slice(-maxHistorySteps),
+      futureBoxes: (history.futureBoxes ?? []).slice(1),
     })
   }
 
-  function applyCanvasSize(nextRows = rows, nextCols = cols) {
-    const normalizedRows = clamp(
-      Math.round(nextRows),
-      MIN_PATTERN_SIDE,
-      MAX_PATTERN_SIDE,
-    )
-    const normalizedCols = clamp(
-      Math.round(nextCols),
-      MIN_PATTERN_SIDE,
-      MAX_PATTERN_SIDE,
-    )
-    setRows(normalizedRows)
-    setCols(normalizedCols)
-    const current = history.present
-    const uniformCell = getUniformPatternCell(current.cells)
-    const nextPattern = uniformCell
-      ? {
-          width: normalizedCols,
-          height: normalizedRows,
-          cells: createUniformPatternCells(
-            normalizedCols,
-            normalizedRows,
-            uniformCell,
-          ),
-        }
-      : resizePatternGrid(current, normalizedCols, normalizedRows)
-    commitPattern(nextPattern, new Set())
+  function applyCanvasSize(nextRows = rows, nextCols = cols, anchor: ResizeAnchor = { x: 0, y: 0 }) {
+    if (editorMode !== 'draw' || !Number.isFinite(nextRows) || !Number.isFinite(nextCols)) return
+    const height = clamp(Math.round(nextRows), MIN_PATTERN_SIDE, MAX_PATTERN_SIDE)
+    const width = clamp(Math.round(nextCols), MIN_PATTERN_SIDE, MAX_PATTERN_SIDE)
+    if (width === history.present.width && height === history.present.height) return
+    setRows(height); setCols(width)
+    setProtectedSelection(null)
+    commitPattern(resizeWithAnchor(history.present, width, height, anchor).pattern, new Set())
   }
 
   function requestViewportFit() {
@@ -1134,6 +1214,8 @@ export function useEditorState() {
         new Set(excludedColorHexes),
       ].slice(-maxHistorySteps),
       futureExcluded: [],
+      pastBoxes: [...(previous.pastBoxes ?? []), beadBox].slice(-maxHistorySteps),
+      futureBoxes: [],
     }))
   }
 
@@ -1547,9 +1629,10 @@ export function useEditorState() {
     file: File,
     options: ImageConversionOptions,
     paletteExcludedHexes: Set<string>,
+    sourcePalette: BeadColor[] = availablePalette,
   ): Promise<PatternGrid> {
     const image = await loadImage(file)
-    const fullPalette = availablePalette
+    const fullPalette = sourcePalette
       .filter((color) => !paletteExcludedHexes.has(normalizeHex(color.hex)))
       .map((color) => color.hex)
 
@@ -1590,14 +1673,16 @@ export function useEditorState() {
   async function generateImagePattern(
     file: File,
     options: ImageConversionOptions,
+    sourcePalette?: BeadColor[],
   ) {
-    return buildConvertedPattern(file, options, new Set())
+    return buildConvertedPattern(file, options, new Set(), sourcePalette)
   }
 
-  async function createWorkFromImage(nextPattern: PatternGrid, options: ImageConversionOptions, metadata: { file?: File | null; excludedColors?: Set<string>; status?: string }) {
+  async function createWorkFromImage(nextPattern: PatternGrid, options: ImageConversionOptions, metadata: { file?: File | null; excludedColors?: Set<string>; status?: string; beadBox?: BoxColor[] }) {
     if (!(await canLeaveDrawing())) return false
     resetDrawingWorkspace()
     applyImagePattern(nextPattern, options, { ...metadata, freshWork: true })
+    if (metadata.beadBox) setWorkBox(metadata.beadBox)
     return true
   }
 
@@ -1727,14 +1812,25 @@ export function useEditorState() {
       const code = getDisplayCode(color, currentBrand)
       map.set(color.hex.toLowerCase(), code)
     })
+    beadBox.forEach(color => map.set(color.hex.toLowerCase(), (color.brand ? color.codes[color.brand] : null) ?? boxLabel(color)))
     return map
   }
 
-  function exportPatternImage() {
+  function exportBrand(hex: string) {
+    const color = beadBox.find(item => item.hex.toLowerCase() === hex.toLowerCase())
+    return color?.brand ? brands.find(item => item.id === color.brand)?.shortLabel ?? color.brand : '自定义'
+  }
+
+  function exportPatternImage(options: { showGrid?: boolean; showCodes?: boolean; showPalette?: boolean; showInfo?: boolean } = {}) {
+    const labels = buildLabelByHex()
     const canvas = renderPatternWithKeys({
       pattern,
-      labelByHex: buildLabelByHex(),
-      title: `${brand.shortLabel} · ${pattern.width}×${pattern.height} · 共 ${usedCount} 颗 · ${colorStats.length} 色`,
+      labelByHex: labels,
+      title: options.showInfo === false ? undefined : `${currentWork?.name ?? brand.shortLabel} · ${pattern.width}×${pattern.height} · 共 ${usedCount} 颗 · ${colorStats.length} 色`,
+      showGrid: options.showGrid,
+      showCodes: options.showCodes,
+      paletteStats: options.showPalette ? colorStats.map(item => ({ ...item, brandLabel: exportBrand(item.color), code: labels.get(item.color.toLowerCase()) ?? null })) : undefined,
+      brandShortLabel: '作品豆盒',
       cellSize: getBoundedCellSize(pattern, 28, 3800),
     })
     downloadCanvas(canvas, 'bead-pattern-keys.png')
@@ -1743,50 +1839,63 @@ export function useEditorState() {
   function exportShoppingListImage() {
     if (colorStats.length === 0) return
     const canvas = renderShoppingList({
-      stats: colorStats,
-      brandShortLabel: brand.shortLabel,
+      stats: colorStats.map(item => ({ ...item, brandLabel: exportBrand(item.color) })),
+      brandShortLabel: '作品豆盒',
       totalCount: usedCount,
     })
     downloadCanvas(canvas, 'bead-shopping-list.png')
   }
 
   function exportJson() {
-    const payload = JSON.stringify(serializePatternGrid(pattern), null, 2)
+    const payload = JSON.stringify({ format: 'bead-work', version: 1, pattern: serializePatternGrid(pattern), beadBox }, null, 2)
     const blob = new Blob([payload], { type: 'application/json' })
     downloadUrl(URL.createObjectURL(blob), 'bead-pattern.json', true)
   }
 
   function exportColorList() {
-    const labelByHex = new Map<string, string>()
-    palette.forEach((color) => {
-      const code = getDisplayCode(color, currentBrand)
-      labelByHex.set(
-        color.hex.toLowerCase(),
-        code ?? color.nameZh ?? color.nameEn ?? '自定义色',
-      )
-    })
-    const header = `色号(${brand.shortLabel}),hex,颗数\n`
+    const labelByHex = buildLabelByHex()
+    const header = '品牌,色号,hex,颗数\n'
     const rowsText = colorStats
       .map((item) => {
         const label = labelByHex.get(item.color.toLowerCase()) ?? '自定义色'
-        return `${label},${item.color},${item.count}`
+        return `"${exportBrand(item.color).replaceAll('"', '""')}","${label.replaceAll('"', '""')}",${item.color},${item.count}`
       })
       .join('\n')
-    const total = `\n合计,,${usedCount}`
+    const total = `\n合计,,,${usedCount}`
     const csv = `\uFEFF${header}${rowsText}${total}\n`
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     downloadUrl(URL.createObjectURL(blob), 'bead-color-list.csv', true)
   }
 
+  async function createWorkFromJson(file: File) {
+    try {
+      const payload = JSON.parse(await file.text())
+      if (payload?.format === 'bead-work' && payload.version !== 1) throw new Error('不支持的工程版本')
+      const parsed = parsePatternGrid(payload?.format === 'bead-work' ? payload.pattern : payload)
+      if (!parsed) throw new Error('图纸结构或尺寸无效')
+      if (!(await canLeaveDrawing())) return false
+      resetDrawingWorkspace()
+      setWorkBox(readBox(payload?.beadBox))
+      setHistory({ past: [], present: parsed, future: [], pastExcluded: [], futureExcluded: [] })
+      setRows(parsed.height); setCols(parsed.width)
+      return true
+    } catch (error) {
+      toast.error('导入失败：' + (error instanceof Error ? error.message : String(error)))
+      return false
+    }
+  }
+
   async function importJson(file: File) {
+    if (editorMode === 'bead') return
     try {
       const text = await file.text()
-      const payload = JSON.parse(text) as unknown
-      const nextPattern = parsePatternGrid(payload)
+      const payload = JSON.parse(text)
+      const nextPattern = parsePatternGrid(payload?.format === 'bead-work' ? payload.pattern : payload)
       if (!nextPattern) throw new Error('图纸结构或尺寸无效')
       setRows(nextPattern.height)
       setCols(nextPattern.width)
       commitPattern(nextPattern, new Set())
+      if (payload?.format === 'bead-work') setWorkBox(readBox(payload.beadBox))
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       setImageStatus(`导入失败：${message}`)
@@ -1826,8 +1935,11 @@ export function useEditorState() {
     isWorkDirty,
     workDialog,
     saveWork,
+    copyWork,
     openWork,
     newWork,
+    canvasSizeDialog,
+    setCanvasSizeDialog,
     discardWorkChanges,
     renameWork,
     requestRenameWork,
@@ -1886,6 +1998,7 @@ export function useEditorState() {
     setShapeStyle,
     protectedSelection,
     setProtectedSelection,
+    beadBox, boxCatalog, addBoxColor, addBoxColors, removeBoxColor, removeBoxColors, createCustomBoxColor, boxPickerOpen, setBoxPickerOpen,
     currentColor,
     highlightedColor,
     toggleHighlightedColor,
@@ -1969,6 +2082,7 @@ export function useEditorState() {
     exportJson,
     exportColorList,
     importJson,
+    createWorkFromJson,
 
 
   }

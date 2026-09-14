@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Check, Record as BeadIcon, Stack } from '@phosphor-icons/react'
+import { boxLabel } from './beadBox'
 import { getDisplayCode } from '../../core/color'
 import type { EditorStateController } from './useEditorState'
 import { normalizeWheelDelta } from '../../platform/web/viewportCamera'
@@ -11,13 +12,15 @@ export function BeadingStepBar({ editor, tools, dragHandle, collapsed = false }:
   const [scrollEdges, setScrollEdges] = useState({ left: false, right: false })
   const steps = useMemo(() => editor.beadingLayers.map((layer) => {
     const color = [...editor.customPalette, ...editor.palette].find((item) => item.hex.toLowerCase() === layer.color)
-    const name = color?.nameZh?.trim() || color?.nameEn?.trim()
+    const boxed = editor.beadBox.find(item => item.hex.toLowerCase() === layer.color)
+    const name = (boxed && boxLabel(boxed)) || color?.nameZh?.trim() || color?.nameEn?.trim()
       || (color && getDisplayCode(color, editor.currentBrand)) || layer.color
     const done = editor.completedBeadCountsByColor.get(layer.color) ?? 0
     return { color: layer.color, name, done, total: layer.indices.size }
-  }), [editor.beadingLayers, editor.customPalette, editor.palette, editor.currentBrand, editor.completedBeadCountsByColor])
+  }), [editor.beadBox, editor.beadingLayers, editor.customPalette, editor.palette, editor.currentBrand, editor.completedBeadCountsByColor])
   const activeIndex = steps.findIndex((step) => step.color === editor.beadingColor)
   const current = steps[activeIndex]
+  const hasCurrent = Boolean(current)
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current
@@ -38,7 +41,7 @@ export function BeadingStepBar({ editor, tools, dragHandle, collapsed = false }:
       scroller.removeEventListener('scroll', updateEdges)
       observer.disconnect()
     }
-  }, [steps.length, Boolean(current), editor.activeBeadingProjectId])
+  }, [steps.length, hasCurrent, editor.activeBeadingProjectId])
 
   useEffect(() => {
     const scroller = scrollerRef.current
@@ -55,7 +58,7 @@ export function BeadingStepBar({ editor, tools, dragHandle, collapsed = false }:
     }
     panel.addEventListener('wheel', onWheel, { passive: false })
     return () => panel.removeEventListener('wheel', onWheel)
-  }, [Boolean(current)])
+  }, [hasCurrent])
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current

@@ -8,7 +8,7 @@
 // 不归属任何品牌。
 
 /** 当前支持的品牌 id。新增品牌时追加到此联合 + brands 注册表。 */
-export type BrandId = 'mard' | 'artkal-c' | 'hama-midi' | 'perler'
+export type BrandId = 'mard' | 'artkal-s' | 'artkal-c' | 'hama-midi' | 'perler' | 'coco' | 'manman' | 'panpan' | 'mixiaowo'
 
 /** 单粒拼豆颜色 */
 export type BeadColor = {
@@ -25,7 +25,7 @@ export type BeadColor = {
 /** 品牌元信息 */
 export type Brand = {
   id: BrandId
-  /** 完整标签,UI 列表展示用,例 "Artkal C 5mm" */
+  /** 完整标签,UI 列表展示用,例 "Artkal C 2.6mm" */
   label: string
   /** 短标签,色板顶部 picker 等紧凑场景用,例 "Artkal C" */
   shortLabel: string

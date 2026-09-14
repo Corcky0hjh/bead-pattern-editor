@@ -1,155 +1,20 @@
-import {
-  FileArrowDown,
-  FileArrowUp,
-  FileCsv,
-  Image,
-  ListChecks,
-} from '@phosphor-icons/react'
-import type { ReactNode } from 'react'
+import { useState } from 'react'
+import { Image, Palette, FileCode, CheckCircle, Circle, DownloadSimple } from '@phosphor-icons/react'
 import type { EditorStateController } from '../useEditorState'
 
+type ExportKind = 'pattern' | 'palette' | 'project'
 export function ExportPanel({ editor }: { editor: EditorStateController }) {
-  const hasColors = editor.colorStats.length > 0
-
-  return (
-    <div className="mx-auto grid w-full max-w-4xl gap-8">
-      <ExportSection title="成品图片" description="用于制作、分享或打印的图纸文件">
-        <ExportAction
-          icon={<Image />}
-          title="带色号图纸"
-          description="包含网格、色号与拼豆颜色"
-          action="导出 PNG"
-          primary
-          disabled={!hasColors}
-          onClick={editor.exportPatternImage}
-        />
-        <ExportAction
-          icon={<ListChecks />}
-          title="采购清单"
-          description="按品牌和色号汇总所需拼豆"
-          action="导出 PNG"
-          disabled={!hasColors}
-          onClick={editor.exportShoppingListImage}
-        />
-        <ExportAction
-          icon={<Image />}
-          title="纯色块图纸"
-          description="不显示色号的干净图纸"
-          action="导出 PNG"
-          onClick={editor.exportPng}
-        />
-      </ExportSection>
-
-      <ExportSection title="数据清单" description="用于整理、统计或继续处理">
-        <ExportAction
-          icon={<FileCsv />}
-          title="配色清单"
-          description="导出颜色及使用数量"
-          action="导出 CSV"
-          disabled={!hasColors}
-          onClick={editor.exportColorList}
-        />
-      </ExportSection>
-
-      <ExportSection title="工程文件" description="保留可继续编辑的完整工程">
-        <ExportAction
-          icon={<FileArrowDown />}
-          title="导出工程文件"
-          description="下载当前作品的图纸内容"
-          action="导出文件"
-          onClick={editor.exportJson}
-        />
-        <label className="grid min-h-16 cursor-pointer gap-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-          <ActionIcon>{<FileArrowUp />}</ActionIcon>
-          <span>
-            <span className="block text-xs font-bold text-editor-strong">导入工程文件</span>
-            <span className="mt-1 block text-[11px] text-editor-text">打开之前导出的工程</span>
-          </span>
-          <span className="rounded-xl border border-editor-border px-3 py-2 text-xs font-bold text-editor-strong transition hover:bg-editor-surface-soft">
-            选择文件
-          </span>
-          <input
-            accept="application/json"
-            className="sr-only"
-            type="file"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void editor.importJson(file)
-              event.target.value = ''
-            }}
-          />
-        </label>
-      </ExportSection>
+  const [kind, setKind] = useState<ExportKind>('pattern')
+  const [options, setOptions] = useState({ showCodes: true, showGrid: true, showPalette: false, showInfo: true })
+  const [paletteFormat, setPaletteFormat] = useState<'png' | 'csv'>('png')
+  const tabs = [{ id: 'pattern' as const, label: '图纸', icon: Image }, { id: 'palette' as const, label: '配色', icon: Palette }, { id: 'project' as const, label: '工程', icon: FileCode }]
+  const toggles = [{ key: 'showCodes' as const, label: '豆子色号' }, { key: 'showGrid' as const, label: '网格' }, { key: 'showPalette' as const, label: '附带配色清单' }, { key: 'showInfo' as const, label: '作品名称与尺寸' }]
+  const empty = !editor.colorStats.length
+  return <div className="grid gap-4">
+    <div className="grid grid-cols-3 gap-1" role="tablist" aria-label="导出类型">{tabs.map(({ id, label, icon: Icon }) => <button key={id} id={'export-tab-'+id} type="button" role="tab" aria-selected={kind===id} aria-controls={'export-content-'+id} onClick={()=>setKind(id)} className={'flex h-10 items-center justify-center gap-2 rounded-xl text-[13px] transition '+(kind===id?'bg-editor-accent-soft text-editor-accent':'text-editor-text hover:bg-editor-surface-soft')}><Icon size={18}/>{label}</button>)}</div>
+    <div id={'export-content-'+kind} role="tabpanel" aria-labelledby={'export-tab-'+kind} className="min-h-44">
+      {kind==='pattern' ? <div className="grid gap-1">{toggles.map(({key,label})=><label key={key} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-[13px] text-editor-strong transition hover:bg-editor-surface-soft"><input type="checkbox" checked={options[key]} onChange={e=>setOptions(previous=>({...previous,[key]:e.target.checked}))} className="peer sr-only"/><span className="flex-1">{label}</span><span className="rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-editor-accent">{options[key]?<CheckCircle size={19} className="text-editor-accent"/>:<Circle size={19} className="text-editor-text opacity-40"/>}</span></label>)}</div> : kind==='palette' ? <div className="grid gap-3 px-3 py-2"><p className="text-[13px] leading-6 text-editor-text">{editor.colorStats.length} 种豆色 · {editor.usedCount} 颗，包含色号、色值和数量。</p><div role="group" aria-label="配色文件格式" className="grid grid-cols-2 gap-2">{(['png','csv'] as const).map(format=><button type="button" key={format} aria-pressed={paletteFormat===format} onClick={()=>setPaletteFormat(format)} className={'rounded-xl px-3 py-3 text-[13px] transition '+(paletteFormat===format?'bg-editor-accent-soft text-editor-accent':'bg-editor-elevated text-editor-text hover:bg-editor-surface-soft')}>{format==='png'?'PNG 图片':'CSV 表格'}</button>)}</div></div> : <div className="px-3 py-2 text-[13px] leading-6 text-editor-text"><p>JSON 图纸文件，保留画板尺寸和每格的豆色，可重新导入继续绘制。</p><p className="mt-2">不包含拼豆进度。</p></div>}
     </div>
-  )
-}
-
-function ExportSection({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description: string
-  children: ReactNode
-}) {
-  return (
-    <section className="grid gap-4">
-      <header>
-        <h3 className="text-sm font-black text-editor-strong">{title}</h3>
-        <p className="mt-1 text-xs text-editor-text">{description}</p>
-      </header>
-      <div className="divide-y divide-editor-border border-y border-editor-border">
-        {children}
-      </div>
-    </section>
-  )
-}
-
-function ExportAction({
-  icon,
-  title,
-  description,
-  action,
-  primary = false,
-  disabled = false,
-  onClick,
-}: {
-  icon: ReactNode
-  title: string
-  description: string
-  action: string
-  primary?: boolean
-  disabled?: boolean
-  onClick: () => void
-}) {
-  return (
-    <div className="grid min-h-16 gap-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-      <ActionIcon>{icon}</ActionIcon>
-      <div>
-        <p className="text-xs font-bold text-editor-strong">{title}</p>
-        <p className="mt-1 text-[11px] text-editor-text">{description}</p>
-      </div>
-      <button
-        type="button"
-        disabled={disabled}
-        className={`h-9 rounded-xl px-3 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-35 ${
-          primary
-            ? 'bg-editor-accent text-white hover:brightness-105'
-            : 'border border-editor-border text-editor-strong hover:bg-editor-surface-soft'
-        }`}
-        onClick={onClick}
-      >
-        {action}
-      </button>
-    </div>
-  )
-}
-
-function ActionIcon({ children }: { children: ReactNode }) {
-  return (
-    <span className="grid h-9 w-9 place-items-center rounded-xl bg-editor-surface-soft text-editor-text [&>svg]:h-[18px] [&>svg]:w-[18px]">
-      {children}
-    </span>
-  )
+    <div className="flex items-center justify-between gap-3 border-t border-editor-border/60 pt-3"><span className="text-xs text-editor-text">{kind==='project'?'JSON':kind==='palette'?paletteFormat.toUpperCase():'PNG'}{empty && kind!=='project'?' · 画布暂无豆子':''}</span><button type="button" disabled={empty && kind!=='project'} onClick={()=>{if(kind==='pattern')editor.exportPatternImage(options);else if(kind==='palette'){if(paletteFormat==='png')editor.exportShoppingListImage();else editor.exportColorList()}else editor.exportJson()}} className="flex h-10 items-center gap-2 rounded-xl bg-editor-accent px-4 text-[13px] text-white transition hover:brightness-110 active:scale-95 disabled:opacity-35"><DownloadSimple size={17}/>{kind==='pattern'?'导出图纸':kind==='palette'?'导出配色':'导出工程'}</button></div>
+  </div>
 }

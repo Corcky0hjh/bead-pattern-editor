@@ -1,0 +1,1736 @@
+[
+  {
+    "hex": "#faf5cd",
+    "codes": {
+      "panpan": "65"
+    }
+  },
+  {
+    "hex": "#fcfed6",
+    "codes": {
+      "panpan": "2"
+    }
+  },
+  {
+    "hex": "#fcff92",
+    "codes": {
+      "panpan": "28"
+    }
+  },
+  {
+    "hex": "#f7ec5c",
+    "codes": {
+      "panpan": "3"
+    }
+  },
+  {
+    "hex": "#f0d83a",
+    "codes": {
+      "panpan": "74"
+    }
+  },
+  {
+    "hex": "#fda951",
+    "codes": {
+      "panpan": "29"
+    }
+  },
+  {
+    "hex": "#fa8c4f",
+    "codes": {
+      "panpan": "4"
+    }
+  },
+  {
+    "hex": "#fdd94d",
+    "codes": {
+      "panpan": "88"
+    }
+  },
+  {
+    "hex": "#f99c5f",
+    "codes": {
+      "panpan": "90"
+    }
+  },
+  {
+    "hex": "#f47e36",
+    "codes": {
+      "panpan": "89"
+    }
+  },
+  {
+    "hex": "#fedb99",
+    "codes": {
+      "panpan": "100"
+    }
+  },
+  {
+    "hex": "#fda276",
+    "codes": {
+      "panpan": "99"
+    }
+  },
+  {
+    "hex": "#fec667",
+    "codes": {
+      "panpan": "131"
+    }
+  },
+  {
+    "hex": "#f85842",
+    "codes": {
+      "panpan": "138"
+    }
+  },
+  {
+    "hex": "#fbf65e",
+    "codes": {
+      "panpan": "150"
+    }
+  },
+  {
+    "hex": "#feff97",
+    "codes": {
+      "panpan": "216"
+    }
+  },
+  {
+    "hex": "#fde173",
+    "codes": {
+      "panpan": "213"
+    }
+  },
+  {
+    "hex": "#fcbf80",
+    "codes": {
+      "panpan": "223"
+    }
+  },
+  {
+    "hex": "#fd7e77",
+    "codes": {
+      "panpan": "218"
+    }
+  },
+  {
+    "hex": "#f9d66e",
+    "codes": {
+      "panpan": "242"
+    }
+  },
+  {
+    "hex": "#fae393",
+    "codes": {
+      "panpan": "276"
+    }
+  },
+  {
+    "hex": "#edf878",
+    "codes": {
+      "panpan": "270"
+    }
+  },
+  {
+    "hex": "#e1c9bd",
+    "codes": {
+      "panpan": "274"
+    }
+  },
+  {
+    "hex": "#f3f6a9",
+    "codes": {
+      "panpan": "288"
+    }
+  },
+  {
+    "hex": "#ffd785",
+    "codes": {
+      "panpan": "289"
+    }
+  },
+  {
+    "hex": "#fec832",
+    "codes": {
+      "panpan": "290"
+    }
+  },
+  {
+    "hex": "#bbc6b6",
+    "codes": {
+      "panpan": "168"
+    }
+  },
+  {
+    "hex": "#909994",
+    "codes": {
+      "panpan": "172"
+    }
+  },
+  {
+    "hex": "#697e80",
+    "codes": {
+      "panpan": "166"
+    }
+  },
+  {
+    "hex": "#e0d4bc",
+    "codes": {
+      "panpan": "167"
+    }
+  },
+  {
+    "hex": "#d0cbae",
+    "codes": {
+      "panpan": "174"
+    }
+  },
+  {
+    "hex": "#b0aa86",
+    "codes": {
+      "panpan": "169"
+    }
+  },
+  {
+    "hex": "#b0a796",
+    "codes": {
+      "panpan": "171"
+    }
+  },
+  {
+    "hex": "#ae8082",
+    "codes": {
+      "panpan": "177"
+    }
+  },
+  {
+    "hex": "#a88764",
+    "codes": {
+      "panpan": "170"
+    }
+  },
+  {
+    "hex": "#c6b2bb",
+    "codes": {
+      "panpan": "164"
+    }
+  },
+  {
+    "hex": "#9d7693",
+    "codes": {
+      "panpan": "176"
+    }
+  },
+  {
+    "hex": "#644b51",
+    "codes": {
+      "panpan": "173"
+    }
+  },
+  {
+    "hex": "#c79266",
+    "codes": {
+      "panpan": "175"
+    }
+  },
+  {
+    "hex": "#c37463",
+    "codes": {
+      "panpan": "165"
+    }
+  },
+  {
+    "hex": "#747d7a",
+    "codes": {
+      "panpan": "178"
+    }
+  },
+  {
+    "hex": "#fcfdff",
+    "codes": {
+      "panpan": "69"
+    }
+  },
+  {
+    "hex": "#f9f9f9",
+    "codes": {
+      "panpan": "71"
+    }
+  },
+  {
+    "hex": "#ababab",
+    "codes": {
+      "panpan": "55"
+    }
+  },
+  {
+    "hex": "#b6dbaf",
+    "codes": {
+      "panpan": "73"
+    }
+  },
+  {
+    "hex": "#fea2a3",
+    "codes": {
+      "panpan": "72"
+    }
+  },
+  {
+    "hex": "#eb903f",
+    "codes": {
+      "panpan": "56"
+    }
+  },
+  {
+    "hex": "#63cea2",
+    "codes": {
+      "panpan": "157"
+    }
+  },
+  {
+    "hex": "#e79273",
+    "codes": {
+      "panpan": "159"
+    }
+  },
+  {
+    "hex": "#ecdb59",
+    "codes": {
+      "panpan": "158"
+    }
+  },
+  {
+    "hex": "#dbd9da",
+    "codes": {
+      "panpan": "195"
+    }
+  },
+  {
+    "hex": "#dbc7ea",
+    "codes": {
+      "panpan": "187"
+    }
+  },
+  {
+    "hex": "#f1e9d4",
+    "codes": {
+      "panpan": "185"
+    }
+  },
+  {
+    "hex": "#e9edee",
+    "codes": {
+      "panpan": "190"
+    }
+  },
+  {
+    "hex": "#adcbf1",
+    "codes": {
+      "panpan": "193"
+    }
+  },
+  {
+    "hex": "#337bad",
+    "codes": {
+      "panpan": "183"
+    }
+  },
+  {
+    "hex": "#668575",
+    "codes": {
+      "panpan": "184"
+    }
+  },
+  {
+    "hex": "#fdc24e",
+    "codes": {
+      "panpan": "182"
+    }
+  },
+  {
+    "hex": "#fda42e",
+    "codes": {
+      "panpan": "179"
+    }
+  },
+  {
+    "hex": "#febda7",
+    "codes": {
+      "panpan": "194"
+    }
+  },
+  {
+    "hex": "#ffdee9",
+    "codes": {
+      "panpan": "186"
+    }
+  },
+  {
+    "hex": "#fcbfd1",
+    "codes": {
+      "panpan": "188"
+    }
+  },
+  {
+    "hex": "#e8bec2",
+    "codes": {
+      "panpan": "180"
+    }
+  },
+  {
+    "hex": "#dfaaa4",
+    "codes": {
+      "panpan": "189"
+    }
+  },
+  {
+    "hex": "#a3656a",
+    "codes": {
+      "panpan": "181"
+    }
+  },
+  {
+    "hex": "#d40e1f",
+    "codes": {
+      "panpan": "67"
+    }
+  },
+  {
+    "hex": "#f13484",
+    "codes": {
+      "panpan": "24"
+    }
+  },
+  {
+    "hex": "#fb852b",
+    "codes": {
+      "panpan": "22"
+    }
+  },
+  {
+    "hex": "#f8ed33",
+    "codes": {
+      "panpan": "21"
+    }
+  },
+  {
+    "hex": "#32c958",
+    "codes": {
+      "panpan": "23"
+    }
+  },
+  {
+    "hex": "#1d779c",
+    "codes": {
+      "panpan": "37"
+    }
+  },
+  {
+    "hex": "#1960c8",
+    "codes": {
+      "panpan": "68"
+    }
+  },
+  {
+    "hex": "#945ab1",
+    "codes": {
+      "panpan": "70"
+    }
+  },
+  {
+    "hex": "#f8da54",
+    "codes": {
+      "panpan": "156"
+    }
+  },
+  {
+    "hex": "#fcecf7",
+    "codes": {
+      "panpan": "151"
+    }
+  },
+  {
+    "hex": "#d8d4d3",
+    "codes": {
+      "panpan": "160"
+    }
+  },
+  {
+    "hex": "#56534e",
+    "codes": {
+      "panpan": "152"
+    }
+  },
+  {
+    "hex": "#a3e7dc",
+    "codes": {
+      "panpan": "231"
+    }
+  },
+  {
+    "hex": "#78cee7",
+    "codes": {
+      "panpan": "237"
+    }
+  },
+  {
+    "hex": "#3fcdce",
+    "codes": {
+      "panpan": "238"
+    }
+  },
+  {
+    "hex": "#4e8379",
+    "codes": {
+      "panpan": "233"
+    }
+  },
+  {
+    "hex": "#7dca9c",
+    "codes": {
+      "panpan": "235"
+    }
+  },
+  {
+    "hex": "#c8e664",
+    "codes": {
+      "panpan": "227"
+    }
+  },
+  {
+    "hex": "#e3ccba",
+    "codes": {
+      "panpan": "230"
+    }
+  },
+  {
+    "hex": "#a17140",
+    "codes": {
+      "panpan": "234"
+    }
+  },
+  {
+    "hex": "#6b372c",
+    "codes": {
+      "panpan": "226"
+    }
+  },
+  {
+    "hex": "#f6bb6f",
+    "codes": {
+      "panpan": "224"
+    }
+  },
+  {
+    "hex": "#f3c6c0",
+    "codes": {
+      "panpan": "228"
+    }
+  },
+  {
+    "hex": "#c76a62",
+    "codes": {
+      "panpan": "225"
+    }
+  },
+  {
+    "hex": "#d093bc",
+    "codes": {
+      "panpan": "229"
+    }
+  },
+  {
+    "hex": "#e58eae",
+    "codes": {
+      "panpan": "232"
+    }
+  },
+  {
+    "hex": "#9f85cf",
+    "codes": {
+      "panpan": "236"
+    }
+  },
+  {
+    "hex": "#ff6fb7",
+    "codes": {
+      "panpan": "59"
+    }
+  },
+  {
+    "hex": "#fdb583",
+    "codes": {
+      "panpan": "60"
+    }
+  },
+  {
+    "hex": "#d8fca4",
+    "codes": {
+      "panpan": "57"
+    }
+  },
+  {
+    "hex": "#91dafb",
+    "codes": {
+      "panpan": "58"
+    }
+  },
+  {
+    "hex": "#e987ea",
+    "codes": {
+      "panpan": "61"
+    }
+  },
+  {
+    "hex": "#f7d4e8",
+    "codes": {
+      "panpan": "UNKNOWN-01"
+    }
+  },
+  {
+    "hex": "#f1fa7d",
+    "codes": {
+      "panpan": "UNKNOWN-02"
+    }
+  },
+  {
+    "hex": "#5ee88c",
+    "codes": {
+      "panpan": "UNKNOWN-03"
+    }
+  },
+  {
+    "hex": "#f8f5fe",
+    "codes": {
+      "panpan": "UNKNOWN-04"
+    }
+  },
+  {
+    "hex": "#daabb3",
+    "codes": {
+      "panpan": "254"
+    }
+  },
+  {
+    "hex": "#d6aa87",
+    "codes": {
+      "panpan": "255"
+    }
+  },
+  {
+    "hex": "#c1bd8d",
+    "codes": {
+      "panpan": "256"
+    }
+  },
+  {
+    "hex": "#96b69f",
+    "codes": {
+      "panpan": "257"
+    }
+  },
+  {
+    "hex": "#849dc6",
+    "codes": {
+      "panpan": "258"
+    }
+  },
+  {
+    "hex": "#94bfe2",
+    "codes": {
+      "panpan": "259"
+    }
+  },
+  {
+    "hex": "#e2a9d2",
+    "codes": {
+      "panpan": "260"
+    }
+  },
+  {
+    "hex": "#ab91c0",
+    "codes": {
+      "panpan": "261"
+    }
+  },
+  {
+    "hex": "#dff139",
+    "codes": {
+      "panpan": "48"
+    }
+  },
+  {
+    "hex": "#64f343",
+    "codes": {
+      "panpan": "33"
+    }
+  },
+  {
+    "hex": "#9ff685",
+    "codes": {
+      "panpan": "26"
+    }
+  },
+  {
+    "hex": "#5fdf34",
+    "codes": {
+      "panpan": "66"
+    }
+  },
+  {
+    "hex": "#39e158",
+    "codes": {
+      "panpan": "39"
+    }
+  },
+  {
+    "hex": "#64e0a4",
+    "codes": {
+      "panpan": "11"
+    }
+  },
+  {
+    "hex": "#3eae7c",
+    "codes": {
+      "panpan": "44"
+    }
+  },
+  {
+    "hex": "#1d9b54",
+    "codes": {
+      "panpan": "10"
+    }
+  },
+  {
+    "hex": "#2a5037",
+    "codes": {
+      "panpan": "79"
+    }
+  },
+  {
+    "hex": "#9ad1ba",
+    "codes": {
+      "panpan": "96"
+    }
+  },
+  {
+    "hex": "#627032",
+    "codes": {
+      "panpan": "97"
+    }
+  },
+  {
+    "hex": "#1a6e3d",
+    "codes": {
+      "panpan": "106"
+    }
+  },
+  {
+    "hex": "#c8e87d",
+    "codes": {
+      "panpan": "128"
+    }
+  },
+  {
+    "hex": "#ace84c",
+    "codes": {
+      "panpan": "129"
+    }
+  },
+  {
+    "hex": "#305335",
+    "codes": {
+      "panpan": "130"
+    }
+  },
+  {
+    "hex": "#c0ed9c",
+    "codes": {
+      "panpan": "141"
+    }
+  },
+  {
+    "hex": "#9eb33e",
+    "codes": {
+      "panpan": "142"
+    }
+  },
+  {
+    "hex": "#e6ed4f",
+    "codes": {
+      "panpan": "147"
+    }
+  },
+  {
+    "hex": "#26b78e",
+    "codes": {
+      "panpan": "191"
+    }
+  },
+  {
+    "hex": "#caedcf",
+    "codes": {
+      "panpan": "192"
+    }
+  },
+  {
+    "hex": "#176268",
+    "codes": {
+      "panpan": "207"
+    }
+  },
+  {
+    "hex": "#0a4241",
+    "codes": {
+      "panpan": "206"
+    }
+  },
+  {
+    "hex": "#343b1a",
+    "codes": {
+      "panpan": "205"
+    }
+  },
+  {
+    "hex": "#e8faa6",
+    "codes": {
+      "panpan": "222"
+    }
+  },
+  {
+    "hex": "#4e846d",
+    "codes": {
+      "panpan": "240"
+    }
+  },
+  {
+    "hex": "#907c35",
+    "codes": {
+      "panpan": "248"
+    }
+  },
+  {
+    "hex": "#d0e0af",
+    "codes": {
+      "panpan": "262"
+    }
+  },
+  {
+    "hex": "#9ee5bb",
+    "codes": {
+      "panpan": "269"
+    }
+  },
+  {
+    "hex": "#c6df5f",
+    "codes": {
+      "panpan": "268"
+    }
+  },
+  {
+    "hex": "#e3fbb1",
+    "codes": {
+      "panpan": "285"
+    }
+  },
+  {
+    "hex": "#b2e694",
+    "codes": {
+      "panpan": "286"
+    }
+  },
+  {
+    "hex": "#92ad60",
+    "codes": {
+      "panpan": "287"
+    }
+  },
+  {
+    "hex": "#f0fee4",
+    "codes": {
+      "panpan": "64"
+    }
+  },
+  {
+    "hex": "#abf8fe",
+    "codes": {
+      "panpan": "30"
+    }
+  },
+  {
+    "hex": "#9ee0f8",
+    "codes": {
+      "panpan": "63"
+    }
+  },
+  {
+    "hex": "#44cdfb",
+    "codes": {
+      "panpan": "77"
+    }
+  },
+  {
+    "hex": "#06abe3",
+    "codes": {
+      "panpan": "34"
+    }
+  },
+  {
+    "hex": "#54a7e9",
+    "codes": {
+      "panpan": "25"
+    }
+  },
+  {
+    "hex": "#3977cc",
+    "codes": {
+      "panpan": "9"
+    }
+  },
+  {
+    "hex": "#0f52bd",
+    "codes": {
+      "panpan": "52"
+    }
+  },
+  {
+    "hex": "#3349c3",
+    "codes": {
+      "panpan": "42"
+    }
+  },
+  {
+    "hex": "#3dbbe3",
+    "codes": {
+      "panpan": "121"
+    }
+  },
+  {
+    "hex": "#2aded3",
+    "codes": {
+      "panpan": "122"
+    }
+  },
+  {
+    "hex": "#1e334e",
+    "codes": {
+      "panpan": "120"
+    }
+  },
+  {
+    "hex": "#cde7fe",
+    "codes": {
+      "panpan": "140"
+    }
+  },
+  {
+    "hex": "#d6fdfc",
+    "codes": {
+      "panpan": "139"
+    }
+  },
+  {
+    "hex": "#21c5c4",
+    "codes": {
+      "panpan": "143"
+    }
+  },
+  {
+    "hex": "#1858a2",
+    "codes": {
+      "panpan": "149"
+    }
+  },
+  {
+    "hex": "#02d1f3",
+    "codes": {
+      "panpan": "163"
+    }
+  },
+  {
+    "hex": "#213244",
+    "codes": {
+      "panpan": "196"
+    }
+  },
+  {
+    "hex": "#18869d",
+    "codes": {
+      "panpan": "202"
+    }
+  },
+  {
+    "hex": "#1a70a9",
+    "codes": {
+      "panpan": "197"
+    }
+  },
+  {
+    "hex": "#beddfc",
+    "codes": {
+      "panpan": "212"
+    }
+  },
+  {
+    "hex": "#6bb1bb",
+    "codes": {
+      "panpan": "239"
+    }
+  },
+  {
+    "hex": "#c8e2f9",
+    "codes": {
+      "panpan": "263"
+    }
+  },
+  {
+    "hex": "#7ec5f9",
+    "codes": {
+      "panpan": "267"
+    }
+  },
+  {
+    "hex": "#a9e8e0",
+    "codes": {
+      "panpan": "271"
+    }
+  },
+  {
+    "hex": "#42add1",
+    "codes": {
+      "panpan": "265"
+    }
+  },
+  {
+    "hex": "#d0def9",
+    "codes": {
+      "panpan": "279"
+    }
+  },
+  {
+    "hex": "#bdcee8",
+    "codes": {
+      "panpan": "280"
+    }
+  },
+  {
+    "hex": "#364a89",
+    "codes": {
+      "panpan": "281"
+    }
+  },
+  {
+    "hex": "#acb7ef",
+    "codes": {
+      "panpan": "46"
+    }
+  },
+  {
+    "hex": "#868dd3",
+    "codes": {
+      "panpan": "36"
+    }
+  },
+  {
+    "hex": "#3653af",
+    "codes": {
+      "panpan": "8"
+    }
+  },
+  {
+    "hex": "#162c7e",
+    "codes": {
+      "panpan": "75"
+    }
+  },
+  {
+    "hex": "#b34ec6",
+    "codes": {
+      "panpan": "32"
+    }
+  },
+  {
+    "hex": "#b37bdc",
+    "codes": {
+      "panpan": "27"
+    }
+  },
+  {
+    "hex": "#8758a9",
+    "codes": {
+      "panpan": "7"
+    }
+  },
+  {
+    "hex": "#e3d2fe",
+    "codes": {
+      "panpan": "94"
+    }
+  },
+  {
+    "hex": "#d6baf5",
+    "codes": {
+      "panpan": "93"
+    }
+  },
+  {
+    "hex": "#301a49",
+    "codes": {
+      "panpan": "92"
+    }
+  },
+  {
+    "hex": "#bcbae2",
+    "codes": {
+      "panpan": "105"
+    }
+  },
+  {
+    "hex": "#dc99ce",
+    "codes": {
+      "panpan": "104"
+    }
+  },
+  {
+    "hex": "#b5038f",
+    "codes": {
+      "panpan": "103"
+    }
+  },
+  {
+    "hex": "#882893",
+    "codes": {
+      "panpan": "102"
+    }
+  },
+  {
+    "hex": "#2f1e8e",
+    "codes": {
+      "panpan": "101"
+    }
+  },
+  {
+    "hex": "#e2e4f0",
+    "codes": {
+      "panpan": "118"
+    }
+  },
+  {
+    "hex": "#c7d3f9",
+    "codes": {
+      "panpan": "119"
+    }
+  },
+  {
+    "hex": "#9a64b8",
+    "codes": {
+      "panpan": "124"
+    }
+  },
+  {
+    "hex": "#d8c2d9",
+    "codes": {
+      "panpan": "153"
+    }
+  },
+  {
+    "hex": "#9c34ad",
+    "codes": {
+      "panpan": "161"
+    }
+  },
+  {
+    "hex": "#940595",
+    "codes": {
+      "panpan": "162"
+    }
+  },
+  {
+    "hex": "#383995",
+    "codes": {
+      "panpan": "198"
+    }
+  },
+  {
+    "hex": "#eadbf8",
+    "codes": {
+      "panpan": "217"
+    }
+  },
+  {
+    "hex": "#768ae1",
+    "codes": {
+      "panpan": "244"
+    }
+  },
+  {
+    "hex": "#4950c2",
+    "codes": {
+      "panpan": "249"
+    }
+  },
+  {
+    "hex": "#d6c6eb",
+    "codes": {
+      "panpan": "273"
+    }
+  },
+  {
+    "hex": "#f6d4cb",
+    "codes": {
+      "panpan": "18"
+    }
+  },
+  {
+    "hex": "#fcc1dd",
+    "codes": {
+      "panpan": "38"
+    }
+  },
+  {
+    "hex": "#f6bde8",
+    "codes": {
+      "panpan": "62"
+    }
+  },
+  {
+    "hex": "#e9639e",
+    "codes": {
+      "panpan": "6"
+    }
+  },
+  {
+    "hex": "#f1559f",
+    "codes": {
+      "panpan": "40"
+    }
+  },
+  {
+    "hex": "#ec4072",
+    "codes": {
+      "panpan": "20"
+    }
+  },
+  {
+    "hex": "#c63674",
+    "codes": {
+      "panpan": "41"
+    }
+  },
+  {
+    "hex": "#fddbe9",
+    "codes": {
+      "panpan": "84"
+    }
+  },
+  {
+    "hex": "#e575c7",
+    "codes": {
+      "panpan": "98"
+    }
+  },
+  {
+    "hex": "#d33997",
+    "codes": {
+      "panpan": "83"
+    }
+  },
+  {
+    "hex": "#f7dad4",
+    "codes": {
+      "panpan": "125"
+    }
+  },
+  {
+    "hex": "#f893bf",
+    "codes": {
+      "panpan": "126"
+    }
+  },
+  {
+    "hex": "#b5026a",
+    "codes": {
+      "panpan": "127"
+    }
+  },
+  {
+    "hex": "#fad4bf",
+    "codes": {
+      "panpan": "137"
+    }
+  },
+  {
+    "hex": "#f5c9ca",
+    "codes": {
+      "panpan": "135"
+    }
+  },
+  {
+    "hex": "#fbf4ec",
+    "codes": {
+      "panpan": "221"
+    }
+  },
+  {
+    "hex": "#f7e3ec",
+    "codes": {
+      "panpan": "220"
+    }
+  },
+  {
+    "hex": "#fbc8db",
+    "codes": {
+      "panpan": "210"
+    }
+  },
+  {
+    "hex": "#f6bbd1",
+    "codes": {
+      "panpan": "215"
+    }
+  },
+  {
+    "hex": "#d7c6ce",
+    "codes": {
+      "panpan": "241"
+    }
+  },
+  {
+    "hex": "#c09da4",
+    "codes": {
+      "panpan": "253"
+    }
+  },
+  {
+    "hex": "#b58b9f",
+    "codes": {
+      "panpan": "252"
+    }
+  },
+  {
+    "hex": "#937d8a",
+    "codes": {
+      "panpan": "250"
+    }
+  },
+  {
+    "hex": "#debee5",
+    "codes": {
+      "panpan": "282"
+    }
+  },
+  {
+    "hex": "#ff9280",
+    "codes": {
+      "panpan": "35"
+    }
+  },
+  {
+    "hex": "#f73d4b",
+    "codes": {
+      "panpan": "31"
+    }
+  },
+  {
+    "hex": "#ef4d3e",
+    "codes": {
+      "panpan": "53"
+    }
+  },
+  {
+    "hex": "#f92b40",
+    "codes": {
+      "panpan": "54"
+    }
+  },
+  {
+    "hex": "#e30328",
+    "codes": {
+      "panpan": "5"
+    }
+  },
+  {
+    "hex": "#913635",
+    "codes": {
+      "panpan": "16"
+    }
+  },
+  {
+    "hex": "#911932",
+    "codes": {
+      "panpan": "47"
+    }
+  },
+  {
+    "hex": "#bb0126",
+    "codes": {
+      "panpan": "81"
+    }
+  },
+  {
+    "hex": "#e0677a",
+    "codes": {
+      "panpan": "82"
+    }
+  },
+  {
+    "hex": "#874628",
+    "codes": {
+      "panpan": "116"
+    }
+  },
+  {
+    "hex": "#592323",
+    "codes": {
+      "panpan": "117"
+    }
+  },
+  {
+    "hex": "#f8516d",
+    "codes": {
+      "panpan": "136"
+    }
+  },
+  {
+    "hex": "#f45c45",
+    "codes": {
+      "panpan": "148"
+    }
+  },
+  {
+    "hex": "#fcadb2",
+    "codes": {
+      "panpan": "154"
+    }
+  },
+  {
+    "hex": "#d50527",
+    "codes": {
+      "panpan": "204"
+    }
+  },
+  {
+    "hex": "#f8c0a9",
+    "codes": {
+      "panpan": "211"
+    }
+  },
+  {
+    "hex": "#e89b7d",
+    "codes": {
+      "panpan": "245"
+    }
+  },
+  {
+    "hex": "#d07e4a",
+    "codes": {
+      "panpan": "246"
+    }
+  },
+  {
+    "hex": "#be454a",
+    "codes": {
+      "panpan": "243"
+    }
+  },
+  {
+    "hex": "#c69495",
+    "codes": {
+      "panpan": "275"
+    }
+  },
+  {
+    "hex": "#f2b8c6",
+    "codes": {
+      "panpan": "266"
+    }
+  },
+  {
+    "hex": "#f7c3d0",
+    "codes": {
+      "panpan": "272"
+    }
+  },
+  {
+    "hex": "#ec806d",
+    "codes": {
+      "panpan": "264"
+    }
+  },
+  {
+    "hex": "#e09daf",
+    "codes": {
+      "panpan": "283"
+    }
+  },
+  {
+    "hex": "#e84854",
+    "codes": {
+      "panpan": "284"
+    }
+  },
+  {
+    "hex": "#ffe4d3",
+    "codes": {
+      "panpan": "76"
+    }
+  },
+  {
+    "hex": "#fcc6ac",
+    "codes": {
+      "panpan": "49"
+    }
+  },
+  {
+    "hex": "#f1c4a5",
+    "codes": {
+      "panpan": "80"
+    }
+  },
+  {
+    "hex": "#dcb387",
+    "codes": {
+      "panpan": "19"
+    }
+  },
+  {
+    "hex": "#e7b34e",
+    "codes": {
+      "panpan": "43"
+    }
+  },
+  {
+    "hex": "#e3a014",
+    "codes": {
+      "panpan": "50"
+    }
+  },
+  {
+    "hex": "#985c3a",
+    "codes": {
+      "panpan": "17"
+    }
+  },
+  {
+    "hex": "#713d2f",
+    "codes": {
+      "panpan": "12"
+    }
+  },
+  {
+    "hex": "#e4b685",
+    "codes": {
+      "panpan": "91"
+    }
+  },
+  {
+    "hex": "#da8c42",
+    "codes": {
+      "panpan": "87"
+    }
+  },
+  {
+    "hex": "#dac898",
+    "codes": {
+      "panpan": "112"
+    }
+  },
+  {
+    "hex": "#fec993",
+    "codes": {
+      "panpan": "113"
+    }
+  },
+  {
+    "hex": "#b2714b",
+    "codes": {
+      "panpan": "115"
+    }
+  },
+  {
+    "hex": "#8b684c",
+    "codes": {
+      "panpan": "114"
+    }
+  },
+  {
+    "hex": "#f6f8e3",
+    "codes": {
+      "panpan": "133"
+    }
+  },
+  {
+    "hex": "#f2d8c1",
+    "codes": {
+      "panpan": "134"
+    }
+  },
+  {
+    "hex": "#79544e",
+    "codes": {
+      "panpan": "144"
+    }
+  },
+  {
+    "hex": "#ffe4d6",
+    "codes": {
+      "panpan": "203"
+    }
+  },
+  {
+    "hex": "#dd7d41",
+    "codes": {
+      "panpan": "208"
+    }
+  },
+  {
+    "hex": "#a5452f",
+    "codes": {
+      "panpan": "199"
+    }
+  },
+  {
+    "hex": "#b38561",
+    "codes": {
+      "panpan": "247"
+    }
+  },
+  {
+    "hex": "#fbfbfb",
+    "codes": {
+      "panpan": "15"
+    }
+  },
+  {
+    "hex": "#000000",
+    "codes": {
+      "panpan": "1"
+    }
+  },
+  {
+    "hex": "#b4b4b4",
+    "codes": {
+      "panpan": "13"
+    }
+  },
+  {
+    "hex": "#878787",
+    "codes": {
+      "panpan": "78"
+    }
+  },
+  {
+    "hex": "#464648",
+    "codes": {
+      "panpan": "45"
+    }
+  },
+  {
+    "hex": "#2c2c2c",
+    "codes": {
+      "panpan": "51"
+    }
+  },
+  {
+    "hex": "#010101",
+    "codes": {
+      "panpan": "14"
+    }
+  },
+  {
+    "hex": "#e7d6dc",
+    "codes": {
+      "panpan": "85"
+    }
+  },
+  {
+    "hex": "#efedee",
+    "codes": {
+      "panpan": "95"
+    }
+  },
+  {
+    "hex": "#eceaeb",
+    "codes": {
+      "panpan": "86"
+    }
+  },
+  {
+    "hex": "#cdcdcd",
+    "codes": {
+      "panpan": "123"
+    }
+  },
+  {
+    "hex": "#fdf6ee",
+    "codes": {
+      "panpan": "132"
+    }
+  },
+  {
+    "hex": "#f4efd1",
+    "codes": {
+      "panpan": "145"
+    }
+  },
+  {
+    "hex": "#ced7d4",
+    "codes": {
+      "panpan": "146"
+    }
+  },
+  {
+    "hex": "#98a6a6",
+    "codes": {
+      "panpan": "201"
+    }
+  },
+  {
+    "hex": "#1b1213",
+    "codes": {
+      "panpan": "200"
+    }
+  },
+  {
+    "hex": "#f0eeef",
+    "codes": {
+      "panpan": "214"
+    }
+  },
+  {
+    "hex": "#fcfff8",
+    "codes": {
+      "panpan": "219"
+    }
+  },
+  {
+    "hex": "#f2eee5",
+    "codes": {
+      "panpan": "209"
+    }
+  },
+  {
+    "hex": "#96a09f",
+    "codes": {
+      "panpan": "251"
+    }
+  },
+  {
+    "hex": "#f8fbe6",
+    "codes": {
+      "panpan": "291"
+    }
+  },
+  {
+    "hex": "#cacad2",
+    "codes": {
+      "panpan": "277"
+    }
+  },
+  {
+    "hex": "#9b9c94",
+    "codes": {
+      "panpan": "278"
+    }
+  }
+]

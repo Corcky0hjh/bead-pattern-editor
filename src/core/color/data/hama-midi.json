@@ -1,1 +1,646 @@
-[]
+[
+  {
+    "hex": "#e5ecf1",
+    "codes": {
+      "hama-midi": "H01"
+    },
+    "nameEn": "White"
+  },
+  {
+    "hex": "#e4e4c5",
+    "codes": {
+      "hama-midi": "H02"
+    },
+    "nameEn": "Cream"
+  },
+  {
+    "hex": "#e9c704",
+    "codes": {
+      "hama-midi": "H03"
+    },
+    "nameEn": "Yellow"
+  },
+  {
+    "hex": "#d14803",
+    "codes": {
+      "hama-midi": "H04"
+    },
+    "nameEn": "Orange"
+  },
+  {
+    "hex": "#b4060e",
+    "codes": {
+      "hama-midi": "H05"
+    },
+    "nameEn": "Red"
+  },
+  {
+    "hex": "#ea8aa5",
+    "codes": {
+      "hama-midi": "H06"
+    },
+    "nameEn": "Pink"
+  },
+  {
+    "hex": "#712297",
+    "codes": {
+      "hama-midi": "H07"
+    },
+    "nameEn": "Purple"
+  },
+  {
+    "hex": "#0239a3",
+    "codes": {
+      "hama-midi": "H08"
+    },
+    "nameEn": "Blue"
+  },
+  {
+    "hex": "#025bc3",
+    "codes": {
+      "hama-midi": "H09"
+    },
+    "nameEn": "Light Blue"
+  },
+  {
+    "hex": "#027643",
+    "codes": {
+      "hama-midi": "H10"
+    },
+    "nameEn": "Green"
+  },
+  {
+    "hex": "#19cda7",
+    "codes": {
+      "hama-midi": "H11"
+    },
+    "nameEn": "Light Green"
+  },
+  {
+    "hex": "#3e271a",
+    "codes": {
+      "hama-midi": "H12"
+    },
+    "nameEn": "Brown"
+  },
+  {
+    "hex": "#c02435",
+    "codes": {
+      "hama-midi": "H13"
+    },
+    "nameEn": "Transparent Red"
+  },
+  {
+    "hex": "#e4aa32",
+    "codes": {
+      "hama-midi": "H14"
+    },
+    "nameEn": "Transparent Yellow"
+  },
+  {
+    "hex": "#37b876",
+    "codes": {
+      "hama-midi": "H16"
+    },
+    "nameEn": "Transparent Green"
+  },
+  {
+    "hex": "#838f98",
+    "codes": {
+      "hama-midi": "H17"
+    },
+    "nameEn": "Grey"
+  },
+  {
+    "hex": "#141315",
+    "codes": {
+      "hama-midi": "H18"
+    },
+    "nameEn": "Black"
+  },
+  {
+    "hex": "#d8d2ce",
+    "codes": {
+      "hama-midi": "H19"
+    },
+    "nameEn": "Clear"
+  },
+  {
+    "hex": "#8d2a0f",
+    "codes": {
+      "hama-midi": "H20"
+    },
+    "nameEn": "Reddish Brown"
+  },
+  {
+    "hex": "#be6c21",
+    "codes": {
+      "hama-midi": "H21"
+    },
+    "nameEn": "Light Brown"
+  },
+  {
+    "hex": "#91020a",
+    "codes": {
+      "hama-midi": "H22"
+    },
+    "nameEn": "Dark Red"
+  },
+  {
+    "hex": "#683e9a",
+    "codes": {
+      "hama-midi": "H24"
+    },
+    "nameEn": "Translucent Purple"
+  },
+  {
+    "hex": "#87593d",
+    "codes": {
+      "hama-midi": "H25"
+    },
+    "nameEn": "Translucent Brown"
+  },
+  {
+    "hex": "#e8a498",
+    "codes": {
+      "hama-midi": "H26"
+    },
+    "nameEn": "Matt Rose"
+  },
+  {
+    "hex": "#dcb18e",
+    "codes": {
+      "hama-midi": "H27"
+    },
+    "nameEn": "Beige"
+  },
+  {
+    "hex": "#1e2c1c",
+    "codes": {
+      "hama-midi": "H28"
+    },
+    "nameEn": "Dark Green"
+  },
+  {
+    "hex": "#bf0142",
+    "codes": {
+      "hama-midi": "H29"
+    },
+    "nameEn": "Claret"
+  },
+  {
+    "hex": "#4e0c1b",
+    "codes": {
+      "hama-midi": "H30"
+    },
+    "nameEn": "Burgundy"
+  },
+  {
+    "hex": "#489ab9",
+    "codes": {
+      "hama-midi": "H31"
+    },
+    "nameEn": "Turquoise"
+  },
+  {
+    "hex": "#ff208d",
+    "codes": {
+      "hama-midi": "H32"
+    },
+    "nameEn": "Neon Fuchsia"
+  },
+  {
+    "hex": "#ff3956",
+    "codes": {
+      "hama-midi": "H33"
+    },
+    "nameEn": "Cerise"
+  },
+  {
+    "hex": "#e5ef13",
+    "codes": {
+      "hama-midi": "H34"
+    },
+    "nameEn": "Neon Yellow"
+  },
+  {
+    "hex": "#ff2833",
+    "codes": {
+      "hama-midi": "H35"
+    },
+    "nameEn": "Neon Red"
+  },
+  {
+    "hex": "#2353b0",
+    "codes": {
+      "hama-midi": "H36"
+    },
+    "nameEn": "Neon Blue"
+  },
+  {
+    "hex": "#06b73c",
+    "codes": {
+      "hama-midi": "H37"
+    },
+    "nameEn": "Neon Green"
+  },
+  {
+    "hex": "#fd8600",
+    "codes": {
+      "hama-midi": "H38"
+    },
+    "nameEn": "Neon Orange"
+  },
+  {
+    "hex": "#f1f21c",
+    "codes": {
+      "hama-midi": "H39"
+    },
+    "nameEn": "Fluorescent Yellow"
+  },
+  {
+    "hex": "#fe630b",
+    "codes": {
+      "hama-midi": "H40"
+    },
+    "nameEn": "Fluorescent Orange"
+  },
+  {
+    "hex": "#2659b2",
+    "codes": {
+      "hama-midi": "H41"
+    },
+    "nameEn": "Fluorescent Blue"
+  },
+  {
+    "hex": "#0cbd51",
+    "codes": {
+      "hama-midi": "H42"
+    },
+    "nameEn": "Fluorescent Green"
+  },
+  {
+    "hex": "#e7e45a",
+    "codes": {
+      "hama-midi": "H43"
+    },
+    "nameEn": "Pastel Yellow"
+  },
+  {
+    "hex": "#f96160",
+    "codes": {
+      "hama-midi": "H44"
+    },
+    "nameEn": "Pastel Red"
+  },
+  {
+    "hex": "#8e69cd",
+    "codes": {
+      "hama-midi": "H45"
+    },
+    "nameEn": "Pastel Purple"
+  },
+  {
+    "hex": "#51aee4",
+    "codes": {
+      "hama-midi": "H46"
+    },
+    "nameEn": "Pastel Blue"
+  },
+  {
+    "hex": "#80df96",
+    "codes": {
+      "hama-midi": "H47"
+    },
+    "nameEn": "Pastel Green"
+  },
+  {
+    "hex": "#d67ad1",
+    "codes": {
+      "hama-midi": "H48"
+    },
+    "nameEn": "Pastel Pink"
+  },
+  {
+    "hex": "#0facd1",
+    "codes": {
+      "hama-midi": "H49"
+    },
+    "nameEn": "Azure"
+  },
+  {
+    "hex": "#f0981e",
+    "codes": {
+      "hama-midi": "H60"
+    },
+    "nameEn": "Teddybear Brown"
+  },
+  {
+    "hex": "#a5b3c0",
+    "codes": {
+      "hama-midi": "H70"
+    },
+    "nameEn": "Light Grey"
+  },
+  {
+    "hex": "#445059",
+    "codes": {
+      "hama-midi": "H71"
+    },
+    "nameEn": "Dark Grey"
+  },
+  {
+    "hex": "#b78c6d",
+    "codes": {
+      "hama-midi": "H75"
+    },
+    "nameEn": "Tan"
+  },
+  {
+    "hex": "#8a5937",
+    "codes": {
+      "hama-midi": "H76"
+    },
+    "nameEn": "Nougat"
+  },
+  {
+    "hex": "#ced1c8",
+    "codes": {
+      "hama-midi": "H77"
+    },
+    "nameEn": "Cloudy White"
+  },
+  {
+    "hex": "#f7c1aa",
+    "codes": {
+      "hama-midi": "H78"
+    },
+    "nameEn": "Light Peach"
+  },
+  {
+    "hex": "#f87633",
+    "codes": {
+      "hama-midi": "H79"
+    },
+    "nameEn": "Apricot"
+  },
+  {
+    "hex": "#91175a",
+    "codes": {
+      "hama-midi": "H82"
+    },
+    "nameEn": "Plum"
+  },
+  {
+    "hex": "#037a9f",
+    "codes": {
+      "hama-midi": "H83"
+    },
+    "nameEn": "Petrol Blue"
+  },
+  {
+    "hex": "#687836",
+    "codes": {
+      "hama-midi": "H84"
+    },
+    "nameEn": "Olive Green"
+  },
+  {
+    "hex": "#dd9ba3",
+    "codes": {
+      "hama-midi": "H95"
+    },
+    "nameEn": "Pastel Rose"
+  },
+  {
+    "hex": "#b491ad",
+    "codes": {
+      "hama-midi": "H96"
+    },
+    "nameEn": "Pastel Lilac"
+  },
+  {
+    "hex": "#8aafc2",
+    "codes": {
+      "hama-midi": "H97"
+    },
+    "nameEn": "Pastel Ice Blue"
+  },
+  {
+    "hex": "#94cca4",
+    "codes": {
+      "hama-midi": "H98"
+    },
+    "nameEn": "Pastel Mint"
+  },
+  {
+    "hex": "#487ed5",
+    "codes": {
+      "hama-midi": "H15"
+    },
+    "nameEn": "Transparent Blue"
+  },
+  {
+    "hex": "#faf8ed",
+    "codes": {
+      "hama-midi": "H55"
+    },
+    "nameEn": "Green (Glow in the Dark)"
+  },
+  {
+    "hex": "#edbf9f",
+    "codes": {
+      "hama-midi": "H56"
+    },
+    "nameEn": "Red (Glow in the Dark)"
+  },
+  {
+    "hex": "#c4d0e3",
+    "codes": {
+      "hama-midi": "H57"
+    },
+    "nameEn": "Blue (Glow in the Dark)"
+  },
+  {
+    "hex": "#d99350",
+    "codes": {
+      "hama-midi": "H61"
+    },
+    "nameEn": "Gold"
+  },
+  {
+    "hex": "#48474a",
+    "codes": {
+      "hama-midi": "H62"
+    },
+    "nameEn": "Silver"
+  },
+  {
+    "hex": "#42312f",
+    "codes": {
+      "hama-midi": "H63"
+    },
+    "nameEn": "Bronze"
+  },
+  {
+    "hex": "#efebe4",
+    "codes": {
+      "hama-midi": "H64"
+    },
+    "nameEn": "Pearl"
+  },
+  {
+    "hex": "#f097b0",
+    "codes": {
+      "hama-midi": "H72"
+    },
+    "nameEn": "Translucent Pink"
+  },
+  {
+    "hex": "#59aef5",
+    "codes": {
+      "hama-midi": "H73"
+    },
+    "nameEn": "Translucent Aqua"
+  },
+  {
+    "hex": "#5b55bd",
+    "codes": {
+      "hama-midi": "H74"
+    },
+    "nameEn": "Translucent Lilac"
+  },
+  {
+    "hex": "#a9c39b",
+    "codes": {
+      "hama-midi": "H101"
+    },
+    "nameEn": "Eucalyptus"
+  },
+  {
+    "hex": "#356b2d",
+    "codes": {
+      "hama-midi": "H102"
+    },
+    "nameEn": "Forest Green"
+  },
+  {
+    "hex": "#ffe660",
+    "codes": {
+      "hama-midi": "H103"
+    },
+    "nameEn": "Light Yellow"
+  },
+  {
+    "hex": "#bcd122",
+    "codes": {
+      "hama-midi": "H104"
+    },
+    "nameEn": "Lime"
+  },
+  {
+    "hex": "#ffac78",
+    "codes": {
+      "hama-midi": "H105"
+    },
+    "nameEn": "Light Apricot"
+  },
+  {
+    "hex": "#ccc5ed",
+    "codes": {
+      "hama-midi": "H106"
+    },
+    "nameEn": "Light Lavender"
+  },
+  {
+    "hex": "#6a87c1",
+    "codes": {
+      "hama-midi": "H107"
+    },
+    "nameEn": "Lavender"
+  },
+  {
+    "hex": "#2a2536",
+    "codes": {
+      "hama-midi": "H108"
+    },
+    "nameEn": "Aubergine"
+  },
+  {
+    "hex": "#8a847f",
+    "codes": {
+      "hama-midi": "H109"
+    },
+    "nameEn": "Cloudy Grey"
+  },
+  {
+    "hex": "#838956",
+    "codes": {
+      "hama-midi": "H110"
+    },
+    "nameEn": "Matcha"
+  },
+  {
+    "hex": "#835854",
+    "codes": {
+      "hama-midi": "H111"
+    },
+    "nameEn": "Dark Blush"
+  },
+  {
+    "hex": "#ad8a82",
+    "codes": {
+      "hama-midi": "H112"
+    },
+    "nameEn": "Blush"
+  },
+  {
+    "hex": "#5f887b",
+    "codes": {
+      "hama-midi": "H113"
+    },
+    "nameEn": "Aqua"
+  },
+  {
+    "hex": "#9a2c31",
+    "codes": {
+      "hama-midi": "H114"
+    },
+    "nameEn": "Cherry Red"
+  },
+  {
+    "hex": "#6e975f",
+    "codes": {
+      "hama-midi": "H115"
+    },
+    "nameEn": "Bright Green"
+  },
+  {
+    "hex": "#222838",
+    "codes": {
+      "hama-midi": "H116"
+    },
+    "nameEn": "Midnight Blue"
+  },
+  {
+    "hex": "#777169",
+    "codes": {
+      "hama-midi": "H117"
+    },
+    "nameEn": "Taupe Grey"
+  },
+  {
+    "hex": "#612932",
+    "codes": {
+      "hama-midi": "H118"
+    },
+    "nameEn": "Maroon Red"
+  },
+  {
+    "hex": "#4167b4",
+    "codes": {
+      "hama-midi": "H119"
+    },
+    "nameEn": "Sky Blue"
+  }
+]

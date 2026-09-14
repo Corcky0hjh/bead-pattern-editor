@@ -1,5 +1,7 @@
+import { ModalHeader } from '../../../components/ModalHeader'
+import { PaletteColorCell } from '../../../components/PaletteColorCell'
 import { createPortal } from 'react-dom'
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   PencilSimple,
@@ -331,24 +333,7 @@ export function PaletteManagerModal({
       onClose={onClose}
       panelClassName="canvas-settings-dialog grid max-h-[min(760px,92svh)] w-full max-w-5xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[18px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(0,0,0,0.34)]"
     >
-        <header className="flex items-start justify-between gap-4 border-b border-editor-border px-5 py-4">
-          <div>
-            <h2 className="text-xl font-black text-editor-strong">色卡管理</h2>
-            <p className="mt-1 text-xs leading-5 text-editor-text">
-              已启用 {editor.availablePalette.length} / {editor.palette.length}{' '}
-              色。 图片转换只会使用启用且未排除的颜色。
-            </p>
-          </div>
-          <button
-            data-modal-close
-            className="grid h-9 w-9 place-items-center rounded-full bg-editor-surface-soft text-lg font-black text-editor-strong"
-            type="button"
-            onClick={onClose}
-            aria-label="关闭"
-          >
-            ×
-          </button>
-        </header>
+        <ModalHeader title="色卡管理" className="px-5 pt-4" description={`已启用 ${editor.availablePalette.length} / ${editor.palette.length} 色。图片转换只会使用启用且未排除的颜色。`}/>
 
         <div className="grid gap-3 border-b border-editor-border px-5 py-4 md:grid-cols-[1fr_auto] md:items-center">
           <input
@@ -441,62 +426,6 @@ export function PaletteManagerModal({
   )
 }
 
-function PaletteColorCell({
-  brand,
-  color,
-  enabled,
-  onClick,
-}: {
-  brand: BrandId
-  color: BeadColor
-  enabled: boolean
-  onClick: () => void
-}) {
-  const code = getDisplayCode(color, brand) ?? '自定'
-  const label = getColorLabel(color, brand)
-  const textColor = getReadableTextColor(color.hex)
-
-  return (
-    <button
-      type="button"
-      aria-pressed={enabled}
-      aria-label={`${enabled ? '停用' : '启用'} ${label}`}
-      className={`palette-color-cell group relative grid min-h-[66px] w-full overflow-visible rounded-xl px-0.5 py-0 text-left transition duration-200 ease-out active:scale-[0.98] ${
-        enabled ? 'text-editor-strong' : 'text-editor-text/55'
-      }`}
-      style={{ '--swatch': color.hex } as CSSProperties}
-      title={label}
-      onClick={onClick}
-    >
-      <span className="palette-color-cell__stack pointer-events-none relative h-11">
-        <span
-          className="palette-color-cell__back absolute left-1/2 top-1 h-8 w-11 rounded-xl border border-white/70 shadow-sm"
-          style={{ backgroundColor: color.hex }}
-        />
-        <span
-          className={`palette-color-cell__front absolute left-1/2 top-0 grid h-9 w-12 overflow-hidden rounded-xl border border-white/75 px-1.5 py-1 shadow-sm transition duration-200 ${
-            enabled ? '' : 'grayscale'
-          }`}
-          style={{ backgroundColor: color.hex, color: textColor }}
-        >
-          <span className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
-            <span className="absolute -inset-y-8 -left-10 w-8 rotate-12 bg-white/45 blur-md transition-transform duration-500 group-hover:translate-x-28" />
-          </span>
-          <span className="relative z-10 mt-auto truncate text-center font-mono text-[10px] font-black leading-none">
-            {code}
-          </span>
-        </span>
-      </span>
-      <span className="pointer-events-none min-w-0 truncate text-center font-mono text-[8.5px] font-bold leading-3 opacity-70">
-        {color.hex}
-      </span>
-      <span
-        className="pointer-events-none mx-auto mt-0.5 h-0.5 w-9 rounded-full"
-        style={{ backgroundColor: color.hex }}
-      />
-    </button>
-  )
-}
 
 function BeadColorPickCell({
   brand,
@@ -800,14 +729,5 @@ function getColorLabel(color: BeadColor, brand: BrandId): string {
   )
 }
 
-function getReadableTextColor(hex: string): '#1f1812' | '#fffaf2' {
-  const value = hex.replace('#', '')
-  const red = Number.parseInt(value.slice(0, 2), 16)
-  const green = Number.parseInt(value.slice(2, 4), 16)
-  const blue = Number.parseInt(value.slice(4, 6), 16)
-  const luminance = (red * 299 + green * 587 + blue * 114) / 1000
-
-  return luminance > 150 ? '#1f1812' : '#fffaf2'
-}
 
 export type { BeadColor }

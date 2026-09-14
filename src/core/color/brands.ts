@@ -8,33 +8,68 @@ import type { Brand, BrandId } from './types'
 
 export const brands: Brand[] = [
   {
-    id: 'mard',
-    label: 'MARD 融达 5mm',
-    shortLabel: 'MARD',
-    available: true,
-    groupBy: 'letterPrefix',
+    "id": "mard",
+    "label": "MARD",
+    "shortLabel": "MARD",
+    "available": true,
+    "groupBy": "letterPrefix"
   },
   {
-    id: 'artkal-c',
-    label: 'Artkal C 5mm',
-    shortLabel: 'Artkal C',
-    available: false,
-    groupBy: 'letterPrefix',
+    "id": "artkal-s",
+    "label": "Artkal S 5mm",
+    "shortLabel": "Artkal S",
+    "available": true,
+    "groupBy": "letterPrefix"
   },
   {
-    id: 'hama-midi',
-    label: 'Hama Midi 5mm',
-    shortLabel: 'Hama Midi',
-    available: false,
-    groupBy: 'numericRange',
+    "id": "artkal-c",
+    "label": "Artkal C 2.6mm",
+    "shortLabel": "Artkal C",
+    "available": true,
+    "groupBy": "letterPrefix"
   },
   {
-    id: 'perler',
-    label: 'Perler 5mm',
-    shortLabel: 'Perler',
-    available: false,
-    groupBy: 'letterPrefix',
+    "id": "hama-midi",
+    "label": "Hama Midi 5mm",
+    "shortLabel": "Hama Midi",
+    "available": true,
+    "groupBy": "numericRange"
   },
+  {
+    "id": "perler",
+    "label": "Perler 5mm",
+    "shortLabel": "Perler",
+    "available": true,
+    "groupBy": "numericRange"
+  },
+  {
+    "id": "coco",
+    "label": "COCO",
+    "shortLabel": "COCO",
+    "available": true,
+    "groupBy": "letterPrefix"
+  },
+  {
+    "id": "manman",
+    "label": "漫漫",
+    "shortLabel": "漫漫",
+    "available": true,
+    "groupBy": "letterPrefix"
+  },
+  {
+    "id": "panpan",
+    "label": "盼盼",
+    "shortLabel": "盼盼",
+    "available": true,
+    "groupBy": "letterPrefix"
+  },
+  {
+    "id": "mixiaowo",
+    "label": "咪小窝",
+    "shortLabel": "咪小窝",
+    "available": true,
+    "groupBy": "letterPrefix"
+  }
 ]
 
 export const defaultBrandId: BrandId = 'mard'

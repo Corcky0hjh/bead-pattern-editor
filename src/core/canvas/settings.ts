@@ -16,6 +16,7 @@ export type CanvasSettings = {
   gridWidth: number
   /** 每 N 格画一条加粗"大网格"线;0 = 关闭 */
   majorGridEvery: number
+  majorGridAlignment: 'origin' | 'center'
   /** 是否显示网格 */
   showGrid: boolean
   /** 是否显示顶部/左侧行列标尺 */
@@ -35,6 +36,7 @@ export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
   gridColor: '#9f9485',
   gridWidth: 1,
   majorGridEvery: 5,
+  majorGridAlignment: 'origin',
   showGrid: true,
   showRulers: true,
   showPointerGuides: true,
@@ -77,6 +79,7 @@ export function parseCanvasSettings(raw: unknown): CanvasSettings {
       typeof r.majorGridEvery === 'number' && r.majorGridEvery >= 0
         ? Math.floor(r.majorGridEvery)
         : DEFAULT_CANVAS_SETTINGS.majorGridEvery,
+    majorGridAlignment: r.majorGridAlignment === 'center' ? 'center' : 'origin',
     showGrid:
       typeof r.showGrid === 'boolean'
         ? r.showGrid
@@ -98,4 +101,8 @@ export function parseCanvasSettings(raw: unknown): CanvasSettings {
         ? r.showBeadCodes
         : DEFAULT_CANVAS_SETTINGS.showBeadCodes,
   }
+}
+
+export function majorGridOffset(length: number, interval: number, alignment: CanvasSettings['majorGridAlignment']) {
+  return alignment === 'center' && interval > 0 && length >= interval ? Math.floor((length % interval) / 2) : 0
 }

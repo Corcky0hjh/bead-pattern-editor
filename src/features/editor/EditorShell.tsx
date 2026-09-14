@@ -1,3 +1,8 @@
+import { matchesShortcut, shortcutReleased } from './shortcuts'
+import { ExportModal } from './panels/ExportModal'
+import { WorkCanvasSizeDialog } from './WorkCanvasSizeDialog'
+import { createPortal } from 'react-dom'
+import { HeaderIconButton } from '../../components/HeaderIconButton'
 import { WorkSaveDialog } from './WorkSaveDialog'
 import { WorkBar } from './WorkBar'
 import { useEffect, useRef, useState } from 'react'
@@ -5,7 +10,7 @@ import { SidebarSimple } from '@phosphor-icons/react'
 import { CanvasStage } from '../../platform/web/CanvasStage'
 import { BeadingCelebration } from './BeadingCelebration'
 import { CanvasSettingsModal } from './panels/CanvasSettingsModal'
-import { ColorPanel } from './panels/ColorPanel'
+import { BeadBoxPanel as ColorPanel, BeadCardBrowser } from './BeadBoxPanel'
 import { ImagePanel } from './panels/ImagePanel'
 import { BeadingLibraryPanel } from './panels/BeadingLibraryPanel'
 import { useEditorState, type EditorTool } from './useEditorState'
@@ -14,16 +19,34 @@ const brushSizes = [1, 2, 3, 4, 5]
 
 export function EditorShell() {
   const editor = useEditorState()
+  const [settingsHost, setSettingsHost] = useState<HTMLDivElement | null>(null)
   const [headerControls, setHeaderControls] = useState<HTMLDivElement | null>(null)
+  const [headerHistory, setHeaderHistory] = useState<HTMLDivElement | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
+  const workPanelRef = useRef<HTMLElement>(null)
+  const workPanelToggleRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!panelOpen) return
+    const closeOutside = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (workPanelRef.current?.contains(target) || workPanelToggleRef.current?.contains(target)) return
+      // Portaled dialogs (color cards, deletion confirmation) remain part of the active workflow.
+      if (target.closest('[role="dialog"], [role="alertdialog"]')) return
+      setPanelOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside, true)
+    return () => document.removeEventListener('pointerdown', closeOutside, true)
+  }, [panelOpen])
   const [panelTab, setPanelTab] = useState<'colors' | 'beading'>('colors')
   const activePanelTab = editor.editorMode === 'bead' ? 'beading' : panelTab
   const panelTabs = editor.editorMode === 'bead'
-    ? [{ value: 'beading', label: '作品库' }] as const
-    : [{ value: 'colors', label: '颜色' }, { value: 'beading', label: '作品库' }] as const
+    ? [{ value: 'beading', label: '作品' }] as const
+    : [{ value: 'colors', label: '豆盒' }, { value: 'beading', label: '作品' }] as const
 
-  function enterBeadingPanel(_id: string) {
+  function enterBeadingPanel() {
     setPanelTab('beading')
     setPanelOpen(false)
   }
@@ -44,17 +67,15 @@ export function EditorShell() {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || isTypingTarget(event.target)) return
-      if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return
+      if (event.target instanceof Element && event.target.closest('[role="dialog"], [role="alertdialog"]')) return
+      if (event.repeat && !['undo', 'redo', 'redoAlt', 'smaller', 'larger'].some(id => matchesShortcut(event, id as import('./shortcuts').ShortcutId))) return
 
-      const key = event.key
-      const lower = key.toLowerCase()
-      const meta = event.ctrlKey || event.metaKey
 
-      if (meta && lower === 's') { event.preventDefault(); editor.saveWork(); return }
+      if (matchesShortcut(event, 'save')) { event.preventDefault(); editor.saveWork(); return }
 
       // 按住 Alt 临时激活吸管(松开恢复)。要在 meta/alt 早返回之前处理。
       // preventDefault 避免 Windows Chrome/Edge 把单按 Alt 解释成"聚焦菜单栏"
-      if (key === 'Alt' && !meta && editor.editorMode === 'draw') {
+      if (matchesShortcut(event, 'holdPick') && editor.editorMode === 'draw') {
         event.preventDefault()
         if (!editor.eyedropperActive && !altEyedropperRef.current) {
           altEyedropperRef.current = true
@@ -62,22 +83,21 @@ export function EditorShell() {
         }
       }
 
-      if (meta && lower === 'z' && !event.shiftKey) {
+      if (matchesShortcut(event, 'undo')) {
         event.preventDefault()
         if (editor.editorMode === 'bead') editor.undoBeadingProgress()
         else editor.undo()
         return
       }
-      if ((meta && lower === 'y') || (meta && lower === 'z' && event.shiftKey)) {
+      if (matchesShortcut(event, 'redo') || matchesShortcut(event, 'redoAlt')) {
         event.preventDefault()
         if (editor.editorMode === 'bead') editor.redoBeadingProgress()
         else editor.redo()
         return
       }
 
-      if (meta || event.altKey) return
 
-      if (key === ' ') {
+      if (matchesShortcut(event, 'holdPan')) {
         if (event.target instanceof Element && event.target.closest('button')) return
         if (editor.currentTool !== 'pan' && previousToolRef.current === null) {
           previousToolRef.current = editor.currentTool
@@ -89,55 +109,56 @@ export function EditorShell() {
 
       if (editor.editorMode === 'bead') return
 
-      switch (lower) {
-        case 'b':
+      switch (true) {
+        case matchesShortcut(event, 'brush'):
           editor.setCurrentTool('brush')
           editor.setEyedropperActive(false)
           break
-        case 'e':
+        case matchesShortcut(event, 'eraser'):
           editor.setCurrentTool('eraser')
           editor.setEyedropperActive(false)
           break
-        case 'f':
+        case matchesShortcut(event, 'fill'):
           editor.setCurrentTool('fill')
           editor.setEyedropperActive(false)
           break
-        case 'u':
+        case matchesShortcut(event, 'shape'):
           editor.setCurrentTool('shape')
           editor.setEyedropperActive(false)
           break
-        case 'v':
+        case matchesShortcut(event, 'pan'):
           editor.setCurrentTool('pan')
           editor.setEyedropperActive(false)
           break
-        case 'i':
+        case matchesShortcut(event, 'eyedropper'):
           editor.setEyedropperActive((value) => !value)
           break
-        case 'g':
+        case matchesShortcut(event, 'grid'):
           editor.toggleShowGrid()
           break
-        case '[':
+        case matchesShortcut(event, 'smaller'):
           adjustBrushSize(editor, -1)
           break
-        case ']':
+        case matchesShortcut(event, 'larger'):
           adjustBrushSize(editor, 1)
           break
         default:
           return
       }
+      event.preventDefault()
     }
 
     function handleKeyUp(event: KeyboardEvent) {
       // 松开 Alt:关掉我们因 alt 临时打开的吸管(不影响用户主动按 I 开的);
       // 同时 preventDefault 阻断 Windows Chrome/Edge"Alt 松开聚焦菜单栏"行为
-      if (event.key === 'Alt' || (!event.altKey && altEyedropperRef.current)) {
+      if (shortcutReleased(event, 'holdPick')) {
         if (altEyedropperRef.current) {
           event.preventDefault()
           altEyedropperRef.current = false
           editor.setEyedropperActive(false)
         }
       }
-      if (event.key !== ' ') return
+      if (!shortcutReleased(event, 'holdPan')) return
       if (previousToolRef.current === null) return
       editor.setCurrentTool(previousToolRef.current)
       previousToolRef.current = null
@@ -178,44 +199,46 @@ export function EditorShell() {
         total={editor.usedCount}
       />
       <div className="editor-workspace">
-        <header className="editor-header flex h-10 shrink-0 items-center justify-between gap-4 px-2 pb-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="grid h-8 w-8 shrink-0 place-content-center" aria-hidden="true">
-              <img src="/logo-bead-b.png" alt="" className="h-12 w-12 max-w-none object-contain" />
-            </span>
-            <h1 className="truncate font-serif text-[21px] font-semibold italic tracking-tight text-editor-strong" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>Bead Atelier</h1>
+        <header className="editor-header flex h-10 shrink-0 items-center justify-between gap-2 px-2 pb-1">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2" aria-label="Bead Atelier">
+            <span className="grid h-8 w-8 shrink-0 place-content-center" aria-hidden="true"><img src="/logo-bead-b.png" alt="" className="h-12 w-12 max-w-none object-contain" /></span>
+            <h1 className="editor-brand-title whitespace-nowrap font-serif text-[15px] font-semibold italic tracking-tight text-editor-strong sm:text-[21px]" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>Bead Atelier</h1>
           </div>
+          <ImagePanel editor={editor} renderTrigger={openNewWork => <WorkBar editor={editor} settingsHost={settingsHost} onOpenExport={() => setExportOpen(true)} onOpenSettings={() => setSettingsOpen(true)} onNewWork={openNewWork} />} />
           <div className="editor-header-actions flex shrink-0 items-center gap-2">
-          <div ref={setHeaderControls} />
-          <ImagePanel editor={editor} compact />
-          <div className="relative z-[70] shrink-0">
+          <div ref={setHeaderHistory} className="header-history shrink-0" />
+          <div className="header-utilities-content" ref={setHeaderControls} />
+          <div ref={setSettingsHost} className="relative shrink-0" />
+          <div className="relative z-[66] shrink-0">
 
-          <button
+          <HeaderIconButton
             type="button"
-            className={`work-panel-toggle flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${panelOpen ? 'text-editor-strong' : 'text-editor-text hover:bg-editor-surface-soft'}`}
+            ref={workPanelToggleRef}
+            className="work-panel-toggle"
             aria-label={panelOpen ? '收起工作面板' : '展开工作面板'}
             title={panelOpen ? '收起工作面板' : '展开工作面板'}
             aria-expanded={panelOpen}
             aria-controls="editor-work-panel"
             onClick={() => setPanelOpen((open) => !open)}
           >
-            <SidebarSimple size={21} weight={panelOpen ? 'fill' : 'regular'} />
-          </button>
+            <SidebarSimple size={18} weight="regular" />
+          </HeaderIconButton>
           </div>
           </div>
         </header>
+        {editor.canvasSizeDialog ? createPortal(<WorkCanvasSizeDialog key={editor.canvasSizeDialog} editor={editor} />, document.body) : null}
+        {editor.boxPickerOpen ? <BeadCardBrowser editor={editor} /> : null}
         {editor.workDialog ? <WorkSaveDialog key={editor.workDialog.message} dialog={editor.workDialog} /> : null}
-        <WorkBar editor={editor} onOpenLibrary={() => { setPanelTab('beading'); setPanelOpen(true) }} />
       <div className="editor-workspace-layout" data-panel-open={panelOpen}>
         <section className="relative min-h-0 min-w-0">
           <CanvasStage
             editor={editor}
             headerControls={headerControls}
-            onOpenSettings={() => setSettingsOpen(true)}
+            headerHistory={headerHistory}
           />
         </section>
 
-        <aside id="editor-work-panel" aria-label="工作面板" className="editor-work-panel" data-open={panelOpen} aria-hidden={!panelOpen} inert={!panelOpen}>
+        <aside ref={workPanelRef} id="editor-work-panel" aria-label="工作面板" className="editor-work-panel" data-open={panelOpen} aria-hidden={!panelOpen} inert={!panelOpen}>
             <div className="work-panel-tabs flex h-8 items-center gap-1" role="tablist" aria-label="工作面板内容">
               {panelTabs.map((tab) => (
                 <button key={tab.value} id={`work-tab-${tab.value}`} type="button" role="tab" aria-selected={activePanelTab === tab.value} aria-controls={`work-panel-${tab.value}`} onClick={() => setPanelTab(tab.value)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${activePanelTab === tab.value ? 'bg-editor-accent-soft text-editor-accent' : 'text-editor-text hover:bg-editor-surface-soft'}`}>
@@ -225,7 +248,7 @@ export function EditorShell() {
             </div>
 
           <div id="work-panel-content" className="flex min-h-0 flex-1 flex-col">
-            {editor.editorMode === 'draw' ? <div id="work-panel-colors" hidden={activePanelTab !== 'colors'} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" role="tabpanel" aria-labelledby="work-tab-colors">
+            {editor.editorMode === 'draw' ? <div id="work-panel-colors" hidden={activePanelTab !== 'colors'} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-1" role="tabpanel" aria-labelledby="work-tab-colors">
               <ColorPanel editor={editor} />
             </div> : null}
             <div id="work-panel-beading" hidden={activePanelTab !== 'beading'} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" role="tabpanel" aria-labelledby="work-tab-beading">
@@ -235,6 +258,7 @@ export function EditorShell() {
         </aside>
       </div>
       </div>
+      {exportOpen ? createPortal(<ExportModal editor={editor} onClose={() => setExportOpen(false)} />, document.body) : null}
       {settingsOpen ? (
         <CanvasSettingsModal
           editor={editor}

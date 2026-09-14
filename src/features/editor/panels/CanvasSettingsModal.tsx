@@ -1,18 +1,18 @@
-import { useEffect, useState, type ComponentType, type CSSProperties } from 'react'
+import { ModalCloseButton } from '../../../components/ModalHeader'
+import { useShortcuts, shortcutDefinitions, shortcutLabel, shortcutFromEvent, setShortcut, resetShortcuts, type ShortcutId } from '../shortcuts'
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react'
 import {
-  Export,
   GridFour,
   Keyboard,
+  ArrowCounterClockwise,
   Palette,
-  X,
   type IconProps,
 } from '@phosphor-icons/react'
 import { ModalDialog } from '../../../components/ModalDialog'
 import type { EditorStateController } from '../useEditorState'
 import { CanvasPanel } from './CanvasPanel'
-import { ExportPanel } from './ExportPanel'
 
-type SettingsView = 'canvas' | 'theme' | 'export' | 'shortcuts'
+type SettingsView = 'canvas' | 'theme' | 'shortcuts'
 
 const settingsViews: Array<{
   value: SettingsView
@@ -21,14 +21,12 @@ const settingsViews: Array<{
 }> = [
   { value: 'canvas', label: '画布', icon: GridFour },
   { value: 'theme', label: '主题', icon: Palette },
-  { value: 'export', label: '导出', icon: Export },
   { value: 'shortcuts', label: '快捷键', icon: Keyboard },
 ]
 
 const cardAccents: Record<SettingsView, string> = {
   canvas: '#ff8a3d',
   theme: '#54b79b',
-  export: '#5f78d6',
   shortcuts: '#d36b9a',
 }
 
@@ -75,16 +73,7 @@ export function CanvasSettingsModal({
                 }
               >
                 {active ? (
-                  <button
-                    data-dialog-initial-focus
-                    data-modal-close
-                    type="button"
-                    className="settings-panel-card__close absolute z-20 grid h-7 w-7 place-items-center rounded-lg bg-transparent transition hover:bg-editor-elevated"
-                    aria-label="关闭设置"
-                    onClick={onClose}
-                  >
-                    <X size={14} weight="bold" />
-                  </button>
+                  <ModalCloseButton label="关闭设置" initialFocus className="settings-panel-card__close absolute z-20"/>
                 ) : null}
                 <button
                   type="button"
@@ -103,7 +92,6 @@ export function CanvasSettingsModal({
                 >
                   {contentView === item.value && item.value === 'canvas' ? <CanvasPanel editor={editor} wide view="canvas" /> : null}
                   {contentView === item.value && item.value === 'theme' ? <CanvasPanel editor={editor} wide view="theme" /> : null}
-                  {contentView === item.value && item.value === 'export' ? <ExportPanel editor={editor} /> : null}
                   {contentView === item.value && item.value === 'shortcuts' ? <ShortcutsPanel /> : null}
                 </div>
               </section>
@@ -114,71 +102,57 @@ export function CanvasSettingsModal({
   )
 }
 
-const shortcutGroups = [
-  {
-    title: '工具切换',
-    items: [
-      ['B', '画笔'],
-      ['E', '橡皮'],
-      ['F', '填充'],
-      ['U', '形状'],
-      ['V', '移动画布'],
-      ['I', '吸管'],
-    ],
-  },
-  {
-    title: '临时操作',
-    items: [
-      ['Space', '按住移动画布'],
-      ['Alt', '按住临时吸管'],
-      ['[ / ]', '调整当前绘制工具粗细'],
-      ['G', '显示 / 隐藏网格'],
-    ],
-  },
-  {
-    title: '历史与视图',
-    items: [
-      ['Ctrl / Cmd + Z', '撤销'],
-      ['Ctrl / Cmd + Y', '重做'],
-      ['Ctrl / Cmd + Shift + Z', '重做'],
-      ['滚轮', '垂直移动画布'],
-      ['Shift + 滚轮', '水平移动画布'],
-      ['Ctrl / Cmd + 滚轮', '以指针为中心缩放'],
-      ['Ctrl / Cmd + + / -', '放大 / 缩小画布'],
-      ['Ctrl / Cmd + 0', '画布适应视口'],
-      ['方向键', '微调选区位置'],
-      ['Delete / Backspace', '删除选区'],
-      ['Enter', '确认浮动选区'],
-      ['Esc', '取消当前操作 / 清除选区'],
-    ],
-  },
-] as const
-
 function ShortcutsPanel() {
-  return (
-    <div className="grid gap-7">
-      <div>
-        <h2 className="text-xl font-black text-editor-strong">快捷键与快捷操作</h2>
-        <p className="mt-1 text-sm text-editor-text">保持手在键盘上，更快完成绘制和调整。</p>
-      </div>
-      <div className="grid gap-5 lg:grid-cols-3">
-        {shortcutGroups.map((group) => (
-          <section key={group.title} className="grid content-start gap-2">
-            <h3 className="mb-1 text-sm font-black text-editor-strong">{group.title}</h3>
-            {group.items.map(([keys, action]) => (
-              <div
-                key={keys}
-                className="flex min-h-11 items-center justify-between gap-4 border-b border-editor-border py-2"
-              >
-                <span className="text-xs font-bold text-editor-text">{action}</span>
-                <kbd className="shrink-0 rounded-lg border border-editor-border bg-editor-surface-soft px-2 py-1 font-mono text-[11px] font-black text-editor-strong shadow-[0_2px_0_var(--color-editor-border)]">
-                  {keys}
-                </kbd>
-              </div>
-            ))}
-          </section>
-        ))}
-      </div>
-    </div>
-  )
+  const bindings = useShortcuts()
+  const [query, setQuery] = useState('')
+  const pendingAlt = useRef(false)
+  const [recording, setRecording] = useState<ShortcutId | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const groups = [...new Set(shortcutDefinitions.map(item => item[2]))]
+  const matches = shortcutDefinitions.filter(([id,label]) => (label + ' ' + shortcutLabel(bindings[id])).toLowerCase().includes(query.trim().toLowerCase()))
+  return <div className="mx-auto grid w-full max-w-4xl gap-5">
+    <div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-editor-accent-soft text-editor-accent"><Keyboard size={22}/></span><div><h2 className="text-sm font-semibold text-editor-strong">快捷键</h2><p className="mt-1 text-xs text-editor-text">点击按键修改，自动保存</p></div></div>
+    <input type="search" aria-label="查找快捷键" placeholder="搜索操作或按键" value={query} onChange={event=>setQuery(event.target.value)} className="h-10 w-full rounded-xl border border-editor-border bg-editor-elevated px-3 text-[13px] text-editor-strong outline-none focus:border-editor-accent" />
+    <div className="grid gap-4 lg:grid-cols-2">{groups.map(group => {
+      const items = matches.filter(item => item[2] === group)
+      if (!items.length) return null
+      return <section key={group}>
+        <h3 className="mb-2 px-1 text-xs font-semibold text-editor-strong">{group}</h3>
+        <div className="grid gap-1 rounded-2xl bg-editor-elevated/60 p-2">{items.map(([id,label])=><div key={id} className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl px-2 py-2">
+          <span className="text-xs text-editor-text">{label}</span>
+          <button type="button" aria-label={'修改'+label+'快捷键'} aria-pressed={recording===id}
+            className={'max-w-full rounded-lg border px-2 py-1 font-mono text-[11px] leading-5 transition focus-visible:outline-2 focus-visible:outline-editor-accent '+(recording===id?'border-editor-accent bg-editor-accent-soft text-editor-accent':'border-editor-border/70 bg-editor-surface text-editor-strong shadow-[0_2px_0_var(--color-editor-border)] hover:border-editor-accent hover:text-editor-accent')}
+            onClick={()=>{setRecording(recording===id?null:id);setError(null)}}
+            onBlur={()=>{pendingAlt.current=false;setRecording(null);setError(null)}}
+            onKeyDown={event=>{
+              if (recording!==id) return
+              event.preventDefault();event.stopPropagation()
+              if (event.repeat || event.nativeEvent.isComposing) return
+              if (event.key === 'Alt') { pendingAlt.current = true; return }
+              pendingAlt.current = false
+              const key=shortcutFromEvent(event.nativeEvent)
+              if (!key) return
+              if (event.key==='Tab') { setError('Tab 保留用于界面焦点切换'); return }
+              const message=setShortcut(id,key)
+              setError(message)
+              if (!message) setRecording(null)
+            }} onKeyUp={event=>{
+              if (recording!==id || event.key!=='Alt' || !pendingAlt.current) return
+              pendingAlt.current = false
+              event.preventDefault();event.stopPropagation()
+              const message=setShortcut(id,'alt')
+              setError(message)
+              if (!message) setRecording(null)
+            }}>
+            {recording===id?'请按下新快捷键…':shortcutLabel(bindings[id])}
+          </button>
+          {recording===id && error ? <p role="alert" className="w-full text-xs text-editor-accent">{error}</p>:null}
+        </div>)}</div>
+      </section>
+    })}</div>
+    {!matches.length ? <p className="py-5 text-center text-xs text-editor-text">没有匹配的快捷键</p>:null}
+    <p className="text-xs leading-6 text-editor-text/70">滚轮移动画布 · Shift + 滚轮横向移动 · Ctrl / Cmd + 滚轮缩放。滚轮手势保持固定。</p>
+    <div className="flex justify-end"><button type="button" className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-xs text-editor-text/70 transition hover:bg-editor-accent-soft/50 hover:text-editor-accent" onClick={()=>{setRecording(null);setError(resetShortcuts())}}><ArrowCounterClockwise size={16}/>恢复默认快捷键</button></div>
+    {!recording && error ? <p role="alert" className="text-xs text-editor-accent">{error}</p>:null}
+  </div>
 }

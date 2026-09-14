@@ -20,6 +20,10 @@ type RenderPatternOpts = {
   cellSize?: number
   gridColor?: string
   title?: string
+  showGrid?: boolean
+  showCodes?: boolean
+  paletteStats?: RenderShoppingOpts['stats']
+  brandShortLabel?: string
 }
 
 /** 把图纸渲染成 PNG canvas,每格带色号 Key。 */
@@ -29,6 +33,10 @@ export function renderPatternWithKeys({
   cellSize = 28,
   gridColor = '#d4d4d4',
   title,
+  showGrid = true,
+  showCodes = true,
+  paletteStats,
+  brandShortLabel = '',
 }: RenderPatternOpts): HTMLCanvasElement {
   const padding = 12
   const titleHeight = title ? 32 : 0
@@ -76,7 +84,7 @@ export function renderPatternWithKeys({
 
     if (cell.isExternal || cell.color === null) {
       // 留白,只画淡淡的网格线占位(底色已经是米色)
-      if (cellSize >= 16) {
+      if (showGrid) {
         ctx.strokeStyle = '#f3f4f6'
         ctx.lineWidth = 1
         ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1)
@@ -88,7 +96,7 @@ export function renderPatternWithKeys({
     ctx.fillRect(x, y, cellSize, cellSize)
 
     // 网格线
-    if (cellSize >= 16) {
+    if (showGrid) {
       ctx.strokeStyle = gridColor
       ctx.lineWidth = 1
       ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1)
@@ -97,18 +105,31 @@ export function renderPatternWithKeys({
     // 色号
     const label = labelByHex.get(cell.color.toLowerCase())
     const display = label ?? hexTail(cell.color)
-    if (display && cellSize >= 12) {
+    if (showCodes && display) {
       ctx.font = labelFont
       ctx.fillStyle = pickTextColor(cell.color)
-      ctx.fillText(display, x + cellSize / 2, y + cellSize / 2)
+      ctx.fillText(display, x + cellSize / 2, y + cellSize / 2, Math.max(1, cellSize - 2))
     }
   }
 
+  if (paletteStats?.length) {
+    const legend = renderShoppingList({ stats: paletteStats, brandShortLabel, totalCount: paletteStats.reduce((sum, item) => sum + item.count, 0), columns: Math.max(1, Math.floor(canvas.width / 260)) })
+    const combined = document.createElement('canvas')
+    combined.width = Math.max(canvas.width, legend.width)
+    combined.height = canvas.height + legend.height
+    const context = combined.getContext('2d')
+    if (!context) return canvas
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, combined.width, combined.height)
+    context.drawImage(canvas, (combined.width - canvas.width) / 2, 0)
+    context.drawImage(legend, (combined.width - legend.width) / 2, canvas.height)
+    return combined
+  }
   return canvas
 }
 
 type RenderShoppingOpts = {
-  stats: Array<{ color: string; count: number; code: string | null }>
+  stats: Array<{ color: string; count: number; code: string | null; brandLabel?: string }>
   brandShortLabel: string
   totalCount: number
   totalCells?: number
@@ -178,7 +199,7 @@ export function renderShoppingList({
     )
     ctx.fillStyle = '#6b7280'
     ctx.font = `12px "PingFang SC", "Microsoft YaHei", system-ui`
-    ctx.fillText(item.color, textX, y + swatchSize / 2 + 10)
+    ctx.fillText([item.brandLabel, item.color].filter(Boolean).join(' · '), textX, y + swatchSize / 2 + 10, 150)
 
     // 数量
     ctx.fillStyle = '#111827'

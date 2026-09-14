@@ -16,7 +16,8 @@
 //   + onCommit(低频,pointerup / hex 输入 / 点 suggestion 才触发,父此时记 recent)
 // - 内部用 draft state 维护"当前正在拖动的颜色",popover 内的 UI 全部用 draft
 //   渲染,跟外部 color prop 解耦
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { NearestBeadColor } from '../core/color'
 
 type ColorPickerPopoverProps = {
@@ -30,6 +31,7 @@ type ColorPickerPopoverProps = {
   suggestions?: NearestBeadColor[]
   /** 触发按钮的尺寸 */
   size?: 'sm' | 'md'
+  inline?: boolean
   ariaLabel?: string
 }
 
@@ -40,6 +42,7 @@ export function ColorPickerPopover({
   suggestions,
   size = 'md',
   ariaLabel,
+  inline = false,
 }: ColorPickerPopoverProps) {
   const [open, setOpen] = useState(false)
   // 拖动过程中的草稿色;打开时初始化为外部 color
@@ -92,11 +95,54 @@ export function ColorPickerPopover({
     }
   }, [open])
 
+  useLayoutEffect(() => {
+    if (!open) return
+    const button = buttonRef.current
+    const popover = popoverRef.current
+    if (!button || !popover) return
+    function position() {
+      if (!button || !popover) return
+      const viewport = window.visualViewport
+      const left = (viewport?.offsetLeft ?? 0) + 8
+      const top = (viewport?.offsetTop ?? 0) + 8
+      const right = left + (viewport?.width ?? window.innerWidth) - 16
+      const bottom = top + (viewport?.height ?? window.innerHeight) - 16
+      popover.style.maxWidth = Math.max(1, right - left) + 'px'
+      popover.style.maxHeight = Math.max(1, bottom - top) + 'px'
+      const trigger = button.getBoundingClientRect()
+      const panel = popover.getBoundingClientRect()
+      const below = bottom - trigger.bottom - 6
+      const above = trigger.top - top - 6
+      const desiredTop = below >= panel.height || below >= above
+        ? trigger.bottom + 6 : trigger.top - panel.height - 6
+      const x = Math.max(left, Math.min(trigger.right - panel.width, right - panel.width))
+      const y = Math.max(top, Math.min(desiredTop, bottom - panel.height))
+      popover.style.left = x + 'px'
+      popover.style.top = y + 'px'
+    }
+    position()
+    const observer = new ResizeObserver(position)
+    observer.observe(popover)
+    observer.observe(button)
+    window.addEventListener('resize', position)
+    window.addEventListener('scroll', position, true)
+    window.visualViewport?.addEventListener('resize', position)
+    window.visualViewport?.addEventListener('scroll', position)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', position)
+      window.removeEventListener('scroll', position, true)
+      window.visualViewport?.removeEventListener('resize', position)
+      window.visualViewport?.removeEventListener('scroll', position)
+    }
+  }, [open])
+
+  const renderPopover = (content: ReactNode) => inline ? content : createPortal(content, document.body)
   const sizeClass = size === 'sm' ? 'h-8 w-8' : 'h-11 w-11'
 
   return (
-    <div className="relative inline-block">
-      <button
+    <div className={inline ? "w-full" : "relative inline-block"}>
+      {!inline ? <button
         ref={buttonRef}
         type="button"
         aria-label={ariaLabel ?? '选择颜色'}
@@ -105,13 +151,16 @@ export function ColorPickerPopover({
         className={`${sizeClass} shrink-0 cursor-pointer rounded-full border-2 border-white shadow-sm outline outline-1 outline-editor-border`}
         style={{ backgroundColor: color }}
         title={ariaLabel ?? color}
-      />
-      {open ? (
+      /> : null}
+      {inline || open ? renderPopover(
         <div
           ref={popoverRef}
-          role="dialog"
+          onPointerDown={event => { if (!inline) event.stopPropagation() }}
+          onMouseDown={event => { if (!inline) event.stopPropagation() }}
+          onKeyDown={event => { if (!inline && event.key === 'Escape') { event.stopPropagation(); setOpen(false); buttonRef.current?.focus() } }}
+          role={inline ? "group" : "dialog"}
           aria-label={ariaLabel ?? '颜色选择器'}
-          className="absolute left-0 top-[calc(100%+6px)] z-40 w-64 space-y-3 rounded-2xl border border-editor-border bg-editor-elevated p-3 shadow-xl"
+          className={inline ? "space-y-3" : "fixed z-[100] w-64 overflow-y-auto overscroll-contain space-y-3 rounded-2xl border border-editor-border bg-editor-elevated p-3 shadow-xl"}
         >
           <SvSquare
             hue={hsv.h}
@@ -129,6 +178,7 @@ export function ColorPickerPopover({
             <span className="text-xs font-bold text-editor-text">HEX</span>
             <input
               type="text"
+              aria-label="Hex 色值"
               value={hexDraft}
               onChange={(event) => {
                 const raw = event.target.value
@@ -150,7 +200,7 @@ export function ColorPickerPopover({
                   if (normalized) commit(normalized)
                 }
               }}
-              className="h-7 flex-1 rounded-lg border border-editor-border bg-editor-elevated px-2 font-mono text-xs font-bold text-editor-strong outline-none"
+              className="h-7 min-w-0 flex-1 rounded-lg border border-editor-border bg-editor-elevated px-2 font-mono text-xs font-bold text-editor-strong outline-none"
               maxLength={7}
               spellCheck={false}
             />
@@ -186,12 +236,7 @@ function Suggestions({
       </span>
       <div className="grid grid-cols-6 gap-1">
         {items.map(({ color, distance }) => {
-          const code =
-            color.codes.mard ??
-            color.codes['artkal-c'] ??
-            color.codes['hama-midi'] ??
-            color.codes.perler ??
-            ''
+          const code = Object.values(color.codes).find(Boolean) ?? ''
           const selected = color.hex.toLowerCase() === currentHex.toLowerCase()
           return (
             <button

@@ -1,0 +1,1395 @@
+[
+  {
+    "hex": "#eaeef3",
+    "codes": {
+      "artkal-s": "S01"
+    },
+    "nameEn": "White"
+  },
+  {
+    "hex": "#ee927c",
+    "codes": {
+      "artkal-s": "S02"
+    },
+    "nameEn": "Burning Sand"
+  },
+  {
+    "hex": "#ffa630",
+    "codes": {
+      "artkal-s": "S03"
+    },
+    "nameEn": "Tangerine"
+  },
+  {
+    "hex": "#eb6027",
+    "codes": {
+      "artkal-s": "S04"
+    },
+    "nameEn": "Orange"
+  },
+  {
+    "hex": "#cb3531",
+    "codes": {
+      "artkal-s": "S05"
+    },
+    "nameEn": "Tall Poppy"
+  },
+  {
+    "hex": "#ef67b2",
+    "codes": {
+      "artkal-s": "S06"
+    },
+    "nameEn": "Raspberry Pink"
+  },
+  {
+    "hex": "#959698",
+    "codes": {
+      "artkal-s": "S07"
+    },
+    "nameEn": "Gray"
+  },
+  {
+    "hex": "#1fc467",
+    "codes": {
+      "artkal-s": "S08"
+    },
+    "nameEn": "Emerald"
+  },
+  {
+    "hex": "#00685e",
+    "codes": {
+      "artkal-s": "S09"
+    },
+    "nameEn": "Dark Green"
+  },
+  {
+    "hex": "#2eabd8",
+    "codes": {
+      "artkal-s": "S10"
+    },
+    "nameEn": "Baby Blue"
+  },
+  {
+    "hex": "#004fa4",
+    "codes": {
+      "artkal-s": "S11"
+    },
+    "nameEn": "Dark Blue"
+  },
+  {
+    "hex": "#9165b2",
+    "codes": {
+      "artkal-s": "S12"
+    },
+    "nameEn": "Pastel Lavender"
+  },
+  {
+    "hex": "#292a2b",
+    "codes": {
+      "artkal-s": "S13"
+    },
+    "nameEn": "Black"
+  },
+  {
+    "hex": "#e1c835",
+    "codes": {
+      "artkal-s": "S14"
+    },
+    "nameEn": "Sandstorm"
+  },
+  {
+    "hex": "#9a4541",
+    "codes": {
+      "artkal-s": "S15"
+    },
+    "nameEn": "Redwood"
+  },
+  {
+    "hex": "#65463d",
+    "codes": {
+      "artkal-s": "S16"
+    },
+    "nameEn": "Brown"
+  },
+  {
+    "hex": "#895d49",
+    "codes": {
+      "artkal-s": "S17"
+    },
+    "nameEn": "Light Brown"
+  },
+  {
+    "hex": "#dca384",
+    "codes": {
+      "artkal-s": "S18"
+    },
+    "nameEn": "Sand"
+  },
+  {
+    "hex": "#f2bfb8",
+    "codes": {
+      "artkal-s": "S19"
+    },
+    "nameEn": "Bubble Gun"
+  },
+  {
+    "hex": "#009053",
+    "codes": {
+      "artkal-s": "S20"
+    },
+    "nameEn": "Green"
+  },
+  {
+    "hex": "#8bb23a",
+    "codes": {
+      "artkal-s": "S21"
+    },
+    "nameEn": "Pastel Green"
+  },
+  {
+    "hex": "#48337e",
+    "codes": {
+      "artkal-s": "S22"
+    },
+    "nameEn": "Purple"
+  },
+  {
+    "hex": "#644fa4",
+    "codes": {
+      "artkal-s": "S23"
+    },
+    "nameEn": "Royal Purple"
+  },
+  {
+    "hex": "#0078bf",
+    "codes": {
+      "artkal-s": "S24"
+    },
+    "nameEn": "True Blue"
+  },
+  {
+    "hex": "#dc519a",
+    "codes": {
+      "artkal-s": "S25"
+    },
+    "nameEn": "Hot Pink"
+  },
+  {
+    "hex": "#da4383",
+    "codes": {
+      "artkal-s": "S26"
+    },
+    "nameEn": "Magenta"
+  },
+  {
+    "hex": "#eac125",
+    "codes": {
+      "artkal-s": "S27"
+    },
+    "nameEn": "Yellow"
+  },
+  {
+    "hex": "#dda1cc",
+    "codes": {
+      "artkal-s": "S28"
+    },
+    "nameEn": "Lily Pink"
+  },
+  {
+    "hex": "#e1d367",
+    "codes": {
+      "artkal-s": "S29"
+    },
+    "nameEn": "Pastel Yellow"
+  },
+  {
+    "hex": "#9ec9cd",
+    "codes": {
+      "artkal-s": "S30"
+    },
+    "nameEn": "Shadow Green"
+  },
+  {
+    "hex": "#b2d7ce",
+    "codes": {
+      "artkal-s": "S31"
+    },
+    "nameEn": "Sea Mist"
+  },
+  {
+    "hex": "#eed39e",
+    "codes": {
+      "artkal-s": "S32"
+    },
+    "nameEn": "Beeswax"
+  },
+  {
+    "hex": "#c0b7d7",
+    "codes": {
+      "artkal-s": "S33"
+    },
+    "nameEn": "Maverick"
+  },
+  {
+    "hex": "#b61927",
+    "codes": {
+      "artkal-s": "S34"
+    },
+    "nameEn": "Red"
+  },
+  {
+    "hex": "#e1ccd2",
+    "codes": {
+      "artkal-s": "S35"
+    },
+    "nameEn": "Mona Lisa"
+  },
+  {
+    "hex": "#ce6d83",
+    "codes": {
+      "artkal-s": "S36"
+    },
+    "nameEn": "Old Pink"
+  },
+  {
+    "hex": "#60bfcb",
+    "codes": {
+      "artkal-s": "S37"
+    },
+    "nameEn": "Blue-Green"
+  },
+  {
+    "hex": "#a3134a",
+    "codes": {
+      "artkal-s": "S38"
+    },
+    "nameEn": "Burgundy"
+  },
+  {
+    "hex": "#e68739",
+    "codes": {
+      "artkal-s": "S39"
+    },
+    "nameEn": "Yellow Orange"
+  },
+  {
+    "hex": "#e182b0",
+    "codes": {
+      "artkal-s": "S40"
+    },
+    "nameEn": "Carnation Pink"
+  },
+  {
+    "hex": "#9d5b2e",
+    "codes": {
+      "artkal-s": "S41"
+    },
+    "nameEn": "Copper"
+  },
+  {
+    "hex": "#676b73",
+    "codes": {
+      "artkal-s": "S42"
+    },
+    "nameEn": "Silver"
+  },
+  {
+    "hex": "#70757b",
+    "codes": {
+      "artkal-s": "S43"
+    },
+    "nameEn": "Dark Gray"
+  },
+  {
+    "hex": "#a7cdde",
+    "codes": {
+      "artkal-s": "S44"
+    },
+    "nameEn": "Sky Blue"
+  },
+  {
+    "hex": "#00a5a1",
+    "codes": {
+      "artkal-s": "S45"
+    },
+    "nameEn": "Medium Turquoise"
+  },
+  {
+    "hex": "#8ec324",
+    "codes": {
+      "artkal-s": "S46"
+    },
+    "nameEn": "Bright Green"
+  },
+  {
+    "hex": "#b27938",
+    "codes": {
+      "artkal-s": "S47"
+    },
+    "nameEn": "Marigold"
+  },
+  {
+    "hex": "#ecc03d",
+    "codes": {
+      "artkal-s": "S48"
+    },
+    "nameEn": "Corn"
+  },
+  {
+    "hex": "#921e5d",
+    "codes": {
+      "artkal-s": "S49"
+    },
+    "nameEn": "Mulberry Wood"
+  },
+  {
+    "hex": "#e2a488",
+    "codes": {
+      "artkal-s": "S50"
+    },
+    "nameEn": "Mandys Pink"
+  },
+  {
+    "hex": "#dfdabd",
+    "codes": {
+      "artkal-s": "S51"
+    },
+    "nameEn": "Spring Sun"
+  },
+  {
+    "hex": "#eade7f",
+    "codes": {
+      "artkal-s": "S52"
+    },
+    "nameEn": "Picasso"
+  },
+  {
+    "hex": "#55a4d9",
+    "codes": {
+      "artkal-s": "S53"
+    },
+    "nameEn": "Turquoise"
+  },
+  {
+    "hex": "#0084ce",
+    "codes": {
+      "artkal-s": "S54"
+    },
+    "nameEn": "Light Blue"
+  },
+  {
+    "hex": "#97cf87",
+    "codes": {
+      "artkal-s": "S55"
+    },
+    "nameEn": "Pistachio"
+  },
+  {
+    "hex": "#f96f40",
+    "codes": {
+      "artkal-s": "S56"
+    },
+    "nameEn": "Bright Carrot"
+  },
+  {
+    "hex": "#b35540",
+    "codes": {
+      "artkal-s": "S57"
+    },
+    "nameEn": "Buccaneer"
+  },
+  {
+    "hex": "#b11836",
+    "codes": {
+      "artkal-s": "S58"
+    },
+    "nameEn": "Paprika"
+  },
+  {
+    "hex": "#4f3989",
+    "codes": {
+      "artkal-s": "S59"
+    },
+    "nameEn": "Butterfly Bush"
+  },
+  {
+    "hex": "#8a7ec2",
+    "codes": {
+      "artkal-s": "S60"
+    },
+    "nameEn": "Lavender"
+  },
+  {
+    "hex": "#cdc03f",
+    "codes": {
+      "artkal-s": "S61"
+    },
+    "nameEn": "Key Lomen Pie"
+  },
+  {
+    "hex": "#00765f",
+    "codes": {
+      "artkal-s": "S62"
+    },
+    "nameEn": "Green Tea"
+  },
+  {
+    "hex": "#696046",
+    "codes": {
+      "artkal-s": "S63"
+    },
+    "nameEn": "Metallic Gold"
+  },
+  {
+    "hex": "#36384d",
+    "codes": {
+      "artkal-s": "S64"
+    },
+    "nameEn": "Black Rock"
+  },
+  {
+    "hex": "#e2e65d",
+    "codes": {
+      "artkal-s": "S65"
+    },
+    "nameEn": "Canary"
+  },
+  {
+    "hex": "#e5533c",
+    "codes": {
+      "artkal-s": "S66"
+    },
+    "nameEn": "Blaze Orange"
+  },
+  {
+    "hex": "#e9c1a6",
+    "codes": {
+      "artkal-s": "S67"
+    },
+    "nameEn": "Vanilla"
+  },
+  {
+    "hex": "#cc9b74",
+    "codes": {
+      "artkal-s": "S68"
+    },
+    "nameEn": "Tan"
+  },
+  {
+    "hex": "#383e44",
+    "codes": {
+      "artkal-s": "S69"
+    },
+    "nameEn": "Mine Shaft"
+  },
+  {
+    "hex": "#adad29",
+    "codes": {
+      "artkal-s": "S70"
+    },
+    "nameEn": "Drark Algae"
+  },
+  {
+    "hex": "#007d2b",
+    "codes": {
+      "artkal-s": "S71"
+    },
+    "nameEn": "Jade Green"
+  },
+  {
+    "hex": "#68c4d2",
+    "codes": {
+      "artkal-s": "S72"
+    },
+    "nameEn": "Light Sea Blue"
+  },
+  {
+    "hex": "#5ab0bf",
+    "codes": {
+      "artkal-s": "S73"
+    },
+    "nameEn": "Steel Blue"
+  },
+  {
+    "hex": "#009ec2",
+    "codes": {
+      "artkal-s": "S74"
+    },
+    "nameEn": "Azure"
+  },
+  {
+    "hex": "#0084b2",
+    "codes": {
+      "artkal-s": "S75"
+    },
+    "nameEn": "Dark Steel Blue"
+  },
+  {
+    "hex": "#0093a9",
+    "codes": {
+      "artkal-s": "S76"
+    },
+    "nameEn": "Sea Blue"
+  },
+  {
+    "hex": "#d4d8d3",
+    "codes": {
+      "artkal-s": "S77"
+    },
+    "nameEn": "Ghost While"
+  },
+  {
+    "hex": "#c2c4c2",
+    "codes": {
+      "artkal-s": "S78"
+    },
+    "nameEn": "Ash Grey"
+  },
+  {
+    "hex": "#a7acad",
+    "codes": {
+      "artkal-s": "S79"
+    },
+    "nameEn": "Light Gray"
+  },
+  {
+    "hex": "#8f8e3c",
+    "codes": {
+      "artkal-s": "S80"
+    },
+    "nameEn": "Dark Olive"
+  },
+  {
+    "hex": "#bf9168",
+    "codes": {
+      "artkal-s": "S81"
+    },
+    "nameEn": "Deer"
+  },
+  {
+    "hex": "#aa744e",
+    "codes": {
+      "artkal-s": "S82"
+    },
+    "nameEn": "Clay"
+  },
+  {
+    "hex": "#bb6833",
+    "codes": {
+      "artkal-s": "S83"
+    },
+    "nameEn": "Sienna"
+  },
+  {
+    "hex": "#be5d65",
+    "codes": {
+      "artkal-s": "S84"
+    },
+    "nameEn": "Deep Chestnut"
+  },
+  {
+    "hex": "#99323a",
+    "codes": {
+      "artkal-s": "S85"
+    },
+    "nameEn": "Red Wine"
+  },
+  {
+    "hex": "#e8ae00",
+    "codes": {
+      "artkal-s": "S86"
+    },
+    "nameEn": "Goldenrod"
+  },
+  {
+    "hex": "#ec625e",
+    "codes": {
+      "artkal-s": "S87"
+    },
+    "nameEn": "Coral Red"
+  },
+  {
+    "hex": "#d62779",
+    "codes": {
+      "artkal-s": "S88"
+    },
+    "nameEn": "Dark Pink"
+  },
+  {
+    "hex": "#565a5e",
+    "codes": {
+      "artkal-s": "S89"
+    },
+    "nameEn": "Charcoal Gray"
+  },
+  {
+    "hex": "#d9b35e",
+    "codes": {
+      "artkal-s": "S90"
+    },
+    "nameEn": "Pastel Orange"
+  },
+  {
+    "hex": "#153838",
+    "codes": {
+      "artkal-s": "S91"
+    },
+    "nameEn": "Brunswick Green"
+  },
+  {
+    "hex": "#cea433",
+    "codes": {
+      "artkal-s": "S92"
+    },
+    "nameEn": "Dandelion"
+  },
+  {
+    "hex": "#dcb794",
+    "codes": {
+      "artkal-s": "S93"
+    },
+    "nameEn": "Pale Skin"
+  },
+  {
+    "hex": "#dd9285",
+    "codes": {
+      "artkal-s": "S94"
+    },
+    "nameEn": "Warm Blush"
+  },
+  {
+    "hex": "#e07b69",
+    "codes": {
+      "artkal-s": "S95"
+    },
+    "nameEn": "Salmon"
+  },
+  {
+    "hex": "#ef7f61",
+    "codes": {
+      "artkal-s": "S96"
+    },
+    "nameEn": "Apricot"
+  },
+  {
+    "hex": "#dc772b",
+    "codes": {
+      "artkal-s": "S97"
+    },
+    "nameEn": "Papaya"
+  },
+  {
+    "hex": "#6aaedb",
+    "codes": {
+      "artkal-s": "S98"
+    },
+    "nameEn": "Himalaya Blue"
+  },
+  {
+    "hex": "#61bbd3",
+    "codes": {
+      "artkal-s": "S99"
+    },
+    "nameEn": "Waterfall"
+  },
+  {
+    "hex": "#279bbe",
+    "codes": {
+      "artkal-s": "S100"
+    },
+    "nameEn": "Lagoon"
+  },
+  {
+    "hex": "#00a7e3",
+    "codes": {
+      "artkal-s": "S101"
+    },
+    "nameEn": "Electric Blue"
+  },
+  {
+    "hex": "#0077ca",
+    "codes": {
+      "artkal-s": "S102"
+    },
+    "nameEn": "Pool Blue"
+  },
+  {
+    "hex": "#005aa9",
+    "codes": {
+      "artkal-s": "S103"
+    },
+    "nameEn": "Caribbian Blue"
+  },
+  {
+    "hex": "#007f9e",
+    "codes": {
+      "artkal-s": "S104"
+    },
+    "nameEn": "Deep Water"
+  },
+  {
+    "hex": "#007d91",
+    "codes": {
+      "artkal-s": "S105"
+    },
+    "nameEn": "Petrol Blue"
+  },
+  {
+    "hex": "#00649a",
+    "codes": {
+      "artkal-s": "S106"
+    },
+    "nameEn": "Wegdewood Blue"
+  },
+  {
+    "hex": "#006c9f",
+    "codes": {
+      "artkal-s": "S107"
+    },
+    "nameEn": "Pond Blue"
+  },
+  {
+    "hex": "#cfc179",
+    "codes": {
+      "artkal-s": "S108"
+    },
+    "nameEn": "Seashell Beige"
+  },
+  {
+    "hex": "#c4ae64",
+    "codes": {
+      "artkal-s": "S109"
+    },
+    "nameEn": "Beige"
+  },
+  {
+    "hex": "#ab9745",
+    "codes": {
+      "artkal-s": "S110"
+    },
+    "nameEn": "Beach Beige"
+  },
+  {
+    "hex": "#978138",
+    "codes": {
+      "artkal-s": "S111"
+    },
+    "nameEn": "Caffe Latté"
+  },
+  {
+    "hex": "#907c41",
+    "codes": {
+      "artkal-s": "S112"
+    },
+    "nameEn": "Oaktree Brown"
+  },
+  {
+    "hex": "#b6ae84",
+    "codes": {
+      "artkal-s": "S113"
+    },
+    "nameEn": "Khaki"
+  },
+  {
+    "hex": "#a59f65",
+    "codes": {
+      "artkal-s": "S114"
+    },
+    "nameEn": "Light Greengray"
+  },
+  {
+    "hex": "#938d54",
+    "codes": {
+      "artkal-s": "S115"
+    },
+    "nameEn": "Mossy Green"
+  },
+  {
+    "hex": "#8d8b51",
+    "codes": {
+      "artkal-s": "S116"
+    },
+    "nameEn": "Earth Green"
+  },
+  {
+    "hex": "#7f7e49",
+    "codes": {
+      "artkal-s": "S117"
+    },
+    "nameEn": "Sage Green"
+  },
+  {
+    "hex": "#5b6e35",
+    "codes": {
+      "artkal-s": "S118"
+    },
+    "nameEn": "Pinetree Green"
+  },
+  {
+    "hex": "#8ad5c9",
+    "codes": {
+      "artkal-s": "S119"
+    },
+    "nameEn": "Frosty Blue"
+  },
+  {
+    "hex": "#7cd2a5",
+    "codes": {
+      "artkal-s": "S120"
+    },
+    "nameEn": "Polar Mint"
+  },
+  {
+    "hex": "#72ac9a",
+    "codes": {
+      "artkal-s": "S121"
+    },
+    "nameEn": "Celadon Green"
+  },
+  {
+    "hex": "#00b26f",
+    "codes": {
+      "artkal-s": "S122"
+    },
+    "nameEn": "Eucalyptus"
+  },
+  {
+    "hex": "#3eb724",
+    "codes": {
+      "artkal-s": "S123"
+    },
+    "nameEn": "Clover Field"
+  },
+  {
+    "hex": "#0d7535",
+    "codes": {
+      "artkal-s": "S124"
+    },
+    "nameEn": "Pooltable Felt"
+  },
+  {
+    "hex": "#007d6e",
+    "codes": {
+      "artkal-s": "S125"
+    },
+    "nameEn": "Snake Green"
+  },
+  {
+    "hex": "#006e69",
+    "codes": {
+      "artkal-s": "S126"
+    },
+    "nameEn": "Dark Eucalyptus"
+  },
+  {
+    "hex": "#dfc3e1",
+    "codes": {
+      "artkal-s": "S127"
+    },
+    "nameEn": "Marsmallow Rose"
+  },
+  {
+    "hex": "#d38ed4",
+    "codes": {
+      "artkal-s": "S128"
+    },
+    "nameEn": "Light Grape"
+  },
+  {
+    "hex": "#d5a6ba",
+    "codes": {
+      "artkal-s": "S129"
+    },
+    "nameEn": "Rosebud Pink"
+  },
+  {
+    "hex": "#d6668e",
+    "codes": {
+      "artkal-s": "S130"
+    },
+    "nameEn": "Fuschia"
+  },
+  {
+    "hex": "#b8aad9",
+    "codes": {
+      "artkal-s": "S131"
+    },
+    "nameEn": "Candy Violet"
+  },
+  {
+    "hex": "#df486d",
+    "codes": {
+      "artkal-s": "S132"
+    },
+    "nameEn": "Flamingo"
+  },
+  {
+    "hex": "#bc3ca6",
+    "codes": {
+      "artkal-s": "S133"
+    },
+    "nameEn": "Pink Plum"
+  },
+  {
+    "hex": "#803897",
+    "codes": {
+      "artkal-s": "S134"
+    },
+    "nameEn": "Amethyst"
+  },
+  {
+    "hex": "#a7bae1",
+    "codes": {
+      "artkal-s": "S135"
+    },
+    "nameEn": "Moonlight Blue"
+  },
+  {
+    "hex": "#afb8df",
+    "codes": {
+      "artkal-s": "S136"
+    },
+    "nameEn": "Summer Rain"
+  },
+  {
+    "hex": "#6b9ad4",
+    "codes": {
+      "artkal-s": "S137"
+    },
+    "nameEn": "Azur Blue"
+  },
+  {
+    "hex": "#5a89ce",
+    "codes": {
+      "artkal-s": "S138"
+    },
+    "nameEn": "Cornflower Blue"
+  },
+  {
+    "hex": "#658ad0",
+    "codes": {
+      "artkal-s": "S139"
+    },
+    "nameEn": "Forget Me Not"
+  },
+  {
+    "hex": "#566cbd",
+    "codes": {
+      "artkal-s": "S140"
+    },
+    "nameEn": "Indigo"
+  },
+  {
+    "hex": "#4d74c6",
+    "codes": {
+      "artkal-s": "S141"
+    },
+    "nameEn": "Horizon Blue"
+  },
+  {
+    "hex": "#416dbe",
+    "codes": {
+      "artkal-s": "S142"
+    },
+    "nameEn": "Cobolt"
+  },
+  {
+    "hex": "#30429e",
+    "codes": {
+      "artkal-s": "S143"
+    },
+    "nameEn": "Royal Blue"
+  },
+  {
+    "hex": "#024288",
+    "codes": {
+      "artkal-s": "S144"
+    },
+    "nameEn": "Marine"
+  },
+  {
+    "hex": "#d6ca6a",
+    "codes": {
+      "artkal-s": "S145"
+    },
+    "nameEn": "Pale Yellow Moss"
+  },
+  {
+    "hex": "#9d1a38",
+    "codes": {
+      "artkal-s": "S146"
+    },
+    "nameEn": "Bloodrose Red"
+  },
+  {
+    "hex": "#80b7a1",
+    "codes": {
+      "artkal-s": "S147"
+    },
+    "nameEn": "Spearmint"
+  },
+  {
+    "hex": "#7a594f",
+    "codes": {
+      "artkal-s": "S148"
+    },
+    "nameEn": "Mocha"
+  },
+  {
+    "hex": "#efdba1",
+    "codes": {
+      "artkal-s": "S149"
+    },
+    "nameEn": "Creme"
+  },
+  {
+    "hex": "#8884d0",
+    "codes": {
+      "artkal-s": "S150"
+    },
+    "nameEn": "Iris Violet"
+  },
+  {
+    "hex": "#345621",
+    "codes": {
+      "artkal-s": "S151"
+    },
+    "nameEn": "Forrest Green"
+  },
+  {
+    "hex": "#aeaddc",
+    "codes": {
+      "artkal-s": "S152"
+    },
+    "nameEn": "Lilac"
+  },
+  {
+    "hex": "#bcc3e1",
+    "codes": {
+      "artkal-s": "S153"
+    },
+    "nameEn": "Pale Lilac"
+  },
+  {
+    "hex": "#e3c09a",
+    "codes": {
+      "artkal-s": "S154"
+    },
+    "nameEn": "Sahara Sand"
+  },
+  {
+    "hex": "#c58b60",
+    "codes": {
+      "artkal-s": "S155"
+    },
+    "nameEn": "Sunkissed Teint"
+  },
+  {
+    "hex": "#5a5f65",
+    "codes": {
+      "artkal-s": "S156"
+    },
+    "nameEn": "Steel Grey"
+  },
+  {
+    "hex": "#4c5156",
+    "codes": {
+      "artkal-s": "S157"
+    },
+    "nameEn": "Iron Grey"
+  },
+  {
+    "hex": "#3a3e42",
+    "codes": {
+      "artkal-s": "S158"
+    },
+    "nameEn": "Pepper"
+  },
+  {
+    "hex": "#82878b",
+    "codes": {
+      "artkal-s": "S159"
+    },
+    "nameEn": "Oslo Gray"
+  },
+  {
+    "hex": "#f1f4fa",
+    "codes": {
+      "artkal-s": "SE1"
+    },
+    "nameEn": "Moon"
+  },
+  {
+    "hex": "#a2b2d3",
+    "codes": {
+      "artkal-s": "SE2"
+    },
+    "nameEn": "Raincloud"
+  },
+  {
+    "hex": "#83a6dc",
+    "codes": {
+      "artkal-s": "SE3"
+    },
+    "nameEn": "Winter"
+  },
+  {
+    "hex": "#70d8ed",
+    "codes": {
+      "artkal-s": "SE4"
+    },
+    "nameEn": "Tide"
+  },
+  {
+    "hex": "#69e3d5",
+    "codes": {
+      "artkal-s": "SE5"
+    },
+    "nameEn": "Aquamarine"
+  },
+  {
+    "hex": "#2a63c8",
+    "codes": {
+      "artkal-s": "SE6"
+    },
+    "nameEn": "Neptune"
+  },
+  {
+    "hex": "#d5aec9",
+    "codes": {
+      "artkal-s": "SE7"
+    },
+    "nameEn": "Rose Quartz"
+  },
+  {
+    "hex": "#af739a",
+    "codes": {
+      "artkal-s": "SE8"
+    },
+    "nameEn": "Mauve"
+  },
+  {
+    "hex": "#704b6d",
+    "codes": {
+      "artkal-s": "SE9"
+    },
+    "nameEn": "Dark Mauve"
+  },
+  {
+    "hex": "#d977cd",
+    "codes": {
+      "artkal-s": "SE10"
+    },
+    "nameEn": "Wild Berry"
+  },
+  {
+    "hex": "#b643ac",
+    "codes": {
+      "artkal-s": "SE11"
+    },
+    "nameEn": "Sugar Plum"
+  },
+  {
+    "hex": "#deb181",
+    "codes": {
+      "artkal-s": "SE12"
+    },
+    "nameEn": "Desert"
+  },
+  {
+    "hex": "#bc9d77",
+    "codes": {
+      "artkal-s": "SE13"
+    },
+    "nameEn": "Peanut"
+  },
+  {
+    "hex": "#ac7f5d",
+    "codes": {
+      "artkal-s": "SE14"
+    },
+    "nameEn": "Toffee"
+  },
+  {
+    "hex": "#a37e66",
+    "codes": {
+      "artkal-s": "SE15"
+    },
+    "nameEn": "Bark"
+  },
+  {
+    "hex": "#c6c0b4",
+    "codes": {
+      "artkal-s": "SG1"
+    },
+    "nameEn": "Glow Yellow"
+  },
+  {
+    "hex": "#dfabbc",
+    "codes": {
+      "artkal-s": "SG2"
+    },
+    "nameEn": "Glow Pink"
+  },
+  {
+    "hex": "#6fadc1",
+    "codes": {
+      "artkal-s": "SG3"
+    },
+    "nameEn": "Glow Blue"
+  },
+  {
+    "hex": "#3687b2",
+    "codes": {
+      "artkal-s": "SL1"
+    },
+    "nameEn": "Glitter Blue"
+  },
+  {
+    "hex": "#117c52",
+    "codes": {
+      "artkal-s": "SL2"
+    },
+    "nameEn": "Glitter Green"
+  },
+  {
+    "hex": "#c22933",
+    "codes": {
+      "artkal-s": "SL3"
+    },
+    "nameEn": "Glitter Red"
+  },
+  {
+    "hex": "#cdbd00",
+    "codes": {
+      "artkal-s": "SL4"
+    },
+    "nameEn": "Glitter Yellow"
+  },
+  {
+    "hex": "#ff7405",
+    "codes": {
+      "artkal-s": "SN1"
+    },
+    "nameEn": "Neon Orange"
+  },
+  {
+    "hex": "#01c63e",
+    "codes": {
+      "artkal-s": "SN2"
+    },
+    "nameEn": "Neon Green"
+  },
+  {
+    "hex": "#f2f33c",
+    "codes": {
+      "artkal-s": "SN3"
+    },
+    "nameEn": "Neon Yellow"
+  },
+  {
+    "hex": "#ff477a",
+    "codes": {
+      "artkal-s": "SN4"
+    },
+    "nameEn": "Neon Rose"
+  },
+  {
+    "hex": "#93ca87",
+    "codes": {
+      "artkal-s": "SP1"
+    },
+    "nameEn": "Pearlescent Green"
+  },
+  {
+    "hex": "#fe7f54",
+    "codes": {
+      "artkal-s": "SP2"
+    },
+    "nameEn": "Pearlescent Tangerine"
+  },
+  {
+    "hex": "#f0a149",
+    "codes": {
+      "artkal-s": "SP3"
+    },
+    "nameEn": "Pearlescent Orange"
+  },
+  {
+    "hex": "#dc9ea9",
+    "codes": {
+      "artkal-s": "SP4"
+    },
+    "nameEn": "Pearlescent Pink"
+  },
+  {
+    "hex": "#d63c53",
+    "codes": {
+      "artkal-s": "SP5"
+    },
+    "nameEn": "Pearlescent Red"
+  },
+  {
+    "hex": "#2c4e97",
+    "codes": {
+      "artkal-s": "SP6"
+    },
+    "nameEn": "Pearlescent Blue"
+  },
+  {
+    "hex": "#64427e",
+    "codes": {
+      "artkal-s": "SP7"
+    },
+    "nameEn": "Pearlescent Purple"
+  },
+  {
+    "hex": "#e0dbca",
+    "codes": {
+      "artkal-s": "SP8"
+    },
+    "nameEn": "Pearlescent White"
+  },
+  {
+    "hex": "#c7bcb8",
+    "codes": {
+      "artkal-s": "ST1"
+    },
+    "nameEn": "Transparent"
+  },
+  {
+    "hex": "#f95498",
+    "codes": {
+      "artkal-s": "ST2"
+    },
+    "nameEn": "Transparent Pink"
+  },
+  {
+    "hex": "#ff7c45",
+    "codes": {
+      "artkal-s": "ST3"
+    },
+    "nameEn": "Transparent Tangering"
+  },
+  {
+    "hex": "#dadf3d",
+    "codes": {
+      "artkal-s": "ST4"
+    },
+    "nameEn": "Transparent Yellow"
+  },
+  {
+    "hex": "#0fae58",
+    "codes": {
+      "artkal-s": "ST5"
+    },
+    "nameEn": "Transparent Green"
+  },
+  {
+    "hex": "#8477b3",
+    "codes": {
+      "artkal-s": "ST6"
+    },
+    "nameEn": "Transparent Purple"
+  }
+]

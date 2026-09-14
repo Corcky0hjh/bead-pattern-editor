@@ -1,0 +1,1742 @@
+[
+  {
+    "hex": "#faf5cd",
+    "codes": {
+      "mixiaowo": "77"
+    }
+  },
+  {
+    "hex": "#fcfed6",
+    "codes": {
+      "mixiaowo": "2"
+    }
+  },
+  {
+    "hex": "#fcff92",
+    "codes": {
+      "mixiaowo": "28"
+    }
+  },
+  {
+    "hex": "#f7ec5c",
+    "codes": {
+      "mixiaowo": "3"
+    }
+  },
+  {
+    "hex": "#f0d83a",
+    "codes": {
+      "mixiaowo": "79"
+    }
+  },
+  {
+    "hex": "#fda951",
+    "codes": {
+      "mixiaowo": "29"
+    }
+  },
+  {
+    "hex": "#fa8c4f",
+    "codes": {
+      "mixiaowo": "4"
+    }
+  },
+  {
+    "hex": "#fdd94d",
+    "codes": {
+      "mixiaowo": "98"
+    }
+  },
+  {
+    "hex": "#f99c5f",
+    "codes": {
+      "mixiaowo": "97"
+    }
+  },
+  {
+    "hex": "#f47e36",
+    "codes": {
+      "mixiaowo": "96"
+    }
+  },
+  {
+    "hex": "#fedb99",
+    "codes": {
+      "mixiaowo": "109"
+    }
+  },
+  {
+    "hex": "#fda276",
+    "codes": {
+      "mixiaowo": "110"
+    }
+  },
+  {
+    "hex": "#fec667",
+    "codes": {
+      "mixiaowo": "116"
+    }
+  },
+  {
+    "hex": "#f85842",
+    "codes": {
+      "mixiaowo": "135"
+    }
+  },
+  {
+    "hex": "#fbf65e",
+    "codes": {
+      "mixiaowo": "150"
+    }
+  },
+  {
+    "hex": "#feff97",
+    "codes": {
+      "mixiaowo": "216"
+    }
+  },
+  {
+    "hex": "#fde173",
+    "codes": {
+      "mixiaowo": "213"
+    }
+  },
+  {
+    "hex": "#fcbf80",
+    "codes": {
+      "mixiaowo": "208"
+    }
+  },
+  {
+    "hex": "#fd7e77",
+    "codes": {
+      "mixiaowo": "218"
+    }
+  },
+  {
+    "hex": "#f9d66e",
+    "codes": {
+      "mixiaowo": "242"
+    }
+  },
+  {
+    "hex": "#fae393",
+    "codes": {
+      "mixiaowo": "261"
+    }
+  },
+  {
+    "hex": "#edf878",
+    "codes": {
+      "mixiaowo": "255"
+    }
+  },
+  {
+    "hex": "#e1c9bd",
+    "codes": {
+      "mixiaowo": "259"
+    }
+  },
+  {
+    "hex": "#f3f6a9",
+    "codes": {
+      "mixiaowo": "273"
+    }
+  },
+  {
+    "hex": "#ffd785",
+    "codes": {
+      "mixiaowo": "274"
+    }
+  },
+  {
+    "hex": "#fec832",
+    "codes": {
+      "mixiaowo": "275"
+    }
+  },
+  {
+    "hex": "#bbc6b6",
+    "codes": {
+      "mixiaowo": "168"
+    }
+  },
+  {
+    "hex": "#909994",
+    "codes": {
+      "mixiaowo": "172"
+    }
+  },
+  {
+    "hex": "#697e80",
+    "codes": {
+      "mixiaowo": "166"
+    }
+  },
+  {
+    "hex": "#e0d4bc",
+    "codes": {
+      "mixiaowo": "167"
+    }
+  },
+  {
+    "hex": "#d0cbae",
+    "codes": {
+      "mixiaowo": "159"
+    }
+  },
+  {
+    "hex": "#b0aa86",
+    "codes": {
+      "mixiaowo": "169"
+    }
+  },
+  {
+    "hex": "#b0a796",
+    "codes": {
+      "mixiaowo": "171"
+    }
+  },
+  {
+    "hex": "#ae8082",
+    "codes": {
+      "mixiaowo": "162"
+    }
+  },
+  {
+    "hex": "#a88764",
+    "codes": {
+      "mixiaowo": "170"
+    }
+  },
+  {
+    "hex": "#c6b2bb",
+    "codes": {
+      "mixiaowo": "164"
+    }
+  },
+  {
+    "hex": "#9d7693",
+    "codes": {
+      "mixiaowo": "161"
+    }
+  },
+  {
+    "hex": "#644b51",
+    "codes": {
+      "mixiaowo": "173"
+    }
+  },
+  {
+    "hex": "#c79266",
+    "codes": {
+      "mixiaowo": "160"
+    }
+  },
+  {
+    "hex": "#c37463",
+    "codes": {
+      "mixiaowo": "165"
+    }
+  },
+  {
+    "hex": "#747d7a",
+    "codes": {
+      "mixiaowo": "163"
+    }
+  },
+  {
+    "hex": "#fcfdff",
+    "codes": {
+      "mixiaowo": "51"
+    }
+  },
+  {
+    "hex": "#f9f9f9",
+    "codes": {
+      "mixiaowo": "62"
+    }
+  },
+  {
+    "hex": "#ababab",
+    "codes": {
+      "mixiaowo": "69"
+    }
+  },
+  {
+    "hex": "#b6dbaf",
+    "codes": {
+      "mixiaowo": "66"
+    }
+  },
+  {
+    "hex": "#fea2a3",
+    "codes": {
+      "mixiaowo": "64"
+    }
+  },
+  {
+    "hex": "#eb903f",
+    "codes": {
+      "mixiaowo": "63"
+    }
+  },
+  {
+    "hex": "#63cea2",
+    "codes": {
+      "mixiaowo": "65"
+    }
+  },
+  {
+    "hex": "#e79273",
+    "codes": {
+      "mixiaowo": "68"
+    }
+  },
+  {
+    "hex": "#ecdb59",
+    "codes": {
+      "mixiaowo": "67"
+    }
+  },
+  {
+    "hex": "#dbd9da",
+    "codes": {
+      "mixiaowo": "178"
+    }
+  },
+  {
+    "hex": "#dbc7ea",
+    "codes": {
+      "mixiaowo": "187"
+    }
+  },
+  {
+    "hex": "#f1e9d4",
+    "codes": {
+      "mixiaowo": "185"
+    }
+  },
+  {
+    "hex": "#e9edee",
+    "codes": {
+      "mixiaowo": "190"
+    }
+  },
+  {
+    "hex": "#adcbf1",
+    "codes": {
+      "mixiaowo": "176"
+    }
+  },
+  {
+    "hex": "#337bad",
+    "codes": {
+      "mixiaowo": "183"
+    }
+  },
+  {
+    "hex": "#668575",
+    "codes": {
+      "mixiaowo": "184"
+    }
+  },
+  {
+    "hex": "#fdc24e",
+    "codes": {
+      "mixiaowo": "182"
+    }
+  },
+  {
+    "hex": "#fda42e",
+    "codes": {
+      "mixiaowo": "179"
+    }
+  },
+  {
+    "hex": "#febda7",
+    "codes": {
+      "mixiaowo": "177"
+    }
+  },
+  {
+    "hex": "#ffdee9",
+    "codes": {
+      "mixiaowo": "186"
+    }
+  },
+  {
+    "hex": "#fcbfd1",
+    "codes": {
+      "mixiaowo": "180"
+    }
+  },
+  {
+    "hex": "#e8bec2",
+    "codes": {
+      "mixiaowo": "188"
+    }
+  },
+  {
+    "hex": "#dfaaa4",
+    "codes": {
+      "mixiaowo": "189"
+    }
+  },
+  {
+    "hex": "#a3656a",
+    "codes": {
+      "mixiaowo": "181"
+    }
+  },
+  {
+    "hex": "#d40e1f",
+    "codes": {
+      "mixiaowo": "52"
+    }
+  },
+  {
+    "hex": "#f13484",
+    "codes": {
+      "mixiaowo": "24"
+    }
+  },
+  {
+    "hex": "#fb852b",
+    "codes": {
+      "mixiaowo": "22"
+    }
+  },
+  {
+    "hex": "#f8ed33",
+    "codes": {
+      "mixiaowo": "21"
+    }
+  },
+  {
+    "hex": "#32c958",
+    "codes": {
+      "mixiaowo": "23"
+    }
+  },
+  {
+    "hex": "#1eba93",
+    "codes": {
+      "mixiaowo": "55"
+    }
+  },
+  {
+    "hex": "#1d779c",
+    "codes": {
+      "mixiaowo": "37"
+    }
+  },
+  {
+    "hex": "#1960c8",
+    "codes": {
+      "mixiaowo": "54"
+    }
+  },
+  {
+    "hex": "#945ab1",
+    "codes": {
+      "mixiaowo": "56"
+    }
+  },
+  {
+    "hex": "#f8da54",
+    "codes": {
+      "mixiaowo": "53"
+    }
+  },
+  {
+    "hex": "#fcecf7",
+    "codes": {
+      "mixiaowo": "151"
+    }
+  },
+  {
+    "hex": "#d8d4d3",
+    "codes": {
+      "mixiaowo": "157"
+    }
+  },
+  {
+    "hex": "#56534e",
+    "codes": {
+      "mixiaowo": "152"
+    }
+  },
+  {
+    "hex": "#a3e7dc",
+    "codes": {
+      "mixiaowo": "231"
+    }
+  },
+  {
+    "hex": "#78cee7",
+    "codes": {
+      "mixiaowo": "224"
+    }
+  },
+  {
+    "hex": "#3fcdce",
+    "codes": {
+      "mixiaowo": "225"
+    }
+  },
+  {
+    "hex": "#4e8379",
+    "codes": {
+      "mixiaowo": "233"
+    }
+  },
+  {
+    "hex": "#7dca9c",
+    "codes": {
+      "mixiaowo": "222"
+    }
+  },
+  {
+    "hex": "#c8e664",
+    "codes": {
+      "mixiaowo": "227"
+    }
+  },
+  {
+    "hex": "#e3ccba",
+    "codes": {
+      "mixiaowo": "230"
+    }
+  },
+  {
+    "hex": "#a17140",
+    "codes": {
+      "mixiaowo": "221"
+    }
+  },
+  {
+    "hex": "#6b372c",
+    "codes": {
+      "mixiaowo": "226"
+    }
+  },
+  {
+    "hex": "#f6bb6f",
+    "codes": {
+      "mixiaowo": "219"
+    }
+  },
+  {
+    "hex": "#f3c6c0",
+    "codes": {
+      "mixiaowo": "228"
+    }
+  },
+  {
+    "hex": "#c76a62",
+    "codes": {
+      "mixiaowo": "220"
+    }
+  },
+  {
+    "hex": "#d093bc",
+    "codes": {
+      "mixiaowo": "229"
+    }
+  },
+  {
+    "hex": "#e58eae",
+    "codes": {
+      "mixiaowo": "232"
+    }
+  },
+  {
+    "hex": "#9f85cf",
+    "codes": {
+      "mixiaowo": "223"
+    }
+  },
+  {
+    "hex": "#ff6fb7",
+    "codes": {
+      "mixiaowo": "59"
+    }
+  },
+  {
+    "hex": "#fdb583",
+    "codes": {
+      "mixiaowo": "60"
+    }
+  },
+  {
+    "hex": "#d8fca4",
+    "codes": {
+      "mixiaowo": "57"
+    }
+  },
+  {
+    "hex": "#91dafb",
+    "codes": {
+      "mixiaowo": "58"
+    }
+  },
+  {
+    "hex": "#e987ea",
+    "codes": {
+      "mixiaowo": "61"
+    }
+  },
+  {
+    "hex": "#f7d4e8",
+    "codes": {
+      "mixiaowo": "UNKNOWN-01"
+    }
+  },
+  {
+    "hex": "#f1fa7d",
+    "codes": {
+      "mixiaowo": "UNKNOWN-02"
+    }
+  },
+  {
+    "hex": "#5ee88c",
+    "codes": {
+      "mixiaowo": "UNKNOWN-03"
+    }
+  },
+  {
+    "hex": "#f8f5fe",
+    "codes": {
+      "mixiaowo": "UNKNOWN-04"
+    }
+  },
+  {
+    "hex": "#daabb3",
+    "codes": {
+      "mixiaowo": "ZG1"
+    }
+  },
+  {
+    "hex": "#d6aa87",
+    "codes": {
+      "mixiaowo": "ZG2"
+    }
+  },
+  {
+    "hex": "#c1bd8d",
+    "codes": {
+      "mixiaowo": "ZG3"
+    }
+  },
+  {
+    "hex": "#96b69f",
+    "codes": {
+      "mixiaowo": "ZG4"
+    }
+  },
+  {
+    "hex": "#849dc6",
+    "codes": {
+      "mixiaowo": "ZG5"
+    }
+  },
+  {
+    "hex": "#94bfe2",
+    "codes": {
+      "mixiaowo": "ZG6"
+    }
+  },
+  {
+    "hex": "#e2a9d2",
+    "codes": {
+      "mixiaowo": "ZG7"
+    }
+  },
+  {
+    "hex": "#ab91c0",
+    "codes": {
+      "mixiaowo": "ZG8"
+    }
+  },
+  {
+    "hex": "#dff139",
+    "codes": {
+      "mixiaowo": "48"
+    }
+  },
+  {
+    "hex": "#64f343",
+    "codes": {
+      "mixiaowo": "33"
+    }
+  },
+  {
+    "hex": "#9ff685",
+    "codes": {
+      "mixiaowo": "26"
+    }
+  },
+  {
+    "hex": "#5fdf34",
+    "codes": {
+      "mixiaowo": "78"
+    }
+  },
+  {
+    "hex": "#39e158",
+    "codes": {
+      "mixiaowo": "39"
+    }
+  },
+  {
+    "hex": "#64e0a4",
+    "codes": {
+      "mixiaowo": "11"
+    }
+  },
+  {
+    "hex": "#3eae7c",
+    "codes": {
+      "mixiaowo": "44"
+    }
+  },
+  {
+    "hex": "#1d9b54",
+    "codes": {
+      "mixiaowo": "10"
+    }
+  },
+  {
+    "hex": "#2a5037",
+    "codes": {
+      "mixiaowo": "84"
+    }
+  },
+  {
+    "hex": "#9ad1ba",
+    "codes": {
+      "mixiaowo": "100"
+    }
+  },
+  {
+    "hex": "#627032",
+    "codes": {
+      "mixiaowo": "99"
+    }
+  },
+  {
+    "hex": "#1a6e3d",
+    "codes": {
+      "mixiaowo": "111"
+    }
+  },
+  {
+    "hex": "#c8e87d",
+    "codes": {
+      "mixiaowo": "119"
+    }
+  },
+  {
+    "hex": "#ace84c",
+    "codes": {
+      "mixiaowo": "117"
+    }
+  },
+  {
+    "hex": "#305335",
+    "codes": {
+      "mixiaowo": "122"
+    }
+  },
+  {
+    "hex": "#c0ed9c",
+    "codes": {
+      "mixiaowo": "133"
+    }
+  },
+  {
+    "hex": "#9eb33e",
+    "codes": {
+      "mixiaowo": "141"
+    }
+  },
+  {
+    "hex": "#e6ed4f",
+    "codes": {
+      "mixiaowo": "147"
+    }
+  },
+  {
+    "hex": "#26b78e",
+    "codes": {
+      "mixiaowo": "174"
+    }
+  },
+  {
+    "hex": "#caedcf",
+    "codes": {
+      "mixiaowo": "175"
+    }
+  },
+  {
+    "hex": "#176268",
+    "codes": {
+      "mixiaowo": "194"
+    }
+  },
+  {
+    "hex": "#0a4241",
+    "codes": {
+      "mixiaowo": "193"
+    }
+  },
+  {
+    "hex": "#343b1a",
+    "codes": {
+      "mixiaowo": "192"
+    }
+  },
+  {
+    "hex": "#e8faa6",
+    "codes": {
+      "mixiaowo": "207"
+    }
+  },
+  {
+    "hex": "#4e846d",
+    "codes": {
+      "mixiaowo": "240"
+    }
+  },
+  {
+    "hex": "#907c35",
+    "codes": {
+      "mixiaowo": "248"
+    }
+  },
+  {
+    "hex": "#d0e0af",
+    "codes": {
+      "mixiaowo": "262"
+    }
+  },
+  {
+    "hex": "#9ee5bb",
+    "codes": {
+      "mixiaowo": "254"
+    }
+  },
+  {
+    "hex": "#c6df5f",
+    "codes": {
+      "mixiaowo": "253"
+    }
+  },
+  {
+    "hex": "#e3fbb1",
+    "codes": {
+      "mixiaowo": "270"
+    }
+  },
+  {
+    "hex": "#b2e694",
+    "codes": {
+      "mixiaowo": "271"
+    }
+  },
+  {
+    "hex": "#92ad60",
+    "codes": {
+      "mixiaowo": "272"
+    }
+  },
+  {
+    "hex": "#f0fee4",
+    "codes": {
+      "mixiaowo": "76"
+    }
+  },
+  {
+    "hex": "#abf8fe",
+    "codes": {
+      "mixiaowo": "30"
+    }
+  },
+  {
+    "hex": "#9ee0f8",
+    "codes": {
+      "mixiaowo": "75"
+    }
+  },
+  {
+    "hex": "#44cdfb",
+    "codes": {
+      "mixiaowo": "82"
+    }
+  },
+  {
+    "hex": "#06abe3",
+    "codes": {
+      "mixiaowo": "34"
+    }
+  },
+  {
+    "hex": "#54a7e9",
+    "codes": {
+      "mixiaowo": "25"
+    }
+  },
+  {
+    "hex": "#3977cc",
+    "codes": {
+      "mixiaowo": "9"
+    }
+  },
+  {
+    "hex": "#0f52bd",
+    "codes": {
+      "mixiaowo": "71"
+    }
+  },
+  {
+    "hex": "#3349c3",
+    "codes": {
+      "mixiaowo": "42"
+    }
+  },
+  {
+    "hex": "#3dbbe3",
+    "codes": {
+      "mixiaowo": "130"
+    }
+  },
+  {
+    "hex": "#2aded3",
+    "codes": {
+      "mixiaowo": "113"
+    }
+  },
+  {
+    "hex": "#1e334e",
+    "codes": {
+      "mixiaowo": "120"
+    }
+  },
+  {
+    "hex": "#cde7fe",
+    "codes": {
+      "mixiaowo": "142"
+    }
+  },
+  {
+    "hex": "#d6fdfc",
+    "codes": {
+      "mixiaowo": "136"
+    }
+  },
+  {
+    "hex": "#21c5c4",
+    "codes": {
+      "mixiaowo": "132"
+    }
+  },
+  {
+    "hex": "#1858a2",
+    "codes": {
+      "mixiaowo": "149"
+    }
+  },
+  {
+    "hex": "#02d1f3",
+    "codes": {
+      "mixiaowo": "156"
+    }
+  },
+  {
+    "hex": "#213244",
+    "codes": {
+      "mixiaowo": "196"
+    }
+  },
+  {
+    "hex": "#18869d",
+    "codes": {
+      "mixiaowo": "202"
+    }
+  },
+  {
+    "hex": "#1a70a9",
+    "codes": {
+      "mixiaowo": "197"
+    }
+  },
+  {
+    "hex": "#beddfc",
+    "codes": {
+      "mixiaowo": "212"
+    }
+  },
+  {
+    "hex": "#6bb1bb",
+    "codes": {
+      "mixiaowo": "239"
+    }
+  },
+  {
+    "hex": "#c8e2f9",
+    "codes": {
+      "mixiaowo": "263"
+    }
+  },
+  {
+    "hex": "#7ec5f9",
+    "codes": {
+      "mixiaowo": "252"
+    }
+  },
+  {
+    "hex": "#a9e8e0",
+    "codes": {
+      "mixiaowo": "256"
+    }
+  },
+  {
+    "hex": "#42add1",
+    "codes": {
+      "mixiaowo": "250"
+    }
+  },
+  {
+    "hex": "#d0def9",
+    "codes": {
+      "mixiaowo": "264"
+    }
+  },
+  {
+    "hex": "#bdcee8",
+    "codes": {
+      "mixiaowo": "265"
+    }
+  },
+  {
+    "hex": "#364a89",
+    "codes": {
+      "mixiaowo": "266"
+    }
+  },
+  {
+    "hex": "#acb7ef",
+    "codes": {
+      "mixiaowo": "46"
+    }
+  },
+  {
+    "hex": "#868dd3",
+    "codes": {
+      "mixiaowo": "36"
+    }
+  },
+  {
+    "hex": "#3653af",
+    "codes": {
+      "mixiaowo": "8"
+    }
+  },
+  {
+    "hex": "#162c7e",
+    "codes": {
+      "mixiaowo": "80"
+    }
+  },
+  {
+    "hex": "#b34ec6",
+    "codes": {
+      "mixiaowo": "32"
+    }
+  },
+  {
+    "hex": "#b37bdc",
+    "codes": {
+      "mixiaowo": "27"
+    }
+  },
+  {
+    "hex": "#8758a9",
+    "codes": {
+      "mixiaowo": "7"
+    }
+  },
+  {
+    "hex": "#e3d2fe",
+    "codes": {
+      "mixiaowo": "89"
+    }
+  },
+  {
+    "hex": "#d6baf5",
+    "codes": {
+      "mixiaowo": "90"
+    }
+  },
+  {
+    "hex": "#301a49",
+    "codes": {
+      "mixiaowo": "91"
+    }
+  },
+  {
+    "hex": "#bcbae2",
+    "codes": {
+      "mixiaowo": "104"
+    }
+  },
+  {
+    "hex": "#dc99ce",
+    "codes": {
+      "mixiaowo": "105"
+    }
+  },
+  {
+    "hex": "#b5038f",
+    "codes": {
+      "mixiaowo": "106"
+    }
+  },
+  {
+    "hex": "#882893",
+    "codes": {
+      "mixiaowo": "107"
+    }
+  },
+  {
+    "hex": "#2f1e8e",
+    "codes": {
+      "mixiaowo": "108"
+    }
+  },
+  {
+    "hex": "#e2e4f0",
+    "codes": {
+      "mixiaowo": "126"
+    }
+  },
+  {
+    "hex": "#c7d3f9",
+    "codes": {
+      "mixiaowo": "128"
+    }
+  },
+  {
+    "hex": "#9a64b8",
+    "codes": {
+      "mixiaowo": "125"
+    }
+  },
+  {
+    "hex": "#d8c2d9",
+    "codes": {
+      "mixiaowo": "153"
+    }
+  },
+  {
+    "hex": "#9c34ad",
+    "codes": {
+      "mixiaowo": "155"
+    }
+  },
+  {
+    "hex": "#940595",
+    "codes": {
+      "mixiaowo": "158"
+    }
+  },
+  {
+    "hex": "#383995",
+    "codes": {
+      "mixiaowo": "198"
+    }
+  },
+  {
+    "hex": "#eadbf8",
+    "codes": {
+      "mixiaowo": "217"
+    }
+  },
+  {
+    "hex": "#768ae1",
+    "codes": {
+      "mixiaowo": "244"
+    }
+  },
+  {
+    "hex": "#4950c2",
+    "codes": {
+      "mixiaowo": "234"
+    }
+  },
+  {
+    "hex": "#d6c6eb",
+    "codes": {
+      "mixiaowo": "258"
+    }
+  },
+  {
+    "hex": "#f6d4cb",
+    "codes": {
+      "mixiaowo": "18"
+    }
+  },
+  {
+    "hex": "#fcc1dd",
+    "codes": {
+      "mixiaowo": "38"
+    }
+  },
+  {
+    "hex": "#f6bde8",
+    "codes": {
+      "mixiaowo": "74"
+    }
+  },
+  {
+    "hex": "#e9639e",
+    "codes": {
+      "mixiaowo": "6"
+    }
+  },
+  {
+    "hex": "#f1559f",
+    "codes": {
+      "mixiaowo": "40"
+    }
+  },
+  {
+    "hex": "#ec4072",
+    "codes": {
+      "mixiaowo": "20"
+    }
+  },
+  {
+    "hex": "#c63674",
+    "codes": {
+      "mixiaowo": "41"
+    }
+  },
+  {
+    "hex": "#fddbe9",
+    "codes": {
+      "mixiaowo": "103"
+    }
+  },
+  {
+    "hex": "#e575c7",
+    "codes": {
+      "mixiaowo": "95"
+    }
+  },
+  {
+    "hex": "#d33997",
+    "codes": {
+      "mixiaowo": "94"
+    }
+  },
+  {
+    "hex": "#f7dad4",
+    "codes": {
+      "mixiaowo": "131"
+    }
+  },
+  {
+    "hex": "#f893bf",
+    "codes": {
+      "mixiaowo": "112"
+    }
+  },
+  {
+    "hex": "#b5026a",
+    "codes": {
+      "mixiaowo": "124"
+    }
+  },
+  {
+    "hex": "#fad4bf",
+    "codes": {
+      "mixiaowo": "140"
+    }
+  },
+  {
+    "hex": "#f5c9ca",
+    "codes": {
+      "mixiaowo": "139"
+    }
+  },
+  {
+    "hex": "#fbf4ec",
+    "codes": {
+      "mixiaowo": "206"
+    }
+  },
+  {
+    "hex": "#f7e3ec",
+    "codes": {
+      "mixiaowo": "205"
+    }
+  },
+  {
+    "hex": "#fbc8db",
+    "codes": {
+      "mixiaowo": "210"
+    }
+  },
+  {
+    "hex": "#f6bbd1",
+    "codes": {
+      "mixiaowo": "215"
+    }
+  },
+  {
+    "hex": "#d7c6ce",
+    "codes": {
+      "mixiaowo": "241"
+    }
+  },
+  {
+    "hex": "#c09da4",
+    "codes": {
+      "mixiaowo": "238"
+    }
+  },
+  {
+    "hex": "#b58b9f",
+    "codes": {
+      "mixiaowo": "237"
+    }
+  },
+  {
+    "hex": "#937d8a",
+    "codes": {
+      "mixiaowo": "235"
+    }
+  },
+  {
+    "hex": "#debee5",
+    "codes": {
+      "mixiaowo": "267"
+    }
+  },
+  {
+    "hex": "#ff9280",
+    "codes": {
+      "mixiaowo": "35"
+    }
+  },
+  {
+    "hex": "#f73d4b",
+    "codes": {
+      "mixiaowo": "31"
+    }
+  },
+  {
+    "hex": "#ef4d3e",
+    "codes": {
+      "mixiaowo": "72"
+    }
+  },
+  {
+    "hex": "#f92b40",
+    "codes": {
+      "mixiaowo": "73"
+    }
+  },
+  {
+    "hex": "#e30328",
+    "codes": {
+      "mixiaowo": "5"
+    }
+  },
+  {
+    "hex": "#913635",
+    "codes": {
+      "mixiaowo": "16"
+    }
+  },
+  {
+    "hex": "#911932",
+    "codes": {
+      "mixiaowo": "47"
+    }
+  },
+  {
+    "hex": "#bb0126",
+    "codes": {
+      "mixiaowo": "92"
+    }
+  },
+  {
+    "hex": "#e0677a",
+    "codes": {
+      "mixiaowo": "93"
+    }
+  },
+  {
+    "hex": "#874628",
+    "codes": {
+      "mixiaowo": "115"
+    }
+  },
+  {
+    "hex": "#592323",
+    "codes": {
+      "mixiaowo": "129"
+    }
+  },
+  {
+    "hex": "#f8516d",
+    "codes": {
+      "mixiaowo": "134"
+    }
+  },
+  {
+    "hex": "#f45c45",
+    "codes": {
+      "mixiaowo": "148"
+    }
+  },
+  {
+    "hex": "#fcadb2",
+    "codes": {
+      "mixiaowo": "154"
+    }
+  },
+  {
+    "hex": "#d50527",
+    "codes": {
+      "mixiaowo": "191"
+    }
+  },
+  {
+    "hex": "#f8c0a9",
+    "codes": {
+      "mixiaowo": "211"
+    }
+  },
+  {
+    "hex": "#e89b7d",
+    "codes": {
+      "mixiaowo": "245"
+    }
+  },
+  {
+    "hex": "#d07e4a",
+    "codes": {
+      "mixiaowo": "246"
+    }
+  },
+  {
+    "hex": "#be454a",
+    "codes": {
+      "mixiaowo": "243"
+    }
+  },
+  {
+    "hex": "#c69495",
+    "codes": {
+      "mixiaowo": "260"
+    }
+  },
+  {
+    "hex": "#f2b8c6",
+    "codes": {
+      "mixiaowo": "251"
+    }
+  },
+  {
+    "hex": "#f7c3d0",
+    "codes": {
+      "mixiaowo": "257"
+    }
+  },
+  {
+    "hex": "#ec806d",
+    "codes": {
+      "mixiaowo": "249"
+    }
+  },
+  {
+    "hex": "#e09daf",
+    "codes": {
+      "mixiaowo": "268"
+    }
+  },
+  {
+    "hex": "#e84854",
+    "codes": {
+      "mixiaowo": "269"
+    }
+  },
+  {
+    "hex": "#ffe4d3",
+    "codes": {
+      "mixiaowo": "81"
+    }
+  },
+  {
+    "hex": "#fcc6ac",
+    "codes": {
+      "mixiaowo": "49"
+    }
+  },
+  {
+    "hex": "#f1c4a5",
+    "codes": {
+      "mixiaowo": "85"
+    }
+  },
+  {
+    "hex": "#dcb387",
+    "codes": {
+      "mixiaowo": "19"
+    }
+  },
+  {
+    "hex": "#e7b34e",
+    "codes": {
+      "mixiaowo": "43"
+    }
+  },
+  {
+    "hex": "#e3a014",
+    "codes": {
+      "mixiaowo": "50"
+    }
+  },
+  {
+    "hex": "#985c3a",
+    "codes": {
+      "mixiaowo": "17"
+    }
+  },
+  {
+    "hex": "#713d2f",
+    "codes": {
+      "mixiaowo": "12"
+    }
+  },
+  {
+    "hex": "#e4b685",
+    "codes": {
+      "mixiaowo": "102"
+    }
+  },
+  {
+    "hex": "#da8c42",
+    "codes": {
+      "mixiaowo": "101"
+    }
+  },
+  {
+    "hex": "#dac898",
+    "codes": {
+      "mixiaowo": "118"
+    }
+  },
+  {
+    "hex": "#fec993",
+    "codes": {
+      "mixiaowo": "127"
+    }
+  },
+  {
+    "hex": "#b2714b",
+    "codes": {
+      "mixiaowo": "114"
+    }
+  },
+  {
+    "hex": "#8b684c",
+    "codes": {
+      "mixiaowo": "123"
+    }
+  },
+  {
+    "hex": "#f6f8e3",
+    "codes": {
+      "mixiaowo": "143"
+    }
+  },
+  {
+    "hex": "#f2d8c1",
+    "codes": {
+      "mixiaowo": "138"
+    }
+  },
+  {
+    "hex": "#79544e",
+    "codes": {
+      "mixiaowo": "137"
+    }
+  },
+  {
+    "hex": "#ffe4d6",
+    "codes": {
+      "mixiaowo": "203"
+    }
+  },
+  {
+    "hex": "#dd7d41",
+    "codes": {
+      "mixiaowo": "195"
+    }
+  },
+  {
+    "hex": "#a5452f",
+    "codes": {
+      "mixiaowo": "199"
+    }
+  },
+  {
+    "hex": "#b38561",
+    "codes": {
+      "mixiaowo": "247"
+    }
+  },
+  {
+    "hex": "#fbfbfb",
+    "codes": {
+      "mixiaowo": "15"
+    }
+  },
+  {
+    "hex": "#ffffff",
+    "codes": {
+      "mixiaowo": "1"
+    }
+  },
+  {
+    "hex": "#b4b4b4",
+    "codes": {
+      "mixiaowo": "13"
+    }
+  },
+  {
+    "hex": "#878787",
+    "codes": {
+      "mixiaowo": "83"
+    }
+  },
+  {
+    "hex": "#464648",
+    "codes": {
+      "mixiaowo": "45"
+    }
+  },
+  {
+    "hex": "#2c2c2c",
+    "codes": {
+      "mixiaowo": "70"
+    }
+  },
+  {
+    "hex": "#010101",
+    "codes": {
+      "mixiaowo": "14"
+    }
+  },
+  {
+    "hex": "#e7d6dc",
+    "codes": {
+      "mixiaowo": "86"
+    }
+  },
+  {
+    "hex": "#efedee",
+    "codes": {
+      "mixiaowo": "87"
+    }
+  },
+  {
+    "hex": "#eceaeb",
+    "codes": {
+      "mixiaowo": "88"
+    }
+  },
+  {
+    "hex": "#cdcdcd",
+    "codes": {
+      "mixiaowo": "121"
+    }
+  },
+  {
+    "hex": "#fdf6ee",
+    "codes": {
+      "mixiaowo": "144"
+    }
+  },
+  {
+    "hex": "#f4efd1",
+    "codes": {
+      "mixiaowo": "146"
+    }
+  },
+  {
+    "hex": "#ced7d4",
+    "codes": {
+      "mixiaowo": "145"
+    }
+  },
+  {
+    "hex": "#98a6a6",
+    "codes": {
+      "mixiaowo": "201"
+    }
+  },
+  {
+    "hex": "#1b1213",
+    "codes": {
+      "mixiaowo": "200"
+    }
+  },
+  {
+    "hex": "#f0eeef",
+    "codes": {
+      "mixiaowo": "214"
+    }
+  },
+  {
+    "hex": "#fcfff8",
+    "codes": {
+      "mixiaowo": "204"
+    }
+  },
+  {
+    "hex": "#f2eee5",
+    "codes": {
+      "mixiaowo": "209"
+    }
+  },
+  {
+    "hex": "#96a09f",
+    "codes": {
+      "mixiaowo": "236"
+    }
+  },
+  {
+    "hex": "#f8fbe6",
+    "codes": {
+      "mixiaowo": "276"
+    }
+  },
+  {
+    "hex": "#cacad2",
+    "codes": {
+      "mixiaowo": "277"
+    }
+  },
+  {
+    "hex": "#9b9c94",
+    "codes": {
+      "mixiaowo": "278"
+    }
+  }
+]

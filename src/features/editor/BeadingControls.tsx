@@ -26,7 +26,7 @@ export function BeadingControls({ editor }: { editor: EditorStateController }) {
   const [resetProject, setResetProject] = useState<string | null>(null)
   const point = editor.beadingFillMode === 'point'
   const editorRef = useRef(editor)
-  editorRef.current = editor
+  useEffect(() => { editorRef.current = editor }, [editor])
   const held = useRef(false)
   const release = () => {
     if (!held.current) return

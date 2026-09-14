@@ -1,3 +1,4 @@
+import { readBox, type BoxColor } from './beadBox'
 import { parsePatternGrid, serializePatternGrid, type SerializedPatternGrid, type PatternGrid } from '../../core/pattern/grid'
 
 export const workStorageKey = 'bead-pattern-editor:works:v1'
@@ -5,7 +6,7 @@ export const draftStorageKey = 'bead-pattern-editor:work-draft:v1'
 export type Work = {
   id: string; name: string; createdAt: number; updatedAt: number
   pattern: SerializedPatternGrid; revision: number; progressRevision: number
-  completed: number[]; beadingMode: 'layer'
+  beadBox?: BoxColor[]; completed: number[]; beadingMode: 'layer'
 }
 type StorageReader = Pick<Storage, 'getItem'>
 const parsedPatterns = new WeakMap<SerializedPatternGrid, PatternGrid | null>()
@@ -33,11 +34,11 @@ export function loadWorkLibrary(storage: StorageReader): Work[] {
   const current = storage.getItem(workStorageKey)
   const raw = current ?? storage.getItem('bead-pattern-editor:beading-projects')
   const parsed: unknown = raw ? JSON.parse(raw) : []
-  if (!Array.isArray(parsed)) throw new Error('作品库格式无效')
+  if (!Array.isArray(parsed)) throw new Error('作品数据格式无效')
   const works: Work[] = []
   for (const value of parsed) {
     if (!value || typeof value !== 'object') {
-      if (current !== null) throw new Error('作品库包含无效记录，已停止覆盖保存')
+      if (current !== null) throw new Error('作品数据包含无效记录，已停止覆盖保存')
       continue
     }
     const row = value as Partial<Work>
@@ -53,7 +54,7 @@ export function loadWorkLibrary(storage: StorageReader): Work[] {
       : []
     works.push({ id: row.id, name: row.name, pattern: serializePatternGrid(pattern),
       createdAt: row.createdAt ?? Date.now(), updatedAt: row.updatedAt ?? Date.now(),
-      revision, progressRevision: revision, completed, beadingMode: 'layer' })
+      revision, progressRevision: revision, completed, beadBox: readBox(row.beadBox), beadingMode: 'layer' })
   }
   // Migrate the separately saved drawing only once; never overwrite the legacy keys.
   if (current === null) {
@@ -73,6 +74,6 @@ export function loadWorkDraft(storage: StorageReader) {
     const data = JSON.parse(raw)
     const pattern = parsePatternGrid(data.pattern)
     if (!pattern) return null
-    return { workId: typeof data.workId === 'string' ? data.workId : null, pattern }
+    return { beadBox: readBox(data.beadBox), workId: typeof data.workId === 'string' ? data.workId : null, pattern }
   } catch { return null }
 }

@@ -14,7 +14,7 @@ const react = {
  useLayoutEffect(fn,deps) { const i=cursor++;if(!slots[i]||deps.some((v,j)=>v!==slots[i][j])) {slots[i]=deps;effects.push(fn)} }
 }
 let width=900, height=600, panelWidth=520
-const style={transform:'translate3d(0px, 0px, 0)'}
+const style={setProperty(name,value){this[name]=value},transform:'translate3d(0px, 0px, 0)'}
 const bounds=()=>({left:20,top:50,width,height,right:20+width,bottom:50+height})
 const panel={current:{style,animate(){flight={cancel(){this.cancelled=true}};return flight},querySelector(){return null},getBoundingClientRect(){const [x,y]=(style.transform.match(/-?[\d.]+(?=px)/g) ?? ['0','0']).map(Number);return {left:20+(width-panelWidth)/2+x,top:50+(api?.dock === 'top' ? 8 : height-108)+y,width:panelWidth,height:100}}}}
 const viewport={current:{getBoundingClientRect:bounds}}

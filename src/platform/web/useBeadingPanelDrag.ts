@@ -6,6 +6,7 @@ type Position = { x: number; y: number }
 type Dock = 'top' | 'bottom' | null
 
 export function useBeadingPanelDrag(enabled: boolean, panel: RefObject<HTMLDivElement | null>, viewport: RefObject<HTMLElement | null>, closeOptions: () => void) {
+  const gesture = useRef<{ id: number; x: number; y: number; origin: Position; moved: boolean } | null>(null)
   const [settling, setSettling] = useState(false)
   const motion = useRef<Animation | null>(null)
   const releaseRect = useRef<{ left: number; top: number } | null>(null)
@@ -48,7 +49,6 @@ export function useBeadingPanelDrag(enabled: boolean, panel: RefObject<HTMLDivEl
   const offsetRef = useRef(offset)
   // Viewport-relative coordinates survive both width changes and viewport movement.
   const position = useRef<Position | null>(null)
-  const gesture = useRef<{ id: number; x: number; y: number; origin: Position; moved: boolean } | null>(null)
   const [dragging, setDragging] = useState(false)
   const place = (next: Position) => {
     const bounds = viewport.current?.getBoundingClientRect()
@@ -66,7 +66,7 @@ export function useBeadingPanelDrag(enabled: boolean, panel: RefObject<HTMLDivEl
     }
     position.current = target
     offsetRef.current = result
-    panel.current!.style.transform = `translate3d(${result.x}px, ${result.y}px, 0)`
+    panel.current!.style.setProperty('transform', `translate3d(${result.x}px, ${result.y}px, 0)`)
     setOffset(previous => previous.x === result.x && previous.y === result.y ? previous : result)
   }
   const reconcile = () => {
@@ -78,7 +78,7 @@ export function useBeadingPanelDrag(enabled: boolean, panel: RefObject<HTMLDivEl
     setPanelHeight(contentHeight)
     if (dockRef.current) {
       offsetRef.current = { x: 0, y: 0 }
-      panel.current!.style.transform = ''
+      panel.current!.style.setProperty('transform', '')
       setOffset(previous => previous.x === 0 && previous.y === 0 ? previous : { x: 0, y: 0 })
     } else {
       const content = getElementContentBounds(viewport.current!)
@@ -123,6 +123,8 @@ export function useBeadingPanelDrag(enabled: boolean, panel: RefObject<HTMLDivEl
     }
   }, [enabled, panel, viewport])
   useLayoutEffect(() => {
+    // Measuring docking geometry must update before paint to prevent a visible jump.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (enabled) reconcile()
   }, [collapsed, dock, ready, enabled])
   useLayoutEffect(() => {
@@ -134,6 +136,8 @@ export function useBeadingPanelDrag(enabled: boolean, panel: RefObject<HTMLDivEl
     const to = element.getBoundingClientRect()
     const base = dockRef.current ? { x: 0, y: 0 } : offsetRef.current
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !element.animate) {
+      // Reduced motion has no animation finish event to clear this state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSettling(false)
       return
     }

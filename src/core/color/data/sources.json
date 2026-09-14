@@ -1,0 +1,124 @@
+[
+  {
+    "id": "artkal-s",
+    "count": 199,
+    "repository": "maxcleme/beadcolors",
+    "commit": "f97ff4283d03cef5cd7e1071a86f5892e0c0c61b",
+    "path": "raw/artkal_s.csv",
+    "license": "MIT"
+  },
+  {
+    "id": "hama-midi",
+    "count": 92,
+    "repository": "maxcleme/beadcolors",
+    "commit": "f97ff4283d03cef5cd7e1071a86f5892e0c0c61b",
+    "path": "raw/hama.csv",
+    "license": "MIT"
+  },
+  {
+    "id": "perler",
+    "count": 103,
+    "repository": "maxcleme/beadcolors",
+    "commit": "f97ff4283d03cef5cd7e1071a86f5892e0c0c61b",
+    "path": "raw/perler.csv",
+    "license": "MIT"
+  },
+  {
+    "id": "artkal-c",
+    "count": 157,
+    "repository": "HansBug/pindou-color-data",
+    "commit": "178dafbc9e77d3de556550dbd058270200129186",
+    "path": "artkal-c-197-official/colors.json",
+    "license": "MIT",
+    "upstreamSources": [
+      {
+        "id": "src1",
+        "url": "https://cdn.shopify.com/s/files/1/1323/8195/files/C_MINI_Beads_RGB_Color_Chart_2024.pdf?v=1744700289",
+        "quality": "official_pdf",
+        "notes": "Extracted from official Artkal RGB PDF."
+      },
+      {
+        "id": "src2",
+        "url": "https://cdn.shopify.com/s/files/1/1323/8195/files/artkal_beads_C_series_color_chart.jpg?v=1744700233",
+        "quality": "official_chart_image",
+        "notes": "Official 197-color chart image shows this RGB; the official RGB PDF labels this color as Silver without numeric RGB."
+      },
+      {
+        "id": "src3",
+        "url": "https://cdn.shopify.com/s/files/1/1323/8195/files/artkal_beads_C_series_color_chart.jpg?v=1744700233",
+        "quality": "official_chart_image",
+        "notes": "Official RGB PDF text renders/extracts B as 273; official 197-color chart image shows this RGB."
+      },
+      {
+        "id": "src4",
+        "url": "https://cdn.shopify.com/s/files/1/1323/8195/files/artkal_beads_C_series_color_chart.jpg?v=1744700233",
+        "quality": "official_chart_image_sampled",
+        "notes": "Reference RGB sampled from visible swatches in the official Artkal C-series color chart image; these CG/CP/CT special-material values are not published in the official RGB PDF."
+      }
+    ]
+  },
+  {
+    "id": "coco",
+    "count": 291,
+    "repository": "HansBug/pindou-color-data",
+    "commit": "178dafbc9e77d3de556550dbd058270200129186",
+    "path": "coco-291/colors.json",
+    "license": "MIT",
+    "upstreamSources": [
+      {
+        "id": "src1",
+        "url": "https://git.xiongxiao.me/abearxiong/get-colors-from-beans/src/branch/main/get-colors.json",
+        "quality": "third_party_public_repository",
+        "notes": "Extracted from public HTML color data repository."
+      }
+    ]
+  },
+  {
+    "id": "manman",
+    "count": 278,
+    "repository": "HansBug/pindou-color-data",
+    "commit": "178dafbc9e77d3de556550dbd058270200129186",
+    "path": "manman-278/colors.json",
+    "license": "MIT",
+    "upstreamSources": [
+      {
+        "id": "src1",
+        "url": "https://git.xiongxiao.me/abearxiong/get-colors-from-beans/src/branch/main/get-colors.json",
+        "quality": "third_party_public_repository",
+        "notes": "Extracted from public HTML color data repository."
+      }
+    ]
+  },
+  {
+    "id": "panpan",
+    "count": 289,
+    "repository": "HansBug/pindou-color-data",
+    "commit": "178dafbc9e77d3de556550dbd058270200129186",
+    "path": "panpan-289/colors.json",
+    "license": "MIT",
+    "upstreamSources": [
+      {
+        "id": "src1",
+        "url": "https://git.xiongxiao.me/abearxiong/get-colors-from-beans/src/branch/main/get-colors.json",
+        "quality": "third_party_public_repository",
+        "notes": "Extracted from public HTML color data repository."
+      }
+    ]
+  },
+  {
+    "id": "mixiaowo",
+    "count": 290,
+    "repository": "HansBug/pindou-color-data",
+    "commit": "178dafbc9e77d3de556550dbd058270200129186",
+    "path": "mixiaowo-290/colors.json",
+    "license": "MIT",
+    "upstreamSources": [
+      {
+        "id": "src1",
+        "url": "https://git.xiongxiao.me/abearxiong/get-colors-from-beans/src/branch/main/get-colors.json",
+        "quality": "third_party_public_repository",
+        "notes": "Extracted from public HTML color data repository."
+      }
+    ]
+  }
+]

@@ -1,1 +1,723 @@
-[]
+[
+  {
+    "hex": "#305545",
+    "codes": {
+      "perler": "80-15179"
+    },
+    "nameEn": "Evergreen"
+  },
+  {
+    "hex": "#b3bab8",
+    "codes": {
+      "perler": "80-15181"
+    },
+    "nameEn": "Light Grey"
+  },
+  {
+    "hex": "#af9fce",
+    "codes": {
+      "perler": "80-15182"
+    },
+    "nameEn": "Lavender"
+  },
+  {
+    "hex": "#008f53",
+    "codes": {
+      "perler": "80-15199"
+    },
+    "nameEn": "Shamrock"
+  },
+  {
+    "hex": "#0065b1",
+    "codes": {
+      "perler": "80-15200"
+    },
+    "nameEn": "Cobalt"
+  },
+  {
+    "hex": "#2f3c55",
+    "codes": {
+      "perler": "80-15201"
+    },
+    "nameEn": "Midnight"
+  },
+  {
+    "hex": "#a9cdd5",
+    "codes": {
+      "perler": "80-15202"
+    },
+    "nameEn": "Robin's Egg"
+  },
+  {
+    "hex": "#f2afb7",
+    "codes": {
+      "perler": "80-15203"
+    },
+    "nameEn": "Flamingo"
+  },
+  {
+    "hex": "#e1747a",
+    "codes": {
+      "perler": "80-15204"
+    },
+    "nameEn": "Salmon"
+  },
+  {
+    "hex": "#c9a385",
+    "codes": {
+      "perler": "80-15205"
+    },
+    "nameEn": "Fawn"
+  },
+  {
+    "hex": "#94a19d",
+    "codes": {
+      "perler": "80-15206"
+    },
+    "nameEn": "Pewter"
+  },
+  {
+    "hex": "#4f595a",
+    "codes": {
+      "perler": "80-15207"
+    },
+    "nameEn": "Charcoal"
+  },
+  {
+    "hex": "#dedace",
+    "codes": {
+      "perler": "80-15208"
+    },
+    "nameEn": "Toasted Marshmallow"
+  },
+  {
+    "hex": "#b1628e",
+    "codes": {
+      "perler": "80-15210"
+    },
+    "nameEn": "Orchid"
+  },
+  {
+    "hex": "#d14337",
+    "codes": {
+      "perler": "80-15211"
+    },
+    "nameEn": "Tomato"
+  },
+  {
+    "hex": "#d9593a",
+    "codes": {
+      "perler": "80-15212"
+    },
+    "nameEn": "Spice"
+  },
+  {
+    "hex": "#f5a168",
+    "codes": {
+      "perler": "80-15213"
+    },
+    "nameEn": "Apricot"
+  },
+  {
+    "hex": "#d8e47c",
+    "codes": {
+      "perler": "80-15214"
+    },
+    "nameEn": "Sherbet"
+  },
+  {
+    "hex": "#93b0bd",
+    "codes": {
+      "perler": "80-15215"
+    },
+    "nameEn": "Mist"
+  },
+  {
+    "hex": "#4ac0d8",
+    "codes": {
+      "perler": "80-15216"
+    },
+    "nameEn": "Sky"
+  },
+  {
+    "hex": "#00a4ac",
+    "codes": {
+      "perler": "80-15217"
+    },
+    "nameEn": "Lagoon"
+  },
+  {
+    "hex": "#047f8a",
+    "codes": {
+      "perler": "80-15218"
+    },
+    "nameEn": "Teal"
+  },
+  {
+    "hex": "#7f971a",
+    "codes": {
+      "perler": "80-15219"
+    },
+    "nameEn": "Fern"
+  },
+  {
+    "hex": "#696e31",
+    "codes": {
+      "perler": "80-15220"
+    },
+    "nameEn": "Olive"
+  },
+  {
+    "hex": "#9d2b3a",
+    "codes": {
+      "perler": "80-15961"
+    },
+    "nameEn": "Cherry"
+  },
+  {
+    "hex": "#eaefee",
+    "codes": {
+      "perler": "80-19001"
+    },
+    "nameEn": "White"
+  },
+  {
+    "hex": "#e1e2bb",
+    "codes": {
+      "perler": "80-19002"
+    },
+    "nameEn": "Creme"
+  },
+  {
+    "hex": "#e7ce3e",
+    "codes": {
+      "perler": "80-19003"
+    },
+    "nameEn": "Yellow"
+  },
+  {
+    "hex": "#eb7b31",
+    "codes": {
+      "perler": "80-19004"
+    },
+    "nameEn": "Orange"
+  },
+  {
+    "hex": "#b0353c",
+    "codes": {
+      "perler": "80-19005"
+    },
+    "nameEn": "Red"
+  },
+  {
+    "hex": "#d8729a",
+    "codes": {
+      "perler": "80-19006"
+    },
+    "nameEn": "Bubblegum"
+  },
+  {
+    "hex": "#684b86",
+    "codes": {
+      "perler": "80-19007"
+    },
+    "nameEn": "Purple"
+  },
+  {
+    "hex": "#0e5092",
+    "codes": {
+      "perler": "80-19008"
+    },
+    "nameEn": "Dark Blue"
+  },
+  {
+    "hex": "#278cc9",
+    "codes": {
+      "perler": "80-19009"
+    },
+    "nameEn": "Light Blue"
+  },
+  {
+    "hex": "#007b4e",
+    "codes": {
+      "perler": "80-19010"
+    },
+    "nameEn": "Dark Green"
+  },
+  {
+    "hex": "#18c7b1",
+    "codes": {
+      "perler": "80-19011"
+    },
+    "nameEn": "Light Green"
+  },
+  {
+    "hex": "#674c44",
+    "codes": {
+      "perler": "80-19012"
+    },
+    "nameEn": "Brown"
+  },
+  {
+    "hex": "#909497",
+    "codes": {
+      "perler": "80-19017"
+    },
+    "nameEn": "Grey"
+  },
+  {
+    "hex": "#323234",
+    "codes": {
+      "perler": "80-19018"
+    },
+    "nameEn": "Black"
+  },
+  {
+    "hex": "#995043",
+    "codes": {
+      "perler": "80-19020"
+    },
+    "nameEn": "Rust"
+  },
+  {
+    "hex": "#936848",
+    "codes": {
+      "perler": "80-19021"
+    },
+    "nameEn": "Light Brown"
+  },
+  {
+    "hex": "#e9bfb9",
+    "codes": {
+      "perler": "80-19033"
+    },
+    "nameEn": "Peach"
+  },
+  {
+    "hex": "#c5ac90",
+    "codes": {
+      "perler": "80-19035"
+    },
+    "nameEn": "Tan"
+  },
+  {
+    "hex": "#e04284",
+    "codes": {
+      "perler": "80-19038"
+    },
+    "nameEn": "Magenta"
+  },
+  {
+    "hex": "#4a9ccf",
+    "codes": {
+      "perler": "80-19052"
+    },
+    "nameEn": "Pastel Blue"
+  },
+  {
+    "hex": "#6dcc94",
+    "codes": {
+      "perler": "80-19053"
+    },
+    "nameEn": "Pastel Green"
+  },
+  {
+    "hex": "#937fbf",
+    "codes": {
+      "perler": "80-19054"
+    },
+    "nameEn": "Pastel Lavender"
+  },
+  {
+    "hex": "#e9e290",
+    "codes": {
+      "perler": "80-19056"
+    },
+    "nameEn": "Pastel Yellow"
+  },
+  {
+    "hex": "#fbb146",
+    "codes": {
+      "perler": "80-19057"
+    },
+    "nameEn": "Cheddar"
+  },
+  {
+    "hex": "#96d1d4",
+    "codes": {
+      "perler": "80-19058"
+    },
+    "nameEn": "Toothpaste"
+  },
+  {
+    "hex": "#dd595b",
+    "codes": {
+      "perler": "80-19059"
+    },
+    "nameEn": "Hot Coral"
+  },
+  {
+    "hex": "#a75d9d",
+    "codes": {
+      "perler": "80-19060"
+    },
+    "nameEn": "Plum"
+  },
+  {
+    "hex": "#69b845",
+    "codes": {
+      "perler": "80-19061"
+    },
+    "nameEn": "Kiwi Lime"
+  },
+  {
+    "hex": "#0098c5",
+    "codes": {
+      "perler": "80-19062"
+    },
+    "nameEn": "Turquoise"
+  },
+  {
+    "hex": "#f99297",
+    "codes": {
+      "perler": "80-19063"
+    },
+    "nameEn": "Blush"
+  },
+  {
+    "hex": "#6683b7",
+    "codes": {
+      "perler": "80-19070"
+    },
+    "nameEn": "Periwinkle Blue"
+  },
+  {
+    "hex": "#e1bcce",
+    "codes": {
+      "perler": "80-19079"
+    },
+    "nameEn": "Light Pink"
+  },
+  {
+    "hex": "#4dab64",
+    "codes": {
+      "perler": "80-19080"
+    },
+    "nameEn": "Green"
+  },
+  {
+    "hex": "#d45496",
+    "codes": {
+      "perler": "80-19083"
+    },
+    "nameEn": "Pink"
+  },
+  {
+    "hex": "#983864",
+    "codes": {
+      "perler": "80-19088"
+    },
+    "nameEn": "Raspberry"
+  },
+  {
+    "hex": "#da9964",
+    "codes": {
+      "perler": "80-19090"
+    },
+    "nameEn": "Butterscotch"
+  },
+  {
+    "hex": "#009188",
+    "codes": {
+      "perler": "80-19091"
+    },
+    "nameEn": "Parrot Green"
+  },
+  {
+    "hex": "#585c61",
+    "codes": {
+      "perler": "80-19092"
+    },
+    "nameEn": "Dark Grey"
+  },
+  {
+    "hex": "#85a8e3",
+    "codes": {
+      "perler": "80-19093"
+    },
+    "nameEn": "Blueberry Creme"
+  },
+  {
+    "hex": "#843947",
+    "codes": {
+      "perler": "80-19096"
+    },
+    "nameEn": "Cranapple"
+  },
+  {
+    "hex": "#bbc938",
+    "codes": {
+      "perler": "80-19097"
+    },
+    "nameEn": "Prickly Pear"
+  },
+  {
+    "hex": "#e5be9e",
+    "codes": {
+      "perler": "80-19098"
+    },
+    "nameEn": "Sand"
+  },
+  {
+    "hex": "#b3eed5",
+    "codes": {
+      "perler": "80-15240"
+    },
+    "nameEn": "Mint"
+  },
+  {
+    "hex": "#a3de6f",
+    "codes": {
+      "perler": "80-15241"
+    },
+    "nameEn": "Sour Apple"
+  },
+  {
+    "hex": "#f479b0",
+    "codes": {
+      "perler": "80-15242"
+    },
+    "nameEn": "Cotton Candy"
+  },
+  {
+    "hex": "#503b9c",
+    "codes": {
+      "perler": "80-15243"
+    },
+    "nameEn": "Grape"
+  },
+  {
+    "hex": "#d25d72",
+    "codes": {
+      "perler": "80-15244"
+    },
+    "nameEn": "Rose"
+  },
+  {
+    "hex": "#4e56a3",
+    "codes": {
+      "perler": "80-15245"
+    },
+    "nameEn": "Iris"
+  },
+  {
+    "hex": "#fd5918",
+    "codes": {
+      "perler": "80-15246"
+    },
+    "nameEn": "Tangerine"
+  },
+  {
+    "hex": "#005d57",
+    "codes": {
+      "perler": "80-15247"
+    },
+    "nameEn": "Forest"
+  },
+  {
+    "hex": "#6f3255",
+    "codes": {
+      "perler": "80-15248"
+    },
+    "nameEn": "Eggplant"
+  },
+  {
+    "hex": "#da8c2c",
+    "codes": {
+      "perler": "80-15249"
+    },
+    "nameEn": "Honey"
+  },
+  {
+    "hex": "#7e5446",
+    "codes": {
+      "perler": "80-15250"
+    },
+    "nameEn": "Gingerbread"
+  },
+  {
+    "hex": "#8c8ca7",
+    "codes": {
+      "perler": "80-15251"
+    },
+    "nameEn": "Thistle"
+  },
+  {
+    "hex": "#5e6d7b",
+    "codes": {
+      "perler": "80-15252"
+    },
+    "nameEn": "Slate Blue"
+  },
+  {
+    "hex": "#4c6388",
+    "codes": {
+      "perler": "80-15253"
+    },
+    "nameEn": "Denim"
+  },
+  {
+    "hex": "#9aa98e",
+    "codes": {
+      "perler": "80-15254"
+    },
+    "nameEn": "Sage"
+  },
+  {
+    "hex": "#efb79b",
+    "codes": {
+      "perler": "80-15255"
+    },
+    "nameEn": "Orange Cream"
+  },
+  {
+    "hex": "#ca3b65",
+    "codes": {
+      "perler": "80-15256"
+    },
+    "nameEn": "Fruit Punch"
+  },
+  {
+    "hex": "#cb59b9",
+    "codes": {
+      "perler": "80-15257"
+    },
+    "nameEn": "Fuchsia"
+  },
+  {
+    "hex": "#714875",
+    "codes": {
+      "perler": "80-15258"
+    },
+    "nameEn": "Mulberry"
+  },
+  {
+    "hex": "#c8c85c",
+    "codes": {
+      "perler": "80-15259"
+    },
+    "nameEn": "Slime"
+  },
+  {
+    "hex": "#988c8c",
+    "codes": {
+      "perler": "80-15260"
+    },
+    "nameEn": "Stone"
+  },
+  {
+    "hex": "#14313b",
+    "codes": {
+      "perler": "80-15261"
+    },
+    "nameEn": "Dark Spruce"
+  },
+  {
+    "hex": "#392928",
+    "codes": {
+      "perler": "80-15262"
+    },
+    "nameEn": "Cocoa"
+  },
+  {
+    "hex": "#c685b1",
+    "codes": {
+      "perler": "80-15265"
+    },
+    "nameEn": "Twilight Plum"
+  },
+  {
+    "hex": "#6cc8ad",
+    "codes": {
+      "perler": "80-15266"
+    },
+    "nameEn": "Caribbean Sea"
+  },
+  {
+    "hex": "#cdb7c3",
+    "codes": {
+      "perler": "80-15267"
+    },
+    "nameEn": "Frosted Lilac"
+  },
+  {
+    "hex": "#fc9574",
+    "codes": {
+      "perler": "80-15273"
+    },
+    "nameEn": "Brick"
+  },
+  {
+    "hex": "#f6ca69",
+    "codes": {
+      "perler": "80-15274"
+    },
+    "nameEn": "Rich Butter"
+  },
+  {
+    "hex": "#0090ac",
+    "codes": {
+      "perler": "80-15275"
+    },
+    "nameEn": "Peacock"
+  },
+  {
+    "hex": "#f8c7c9",
+    "codes": {
+      "perler": "80-15276"
+    },
+    "nameEn": "Carnation Pink"
+  },
+  {
+    "hex": "#406ae1",
+    "codes": {
+      "perler": "80-15089"
+    },
+    "nameEn": "Neon Blue"
+  },
+  {
+    "hex": "#deba0b",
+    "codes": {
+      "perler": "80-15268"
+    },
+    "nameEn": "Sunflower"
+  },
+  {
+    "hex": "#f6d901",
+    "codes": {
+      "perler": "80-15269"
+    },
+    "nameEn": "Lemon"
+  },
+  {
+    "hex": "#bed4a6",
+    "codes": {
+      "perler": "80-15263"
+    },
+    "nameEn": "Celery"
+  },
+  {
+    "hex": "#c8b693",
+    "codes": {
+      "perler": "80-15239"
+    },
+    "nameEn": "Mocha"
+  },
+  {
+    "hex": "#ff9a8b",
+    "codes": {
+      "perler": "80-15272"
+    },
+    "nameEn": "Coral"
+  }
+]

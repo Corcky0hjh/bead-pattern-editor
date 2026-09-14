@@ -1,3 +1,8 @@
+import { ModalHeader } from '../../../components/ModalHeader'
+import { constrainImagePlacement } from '../../../core/image/placementBounds'
+import { WorkCreationActions } from '../WorkCreationActions'
+import { BoardSizeFields } from '../BoardSizeFields'
+import { WorkCanvasSizeDialog } from '../WorkCanvasSizeDialog'
 import {
   useEffect,
   useEffectEvent,
@@ -10,10 +15,11 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react'
-import { getDisplayCode } from '../../../core/color'
+import { boxLabel, readBox, toBoxColor } from '../beadBox'
+import { brands, getBrandColors, type BrandId, type BeadColor } from '../../../core/color'
 import { createPortal } from 'react-dom'
 import { ModalDialog } from '../../../components/ModalDialog'
-import { Plus, FilePlus, ImageSquare } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, Plus, FilePlus, ImageSquare, FileCode } from '@phosphor-icons/react'
 import {
   conversionAlgorithmOptions,
   type ConversionAlgorithm,
@@ -27,17 +33,16 @@ import {
 } from '../../../core/pattern/grid'
 import { Dropdown } from '../../../components/Dropdown'
 import { Slider } from '../../../components/Slider'
-import { useModalDialog } from '../../../components/useModalDialog'
 import {
   remapPatternColors,
   type EditorStateController,
   type ImageConversionOptions,
 } from '../useEditorState'
-import { BrandPicker, PaletteManagerModal } from './ColorPanel'
 
 type ImagePanelProps = {
   editor: EditorStateController
   compact?: boolean
+  renderTrigger?: (openNewWork: () => void) => ReactNode
 }
 
 type ConversionDraft = {
@@ -62,39 +67,28 @@ const boardSizeMin = MIN_PATTERN_SIDE
 const boardSizeMax = MAX_PATTERN_SIDE
 const colorLimitDefault = 32
 const colorLimitMax = 128
-const boardSizePresets = [
-  { label: 'regular-1x1', cols: 29, rows: 29, name: '常规 1 板' },
-  { label: 'regular-2x1', cols: 58, rows: 29, name: '常规 2 横' },
-  { label: 'regular-1x2', cols: 29, rows: 58, name: '常规 2 竖' },
-  { label: 'regular-2x2', cols: 58, rows: 58, name: '常规 2 × 2' },
-  { label: 'mini-1x1', cols: 52, rows: 52, name: 'Mini 1 板' },
-  { label: 'mini-2x1', cols: 104, rows: 52, name: 'Mini 2 横' },
-  { label: 'mini-1x2', cols: 52, rows: 104, name: 'Mini 2 竖' },
-  { label: 'mini-2x2', cols: 104, rows: 104, name: 'Mini 2 × 2' },
-]
 
-export function ImagePanel({ editor, compact = false }: ImagePanelProps) {
+export function ImagePanel({ editor, compact = false, renderTrigger }: ImagePanelProps) {
+  const [newKind, setNewKind] = useState<'blank' | 'image' | 'project'>('blank')
+  const [projectFile, setProjectFile] = useState<File | null>(null)
+  const [projectBusy, setProjectBusy] = useState(false)
+  const projectInputRef = useRef<HTMLInputElement>(null)
+  function openNewWork() { setNewKind('blank'); setProjectFile(null); setImportFile(null); setNewMenuOpen(true) }
   const [newMenuOpen, setNewMenuOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const importTriggerRef = useRef<HTMLButtonElement | null>(null)
 
-  function closeImport() {
-    setImportOpen(false)
-    setImportFile(null)
-    window.requestAnimationFrame(() => importTriggerRef.current?.focus())
-  }
 
   return (
-    <div className="grid gap-3">
-      <button
+    <div className={renderTrigger ? "flex min-w-8 flex-1" : "grid gap-3"}>
+      {renderTrigger ? renderTrigger(openNewWork) : <button
         ref={importTriggerRef}
         type="button"
         aria-label={'新建作品'}
-        title={compact ? '导入照片' : undefined}
+        title="新建作品"
         className={compact ? 'grid h-8 w-8 shrink-0 place-items-center rounded-lg text-editor-text transition hover:bg-editor-accent-soft hover:text-editor-accent focus-visible:outline-2 focus-visible:outline-editor-accent' : 'group grid min-h-24 cursor-pointer gap-2 rounded-3xl border border-editor-border bg-editor-elevated/70 px-4 py-4 text-left transition hover:bg-editor-elevated hover:shadow-sm'}
-        onClick={() => setNewMenuOpen(true)}
+        onClick={openNewWork}
       >
         {compact ? <Plus size={19} weight="regular" aria-hidden="true" /> : <><span className="flex items-center justify-between gap-3">
           <span className="text-sm font-black text-editor-strong">
@@ -108,12 +102,16 @@ export function ImagePanel({ editor, compact = false }: ImagePanelProps) {
           创建空白画布，或从图片生成作品
         </span>
         </>}
-      </button>
-      {newMenuOpen ? createPortal(<ModalDialog label="新建作品" onClose={() => setNewMenuOpen(false)} panelClassName="w-full max-w-sm rounded-3xl bg-editor-surface p-4 shadow-xl">
-        <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-semibold text-editor-strong">新建作品</h2><button type="button" data-modal-close className="rounded-lg px-2 py-1 text-sm text-editor-text">取消</button></div>
-        <button type="button" className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-editor-strong hover:bg-editor-accent-soft" onClick={async () => { setNewMenuOpen(false); await editor.newWork() }}><FilePlus size={24}/><span>空白画布<span className="block text-xs text-editor-text">从空白开始绘制</span></span></button>
-        <button type="button" className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-editor-strong hover:bg-editor-accent-soft" onClick={() => { setNewMenuOpen(false); fileInputRef.current?.click() }}><ImageSquare size={24}/><span>从图片创建<span className="block text-xs text-editor-text">选择图片、调整构图并转换豆色</span></span></button>
+      </button>}
+      {newMenuOpen ? createPortal(<ModalDialog dismissDisabled={projectBusy} label="新建作品" onClose={() => { if (!projectBusy) setNewMenuOpen(false) }} panelClassName={"new-work-dialog flex w-full max-w-sm max-h-[94dvh] flex-col overflow-hidden rounded-3xl bg-editor-surface p-4 shadow-xl" + (newKind==='image' && importFile ? " new-work-dialog--image" : "")}>
+        <ModalHeader title="新建作品" disabled={projectBusy}/>
+        <div className="mb-3 grid shrink-0 grid-cols-3 gap-1" role="tablist" aria-label="新建方式">{[{id:'blank' as const,label:'空白画布',icon:FilePlus},{id:'image' as const,label:'图片导入',icon:ImageSquare},{id:'project' as const,label:'工程导入',icon:FileCode}].map(({id,label,icon:Icon})=><button type="button" key={id} disabled={projectBusy} role="tab" aria-selected={newKind===id} onClick={()=>setNewKind(id)} className={'flex h-10 items-center justify-center gap-1.5 rounded-xl text-xs transition '+(newKind===id?'bg-editor-accent-soft text-editor-accent':'text-editor-text hover:bg-editor-surface-soft')}><Icon size={16}/>{label}</button>)}</div>
+        <div className={newKind==='image' && importFile ? 'hidden' : 'min-h-0 overflow-y-auto'}>
+        {newKind==='blank' ? <WorkCanvasSizeDialog editor={editor} embedded onCreated={()=>setNewMenuOpen(false)}/> : newKind==='image' ? <div className="grid gap-4"><p className="text-[13px] leading-6 text-editor-text">选择图片，调整构图、尺寸和豆色，确认转换后创建新作品。</p><button type="button" onClick={()=>fileInputRef.current?.click()} className="flex min-h-28 items-center justify-center gap-2 rounded-2xl border border-dashed border-editor-border text-sm text-editor-accent hover:bg-editor-accent-soft"><ImageSquare size={22}/>选择图片</button><WorkCreationActions disabled/></div> : <div className="grid gap-4"><p className="text-[13px] leading-6 text-editor-text">导入之前导出的 JSON 图纸，恢复画板尺寸和豆色，创建为新作品。</p><button type="button" disabled={projectBusy} onClick={()=>projectInputRef.current?.click()} className="flex min-h-24 min-w-0 items-center justify-center gap-2 rounded-2xl border border-dashed border-editor-border px-3 text-sm text-editor-accent hover:bg-editor-accent-soft"><FileCode size={22} className="shrink-0"/><span className="truncate">{projectFile?.name ?? '选择工程文件'}</span></button><WorkCreationActions busy={projectBusy} disabled={!projectFile} onConfirm={async()=>{if(!projectFile||projectBusy)return;setProjectBusy(true);try{const created=await editor.createWorkFromJson(projectFile);if(created)setNewMenuOpen(false)}finally{setProjectBusy(false)}}}/></div>}
+        </div>
+        {importFile ? <div className={newKind==='image' ? 'new-work-image-content min-h-0 flex-1' : 'hidden'}><ImageImportContent editor={editor} initialFile={importFile} onCancel={()=>setImportFile(null)} onClose={()=>setNewMenuOpen(false)}/></div> : null}
       </ModalDialog>, document.body) : null}
+      <input ref={projectInputRef} type="file" accept=".json,application/json" className="hidden" onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)setProjectFile(file)}}/>
       <input
         ref={fileInputRef}
         className="hidden"
@@ -124,44 +122,38 @@ export function ImagePanel({ editor, compact = false }: ImagePanelProps) {
           event.target.value = ''
           if (!nextFile) return
           setImportFile(nextFile)
-          setImportOpen(true)
         }}
       />
 
-      {importOpen ? createPortal(
-        <ImageImportModal
-          editor={editor}
-          initialFile={importFile}
-          onClose={closeImport}
-        />, document.body
-      ) : null}
     </div>
   )
 }
 
-function ImageImportModal({
+function ImageImportContent({
   editor,
   initialFile,
   onClose,
+  onCancel,
 }: {
   editor: EditorStateController
   initialFile: File | null
+  onCancel: () => void
   onClose: () => void
 }) {
-  const dialogRef = useModalDialog(onClose)
-  const [file, setFile] = useState<File | null>(initialFile)
+  const file = initialFile
   const [activeStep, setActiveStep] = useState<WorkbenchStepId>(1)
   const [maxUnlockedStep, setMaxUnlockedStep] = useState<WorkbenchStepId>(1)
-  const [paletteModalOpen, setPaletteModalOpen] = useState(false)
+  const [paletteSources, setPaletteSources] = useState<Array<BrandId | 'custom'>>([editor.currentBrand])
+  const sourceColors = useMemo(()=>readBox(paletteSources.flatMap(source => (source === 'custom' ? editor.customPalette : getBrandColors(source)).map(color=>toBoxColor(color, source === 'custom' ? undefined : source)))), [paletteSources, editor.customPalette])
+  const [includeUnusedColors, setIncludeUnusedColors] = useState(false)
+  const conversionColors = sourceColors
   const [previewing, setPreviewing] = useState(false)
   const previewRequestIdRef = useRef(0)
   const previewPendingRef = useRef(false)
   const [previewStatus, setPreviewStatus] = useState(
     initialFile ? '准备生成预览' : '先导入图片',
   )
-  const [imageUrl, setImageUrl] = useState<string | null>(() =>
-    initialFile ? URL.createObjectURL(initialFile) : null,
-  )
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageSize, setImageSize] = useState<{
     width: number
     height: number
@@ -192,12 +184,13 @@ function ImageImportModal({
     excludedColorsRef.current = excludedColors
   }, [excludedColors])
 
-  useEffect(
-    () => () => {
-      if (imageUrl) URL.revokeObjectURL(imageUrl)
-    },
-    [imageUrl],
-  )
+  useEffect(() => {
+    const url = file ? URL.createObjectURL(file) : null
+    // The URL is an external resource; recreate it after Strict Mode cleanup.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setImageUrl(url)
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [file])
 
   const conversionOptions = useMemo<ImageConversionOptions>(() => {
     return {
@@ -211,43 +204,21 @@ function ImageImportModal({
       placement,
     }
   }, [draft, placement])
-  const canGenerate = Boolean(file) && editor.availablePalette.length > 0
+  const canGenerate = Boolean(file) && conversionColors.length > 0
   const availablePaletteKey = useMemo(
     () =>
-      editor.availablePalette
+      conversionColors
         .map((color) => color.hex.toLowerCase())
         .sort()
         .join('|'),
-    [editor.availablePalette],
+    [conversionColors],
   )
   const postprocessDisabled = draft.algorithm === 'atkinson'
-  const paletteCountText = `${editor.availablePalette.length} / ${editor.palette.length}`
+  const paletteCountText = `${conversionColors.length} 色`
   const previewStats = useMemo(
-    () => buildColorStats(previewPattern, editor),
-    [editor, previewPattern],
+    () => buildColorStats(previewPattern, { ...editor, palette: sourceColors, currentBrand: editor.currentBrand }),
+    [editor, previewPattern, sourceColors],
   )
-
-  function changeFile(nextFile: File | null) {
-    previewRequestIdRef.current += 1
-    previewPendingRef.current = false
-    setPreviewing(false)
-    setFile(nextFile)
-    setImageUrl(nextFile ? URL.createObjectURL(nextFile) : null)
-    setImageSize(null)
-    setBasePattern(null)
-    setPreviewPattern(null)
-    excludedColorsRef.current = new Set()
-    setExcludedColors(excludedColorsRef.current)
-    setPlacement({
-      x: 0,
-      y: 0,
-      scale: 1,
-      rotation: 0,
-      flipX: false,
-      flipY: false,
-    })
-    setPreviewStatus(nextFile ? '准备生成预览' : '先导入图片')
-  }
 
   function changeBoardSize(nextDraft: SetStateAction<ConversionDraft>) {
     const resolved =
@@ -264,6 +235,7 @@ function ImageImportModal({
   }
 
   function handleImageLoad(nextSize: { width: number; height: number }) {
+    if (imageSize?.width === nextSize.width && imageSize.height === nextSize.height) return
     setImageSize(nextSize)
     setPlacement(fitImageToBoard(nextSize, draft.cols, draft.rows, 'contain'))
   }
@@ -279,6 +251,7 @@ function ImageImportModal({
       const nextBase = await editor.generateImagePattern(
         sourceFile,
         conversionOptions,
+        conversionColors,
       )
       if (previewRequestIdRef.current !== requestId) return
       const remapped = remapPatternColors(nextBase, excludedColorsRef.current)
@@ -368,9 +341,12 @@ function ImageImportModal({
   }
 
   async function applyToEditor() {
-    if (!previewPattern || previewPendingRef.current) return
+    if (!previewPattern || previewPendingRef.current || !canGenerate) return
+    const usedHexes = new Set(previewPattern.cells.filter(cell => cell.color && !cell.isExternal).map(cell => cell.color!.toLowerCase()))
+    const importedBox = conversionColors.filter(color => usedHexes.has(color.hex.toLowerCase()) || (includeUnusedColors && !excludedColors.has(color.hex.toLowerCase())))
     const created = await editor.createWorkFromImage(previewPattern, conversionOptions, {
       file,
+      beadBox: importedBox,
       excludedColors,
       status: `已应用 ${previewPattern.width} × ${previewPattern.height} 图纸`,
     })
@@ -381,89 +357,32 @@ function ImageImportModal({
     activeStep === 1
       ? Boolean(file)
       : activeStep < 3
-        ? Boolean(previewPattern) && !previewing
+        ? Boolean(previewPattern) && !previewing && canGenerate
         : false
 
   return (
-    <div
-      className="fixed inset-0 z-[65] grid place-items-center bg-editor-strong/30 p-3 backdrop-blur-sm sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="源图转图纸"
-    >
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        className="grid max-h-[min(920px,94svh)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-editor-border bg-editor-surface shadow-[0_24px_80px_rgba(31,24,18,0.26)]"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-editor-border px-5 py-4">
-          <div>
-            <h2 className="text-xl font-black text-editor-strong">
-              源图转图纸
-            </h2>
-            <p className="mt-1 text-xs leading-5 text-editor-text">
-              构图阶段只看原图，确认后再生成拼豆预览
-            </p>
-          </div>
-          <button
-            data-dialog-initial-focus
-            className="grid h-9 w-9 place-items-center rounded-full bg-editor-surface-soft text-lg font-black text-editor-strong transition hover:bg-editor-elevated active:scale-95"
-            type="button"
-            onClick={onClose}
-            aria-label="关闭"
-          >
-            ×
-          </button>
-        </header>
-
-        <div className="grid min-h-0 overflow-hidden lg:grid-cols-[minmax(360px,0.86fr)_minmax(0,1.14fr)]">
-          <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] border-r border-editor-border">
+    <>
+        <div className="image-workbench-body grid min-h-0 overflow-hidden lg:grid-cols-[minmax(360px,0.86fr)_minmax(0,1.14fr)]">
+          <section className="image-workbench-settings grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] border-r border-editor-border">
             <Stepper
               activeStep={activeStep}
               maxUnlockedStep={maxUnlockedStep}
               onSelect={setActiveStep}
             />
 
-            <div className="min-h-0 overflow-auto px-5 py-4">
+            <div className="image-workbench-fields min-h-0 overflow-y-auto overflow-x-hidden px-3 py-2">
               {activeStep === 1 ? (
                 <StepCard>
-                  <UploadDropzone
-                    file={file}
-                    compact
-                    onFileChange={changeFile}
-                  />
                   <BoardSizeControls draft={draft} onChange={changeBoardSize} />
-                  <ImagePlacementControls
-                    cols={draft.cols}
-                    imageSize={imageSize}
-                    imageUrl={imageUrl}
-                    placement={placement}
-                    rows={draft.rows}
-                    onPlacementChange={setPlacement}
-                  />
                 </StepCard>
               ) : null}
 
               {activeStep === 2 ? (
                 <StepCard>
-                  <BrandPicker
-                    currentBrand={editor.currentBrand}
-                    onChange={editor.setCurrentBrand}
-                  />
-                  <div className="flex items-center justify-between gap-3 rounded-2xl bg-editor-elevated/60 px-3 py-2">
-                    <span className="text-xs font-bold text-editor-text">
-                      当前可用色
-                    </span>
-                    <span className="font-mono text-sm font-black text-editor-strong">
-                      {paletteCountText}
-                    </span>
-                    <button
-                      className="ml-auto rounded-full bg-editor-accent px-3 py-1.5 text-xs font-black text-white transition hover:brightness-105 active:scale-95"
-                      type="button"
-                      onClick={() => setPaletteModalOpen(true)}
-                    >
-                      管理
-                    </button>
+                  <div className="conversion-palette grid gap-2">
+                    <div className="flex items-center justify-between text-xs text-editor-text"><span>豆色卡</span><span className="tabular-nums">{paletteCountText}</span></div>
+                    <Dropdown ariaLabel="选择转换豆色卡" value={paletteSources[0] ?? 'custom'} selectedValues={paletteSources} placeholder="选择豆色卡，可多选" onChange={value=>{const source=value as BrandId | 'custom';setPaletteSources(previous=>previous.includes(source)?previous.filter(item=>item!==source):[...previous,source]);setExcludedColors(new Set());excludedColorsRef.current=new Set()}} options={[...brands.filter(b=>b.available).map(b=>({value:b.id,label:b.label})),{value:'custom',label:'我的豆色卡'}]}/>
+                    {!sourceColors.length ? <p className="text-xs text-editor-text">请至少选择一张有颜色的豆色卡。</p> : null}
                   </div>
                   <ConversionSettings
                     draft={draft}
@@ -477,56 +396,20 @@ function ImageImportModal({
                 <StepCard>
                   <ColorExclusionPanel
                     excludedColors={[...excludedColors].sort()}
+                    palette={sourceColors}
                     stats={previewStats}
                     onExclude={excludeColor}
                     onRestore={restoreColor}
-                    onRestoreAll={() => applyExcluded(new Set())}
                   />
+                  <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 border-t border-editor-border/60 px-1 pb-1 pt-3">
+                    <span className="min-w-0"><span className="block text-xs font-semibold text-editor-strong">同时加入未使用豆色</span><span id="import-box-description" className="mt-1 block text-[11px] leading-5 text-editor-text">默认仅加入图纸实际用色。开启后，所选色卡中其余未被排除的颜色也会加入作品豆盒，不会改变图纸。</span></span>
+                    <span className="relative inline-flex shrink-0 items-center"><input type="checkbox" role="switch" aria-label="同时加入未使用豆色" aria-describedby="import-box-description" className="peer sr-only" checked={includeUnusedColors} onChange={event => setIncludeUnusedColors(event.target.checked)}/><span className="h-6 w-11 rounded-full bg-editor-border transition-colors peer-checked:bg-editor-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-editor-accent"/><span className="absolute left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"/></span>
+                  </label>
                 </StepCard>
               ) : null}
             </div>
 
-            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-editor-border px-5 py-4">
-              <button
-                className="h-10 rounded-full bg-editor-elevated px-4 text-sm font-black text-editor-strong transition hover:bg-editor-surface-soft active:scale-95"
-                type="button"
-                onClick={onClose}
-              >
-                取消
-              </button>
-              <div className="ml-auto flex flex-wrap gap-2">
-                {activeStep > 1 ? (
-                  <button
-                    className="h-10 rounded-full bg-editor-elevated px-4 text-sm font-black text-editor-strong transition hover:bg-editor-surface-soft active:scale-95"
-                    type="button"
-                    onClick={() =>
-                      setActiveStep((activeStep - 1) as WorkbenchStepId)
-                    }
-                  >
-                    上一步
-                  </button>
-                ) : null}
-                {activeStep < 3 ? (
-                  <button
-                    className="h-10 rounded-full bg-editor-accent px-5 text-sm font-black text-white transition hover:brightness-105 active:scale-95 disabled:opacity-40"
-                    type="button"
-                    disabled={!canContinue}
-                    onClick={continueStep}
-                  >
-                    继续
-                  </button>
-                ) : (
-                  <button
-                    className="h-10 rounded-full bg-editor-accent px-5 text-sm font-black text-white transition hover:brightness-105 active:scale-95 disabled:opacity-40"
-                    type="button"
-                    disabled={!previewPattern || previewing}
-                    onClick={applyToEditor}
-                  >
-                    应用到编辑
-                  </button>
-                )}
-              </div>
-            </footer>
+            <WorkCreationActions info={imageSize ? <span className="whitespace-nowrap">{imageSize.width} × {imageSize.height}</span> : undefined} onCancel={onCancel} onBack={activeStep > 1 ? ()=>setActiveStep((activeStep - 1) as WorkbenchStepId) : undefined} label={activeStep < 3 ? '继续' : '创建作品'} disabled={activeStep < 3 ? !canContinue : !previewPattern || previewing || !canGenerate} onConfirm={activeStep < 3 ? continueStep : applyToEditor}/>
           </section>
 
           {activeStep === 1 ? (
@@ -537,8 +420,9 @@ function ImageImportModal({
                 imageUrl={imageUrl}
                 placement={placement}
                 rows={draft.rows}
+                onReset={()=>{if(imageSize)setPlacement(fitImageToBoard(imageSize, draft.cols, draft.rows, 'contain'))}}
                 onImageLoad={handleImageLoad}
-                onPlacementChange={setPlacement}
+                onPlacementChange={next=>setPlacement(imageSize ? constrainImagePlacement(next, imageSize, draft.cols, draft.rows) : next)}
               />
             </aside>
           ) : (
@@ -552,14 +436,7 @@ function ImageImportModal({
           )}
         </div>
 
-        {paletteModalOpen ? (
-          <PaletteManagerModal
-            editor={editor}
-            onClose={() => setPaletteModalOpen(false)}
-          />
-        ) : null}
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -573,181 +450,32 @@ function Stepper({
   onSelect: (step: WorkbenchStepId) => void
 }) {
   return (
-    <div className="grid gap-2 border-b border-editor-border px-5 py-4">
-      <div className="grid grid-cols-3 gap-2">
-        {steps.map((step) => {
-          const unlocked = step.id <= maxUnlockedStep
-          const active = step.id === activeStep
-          return (
-            <button
-              key={step.id}
-              className={`grid min-h-14 gap-1 rounded-2xl px-2 py-2 text-left transition ${
-                active
-                  ? 'bg-editor-accent text-white shadow-sm'
-                  : unlocked
-                    ? 'bg-editor-elevated/70 text-editor-strong hover:bg-editor-elevated'
-                    : 'bg-editor-surface-soft text-editor-text/35'
-              }`}
-              type="button"
-              disabled={!unlocked}
-              onClick={() => onSelect(step.id)}
-            >
-              <span className="font-mono text-[11px] font-black">
-                {String(step.id).padStart(2, '0')}
-              </span>
-              <span className="truncate text-[11px] font-black">
-                {step.title}
-              </span>
-            </button>
-          )
-        })}
+    <nav className="image-workbench-steps" aria-label="图片导入步骤">
+      <div className="image-step-track">
+        {steps.map((step, index) => <div key={step.id} className="image-step-node">
+          <button type="button" aria-label={step.title} aria-current={step.id === activeStep ? 'step' : undefined}
+            disabled={step.id > maxUnlockedStep} onClick={() => onSelect(step.id)}>
+            {String(step.id).padStart(2, '0')}
+          </button>
+          {index < steps.length - 1 ? <span className="image-step-connector" aria-hidden="true"/> : null}
+        </div>)}
       </div>
-    </div>
+    </nav>
   )
 }
 
-function UploadDropzone({
-  file,
-  onFileChange,
-  compact = false,
-}: {
-  file: File | null
-  onFileChange: (file: File | null) => void
-  compact?: boolean
-}) {
-  return (
-    <label
-      className={`relative grid cursor-pointer place-items-center overflow-hidden rounded-3xl border border-dashed border-editor-border bg-editor-elevated/55 px-4 text-center transition hover:bg-editor-elevated ${
-        compact ? 'min-h-16 py-3' : 'min-h-52 py-8'
-      }`}
-    >
-      <input
-        className="absolute inset-0 cursor-pointer opacity-0"
-        type="file"
-        accept="image/*"
-        onChange={(event) => {
-          onFileChange(event.target.files?.[0] ?? null)
-          event.target.value = ''
-        }}
-      />
-      <span className="grid justify-items-center gap-1">
-        <span className="text-sm font-black text-editor-strong">
-          {file ? file.name : '选择图片'}
-        </span>
-        <span className="text-xs text-editor-text">
-          {compact ? '重新选择图片' : 'PNG / JPG / WebP，支持透明图片'}
-        </span>
-      </span>
-    </label>
-  )
-}
-
-function BoardSizeControls({
-  draft,
-  onChange,
-}: {
-  draft: ConversionDraft
-  onChange: Dispatch<SetStateAction<ConversionDraft>>
-}) {
-  return (
-    <div className="grid gap-3 rounded-3xl bg-editor-elevated/55 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <h4 className="text-xs font-black text-editor-text">拼盘尺寸</h4>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <NumberField
-          label="宽"
-          value={draft.cols}
-          onChange={(cols) => onChange((previous) => ({ ...previous, cols }))}
-        />
-        <NumberField
-          label="高"
-          value={draft.rows}
-          onChange={(rows) => onChange((previous) => ({ ...previous, rows }))}
-        />
-      </div>
-      <Dropdown
-        ariaLabel="预设尺寸"
-        value={getBoardPresetValue(draft.cols, draft.rows)}
-        onChange={(value) => {
-          const preset = boardSizePresets.find((item) => item.label === value)
-          if (!preset) return
-          onChange((previous) => ({
-            ...previous,
-            cols: preset.cols,
-            rows: preset.rows,
-          }))
-        }}
-        options={[
-          { value: '', label: '自定义', hint: '使用上方宽高' },
-          ...boardSizePresets.map((preset) => ({
-            value: preset.label,
-            label: `${preset.name} · ${preset.cols} × ${preset.rows}`,
-          })),
-        ]}
-      />
-    </div>
-  )
-}
-
-function ImagePlacementControls({
-  cols,
-  imageUrl,
-  imageSize,
-  placement,
-  rows,
-  onPlacementChange,
-}: {
-  cols: number
-  imageUrl: string | null
-  imageSize: { width: number; height: number } | null
-  placement: ImagePlacement
-  rows: number
-  onPlacementChange: (placement: ImagePlacement) => void
-}) {
-  function applyFit(mode: 'contain' | 'cover') {
-    if (!imageSize) return
-    onPlacementChange({
-      ...fitImageToBoard(imageSize, cols, rows, mode),
-      rotation: placement.rotation,
-      flipX: placement.flipX,
-      flipY: placement.flipY,
-    })
-  }
-
-  return (
-    <div className="grid gap-3 rounded-3xl bg-editor-elevated/55 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <h4 className="text-xs font-black text-editor-text">图片摆放</h4>
-        {imageSize ? (
-          <span className="rounded-full bg-editor-surface px-2.5 py-1 font-mono text-[11px] font-black text-editor-strong">
-            {imageSize.width} × {imageSize.height}
-          </span>
-        ) : null}
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          className="rounded-full bg-editor-surface px-3 py-1.5 text-xs font-black text-editor-strong transition hover:bg-editor-surface-soft active:scale-95 disabled:opacity-40"
-          type="button"
-          disabled={!imageUrl}
-          onClick={() => applyFit('contain')}
-        >
-          完整放入
-        </button>
-        <button
-          className="rounded-full bg-editor-surface px-3 py-1.5 text-xs font-black text-editor-strong transition hover:bg-editor-surface-soft active:scale-95 disabled:opacity-40"
-          type="button"
-          disabled={!imageUrl}
-          onClick={() => applyFit('cover')}
-        >
-          铺满拼盘
-        </button>
-      </div>
-    </div>
-  )
+function BoardSizeControls({ draft, onChange }: { draft: ConversionDraft; onChange: Dispatch<SetStateAction<ConversionDraft>> }) {
+  const [width, setWidth] = useState(String(draft.cols))
+  const [height, setHeight] = useState(String(draft.rows))
+  return <BoardSizeFields width={width} height={height} onBlur={()=>{setWidth(String(draft.cols));setHeight(String(draft.rows))}} onChange={(w,h)=>{
+    setWidth(w);setHeight(h)
+    const cols=Number(w), rows=Number(h)
+    if ([cols,rows].every(n=>Number.isInteger(n)&&n>=boardSizeMin&&n<=boardSizeMax)) onChange(previous=>({...previous,cols,rows}))
+  }}/>
 }
 
 function PlacementStage({
+  onReset,
   cols,
   imageUrl,
   imageSize,
@@ -756,6 +484,7 @@ function PlacementStage({
   onImageLoad,
   onPlacementChange,
 }: {
+  onReset: () => void
   cols: number
   imageUrl: string | null
   imageSize: { width: number; height: number } | null
@@ -831,12 +560,12 @@ function PlacementStage({
       const anchor = rotatedImageCorner(
         drag.startPlacement,
         imageHeightRatio,
-        'nw',
+        'nw', cols / rows,
       )
       const startHandle = rotatedImageCorner(
         drag.startPlacement,
         imageHeightRatio,
-        'se',
+        'se', cols / rows,
       )
       const anchorPx = {
         x: boardRect.left + anchor.x * boardRect.width,
@@ -877,7 +606,7 @@ function PlacementStage({
       const nextAnchor = rotatedImageCorner(
         nextPlacement,
         nextImageHeightRatio,
-        'nw',
+        'nw', cols / rows,
       )
       onPlacementChange({
         ...nextPlacement,
@@ -911,31 +640,9 @@ function PlacementStage({
       return
     }
     const boardRect = event.currentTarget.getBoundingClientRect()
-    const stageRect = stageRef.current?.getBoundingClientRect()
-    const stageBounds = stageRect
-      ? getBoundsInBoardRect(stageRect, boardRect)
-      : { minX: 0, maxX: 1, minY: 0, maxY: 1 }
-    const nextImageHeightRatio = getImageBoardHeightRatio(
-      drag.startPlacement,
-      imageSize,
-      cols,
-      rows,
-    )
-    onPlacementChange({
-      ...drag.startPlacement,
-      x: clampPlacementAxisToBounds(
-        drag.startPlacement.x + (event.clientX - drag.startX) / boardRect.width,
-        drag.startPlacement.scale,
-        stageBounds.minX,
-        stageBounds.maxX,
-      ),
-      y: clampPlacementAxisToBounds(
-        drag.startPlacement.y +
-          (event.clientY - drag.startY) / boardRect.height,
-        nextImageHeightRatio,
-        stageBounds.minY,
-        stageBounds.maxY,
-      ),
+    onPlacementChange({ ...drag.startPlacement,
+      x: drag.startPlacement.x + (event.clientX - drag.startX) / boardRect.width,
+      y: drag.startPlacement.y + (event.clientY - drag.startY) / boardRect.height,
     })
   }
 
@@ -975,40 +682,15 @@ function PlacementStage({
     if (!direction) return
     event.preventDefault()
     const step = event.shiftKey ? 5 : 1
-    const nextImageHeightRatio = getImageBoardHeightRatio(
-      placement,
-      imageSize,
-      cols,
-      rows,
-    )
-    const stageRect = stageRef.current?.getBoundingClientRect()
-    const boardRect = stageRef.current
-      ?.querySelector('[data-placement-board="true"]')
-      ?.getBoundingClientRect()
-    const stageBounds =
-      stageRect && boardRect
-        ? getBoundsInBoardRect(stageRect, boardRect)
-        : { minX: 0, maxX: 1, minY: 0, maxY: 1 }
-    onPlacementChange({
-      ...placement,
-      x: clampPlacementAxisToBounds(
-        placement.x + (direction.x * step) / cols,
-        placement.scale,
-        stageBounds.minX,
-        stageBounds.maxX,
-      ),
-      y: clampPlacementAxisToBounds(
-        placement.y + (direction.y * step) / rows,
-        nextImageHeightRatio,
-        stageBounds.minY,
-        stageBounds.maxY,
-      ),
+    onPlacementChange({ ...placement,
+      x: placement.x + direction.x * step / cols,
+      y: placement.y + direction.y * step / rows,
     })
   }
 
   const boardSize =
     stageSize.width > 0 && stageSize.height > 0
-      ? fitWithin(cols, rows, stageSize.width - 24, stageSize.height - 24)
+      ? fitWithin(cols, rows, stageSize.width - 20, stageSize.height - 20)
       : null
   const imageBoardHeight =
     imageSize && boardSize
@@ -1016,17 +698,18 @@ function PlacementStage({
         (imageSize.height / imageSize.width) *
         (boardSize.width / boardSize.height)
       : placement.scale
-  const rotateHandle = rotatedImageCorner(placement, imageBoardHeight, 'ne')
-  const scaleHandle = rotatedImageCorner(placement, imageBoardHeight, 'se')
-  const mirrorHandle = rotatedImageCorner(placement, imageBoardHeight, 'sw')
+  const rotateHandle = rotatedImageCorner(placement, imageBoardHeight, 'ne', cols / rows)
+  const scaleHandle = rotatedImageCorner(placement, imageBoardHeight, 'se', cols / rows)
+  const mirrorHandle = rotatedImageCorner(placement, imageBoardHeight, 'sw', cols / rows)
   const rotationLabel = formatDegrees(placement.rotation)
 
   return (
-    <div className="grid gap-3 rounded-3xl bg-editor-elevated/55 p-3">
+    <div className="image-placement-frame relative grid gap-3 rounded-3xl bg-editor-elevated/55 p-3">
+      <button type="button" aria-label="重置构图" title="重置构图" onClick={onReset} disabled={!imageSize} className="absolute right-1 top-1 z-30 grid h-7 w-7 place-items-center rounded-lg bg-editor-surface/90 text-editor-text transition hover:bg-editor-accent-soft hover:text-editor-accent disabled:opacity-40"><ArrowCounterClockwise size={16}/></button>
       <div
         ref={stageRef}
         tabIndex={0}
-        className="relative grid h-[min(560px,58svh)] min-h-80 place-items-center overflow-visible rounded-2xl bg-editor-surface p-5 outline-none transition focus-visible:ring-2 focus-visible:ring-editor-accent/55"
+        className="image-placement-stage relative grid h-[min(560px,58svh)] min-h-80 place-items-center overflow-visible rounded-2xl bg-editor-surface p-5 outline-none transition focus-visible:ring-2 focus-visible:ring-editor-accent/55"
         onKeyDown={nudgeImage}
       >
         {imageUrl && boardSize ? (
@@ -1064,7 +747,7 @@ function PlacementStage({
                 }}
               />
               <div
-                className="absolute inset-0 cursor-move"
+                className="absolute inset-0 touch-none cursor-move"
                 onDoubleClick={recenterImage}
                 onPointerDown={(event) => beginDrag('move', event)}
                 onPointerMove={updateDrag}
@@ -1216,8 +899,7 @@ function ConversionSettings({
   onChange: Dispatch<SetStateAction<ConversionDraft>>
 }) {
   return (
-    <div className="grid gap-3 rounded-3xl bg-editor-elevated/55 p-3">
-      <h4 className="text-xs font-black text-editor-text">转换细节</h4>
+    <div className="conversion-settings grid gap-3">
       <Dropdown
         ariaLabel="配色算法"
         value={draft.algorithm}
@@ -1235,7 +917,6 @@ function ConversionSettings({
       />
       <Slider
         label="最多颜色数"
-        hint="超出会合并到最近色"
         value={draft.colorLimit}
         onChange={(colorLimit) =>
           onChange((previous) => ({ ...previous, colorLimit }))
@@ -1243,9 +924,9 @@ function ConversionSettings({
         min={1}
         max={colorLimitMax}
       />
+      <div className="grid gap-3">
       <Slider
         label="合并阈值"
-        hint="0=关闭"
         value={draft.mergeThreshold}
         onChange={(mergeThreshold) =>
           onChange((previous) => ({ ...previous, mergeThreshold }))
@@ -1255,13 +936,17 @@ function ConversionSettings({
         disabled={postprocessDisabled}
       />
       <label
-        className={`flex items-center gap-2 ${
-          postprocessDisabled ? 'opacity-40' : ''
+        className={`flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-editor-elevated/40 px-3 py-2 transition-colors ${
+          postprocessDisabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:bg-editor-elevated/70'
         }`}
       >
+        <span className="text-xs font-bold text-editor-text">识别背景留白</span>
+        <span className="relative inline-flex shrink-0 items-center">
         <input
           type="checkbox"
-          className="accent-editor-accent"
+          role="switch"
+          aria-label="识别背景留白"
+          className="peer sr-only"
           disabled={postprocessDisabled}
           checked={draft.detectBackground}
           onChange={(event) =>
@@ -1271,8 +956,10 @@ function ConversionSettings({
             }))
           }
         />
-        <span className="text-xs font-bold text-editor-text">识别背景留白</span>
-      </label>
+        <span className="h-6 w-11 rounded-full bg-editor-border transition-colors peer-checked:bg-editor-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-editor-accent" />
+        <span className="absolute left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none peer-checked:translate-x-5" />
+        </span>
+      </label></div>
     </div>
   )
 }
@@ -1286,29 +973,32 @@ type ColorStat = {
 function ColorExclusionPanel({
   stats,
   excludedColors,
+  palette,
   onExclude,
   onRestore,
-  onRestoreAll,
 }: {
   stats: ColorStat[]
   excludedColors: string[]
+  palette: BeadColor[]
   onExclude: (hex: string) => void
   onRestore: (hex: string) => void
-  onRestoreAll: () => void
 }) {
   return (
-    <div className="grid gap-3">
+    <div className="color-exclusion-panel grid gap-3">
+      <div className="flex items-center justify-between text-xs text-editor-text"><span className="font-semibold">图纸用色 · {stats.length}</span><span className="text-[11px]">点击排除</span></div>
       {stats.length > 0 ? (
-        <div className="grid max-h-[38svh] grid-cols-[repeat(auto-fill,minmax(116px,1fr))] gap-2 overflow-auto pr-1">
+        <div className="flex flex-wrap gap-2">
           {stats.map((item) => (
             <button
               key={item.color}
               type="button"
-              className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl bg-editor-elevated/70 px-2 py-2 text-left text-xs text-editor-strong transition hover:bg-editor-elevated active:scale-[0.98]"
+              className="flex h-10 w-28 max-w-full items-center gap-2 rounded-full bg-editor-elevated/70 px-2.5 text-left text-xs text-editor-strong transition hover:bg-editor-accent-soft active:scale-[0.98]"
+              title={`排除 ${item.code ?? item.color}`}
+              aria-label={`排除 ${item.code ?? item.color}`}
               onClick={() => onExclude(item.color)}
             >
               <span
-                className="h-7 w-7 rounded-full border-2 border-white shadow-sm"
+                className="h-5 w-5 shrink-0 rounded-full border border-white shadow-sm"
                 style={{ backgroundColor: item.color }}
               />
               <span className="min-w-0">
@@ -1318,9 +1008,6 @@ function ColorExclusionPanel({
                 <span className="block text-[10px] opacity-70">
                   {item.count} 颗
                 </span>
-              </span>
-              <span className="rounded-full bg-editor-surface px-2 py-1 text-[10px] font-black">
-                排除
               </span>
             </button>
           ))}
@@ -1332,8 +1019,8 @@ function ColorExclusionPanel({
       )}
       <ExcludedColorTray
         colors={excludedColors}
+        palette={palette}
         onRestore={onRestore}
-        onRestoreAll={onRestoreAll}
       />
     </div>
   )
@@ -1341,51 +1028,36 @@ function ColorExclusionPanel({
 
 function ExcludedColorTray({
   colors,
+  palette,
   onRestore,
-  onRestoreAll,
 }: {
   colors: string[]
+  palette: BeadColor[]
   onRestore: (hex: string) => void
-  onRestoreAll: () => void
 }) {
-  if (colors.length === 0) {
-    return (
-      <section className="grid gap-2 rounded-3xl bg-editor-elevated/40 p-3">
-        <h4 className="text-xs font-black text-editor-text">已排除颜色</h4>
-        <p className="rounded-2xl bg-editor-surface px-3 py-3 text-xs font-bold text-editor-text/70">
-          还没有排除颜色
-        </p>
-      </section>
-    )
-  }
+  const labels = new Map(palette.map(color => [color.hex.toLowerCase(), boxLabel(color)]))
+  const colorLabel = (hex: string) => labels.get(hex.toLowerCase()) ?? hex
+
+  if (colors.length === 0) return <div className="flex items-center justify-between text-xs text-editor-text"><span className="font-semibold">已排除颜色 · 0</span><span className="text-[11px] opacity-70">暂无</span></div>
 
   return (
-    <section className="grid gap-2 rounded-3xl bg-editor-elevated/40 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <h4 className="text-xs font-black text-editor-text">已排除颜色</h4>
-        <button
-          className="rounded-full bg-editor-surface px-3 py-1.5 text-[11px] font-black text-editor-strong transition hover:bg-editor-surface-soft active:scale-95"
-          type="button"
-          onClick={onRestoreAll}
-        >
-          全部恢复
-        </button>
-      </div>
-      <div className="flex max-h-28 flex-wrap gap-2 overflow-auto pr-1">
+    <section className="grid gap-2">
+      <div className="flex items-center justify-between text-xs text-editor-text"><h4 className="font-semibold">已排除颜色 · {colors.length}</h4><span className="text-[11px]">点击恢复</span></div>
+      <div className="flex flex-wrap gap-2">
         {colors.map((hex) => (
           <button
             key={hex}
-            className="flex items-center gap-1.5 rounded-full bg-editor-surface px-2 py-1.5 text-[11px] font-black text-editor-strong transition hover:bg-editor-surface-soft active:scale-95"
+            className="flex h-8 w-24 max-w-full items-center gap-2 rounded-full bg-editor-surface px-2.5 text-left text-[11px] font-semibold text-editor-strong transition hover:bg-editor-surface-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-editor-accent active:scale-95"
             type="button"
             onClick={() => onRestore(hex)}
-            title="恢复这个颜色"
+            title={`恢复 ${colorLabel(hex)}`}
+            aria-label={`恢复 ${colorLabel(hex)}`}
           >
             <span
-              className="h-4 w-4 rounded-full border border-white shadow-sm"
+              className="h-4 w-4 shrink-0 rounded-full border border-white shadow-sm"
               style={{ backgroundColor: hex }}
             />
-            <span className="font-mono">{hex}</span>
-            <span className="text-editor-text/65">恢复</span>
+            <span className="min-w-0 flex-1 truncate">{colorLabel(hex)}</span>
           </button>
         ))}
       </div>
@@ -1412,9 +1084,9 @@ function PreviewPane({
   const height = (pattern?.height ?? draft.rows) * cellSize
 
   return (
-    <aside className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] bg-editor-elevated/35">
-      <div className="grid min-h-0 place-items-center overflow-auto p-5">
-        <div className="relative rounded-3xl bg-editor-surface p-4 shadow-sm">
+    <aside className="image-preview-pane relative grid min-h-0 grid-rows-[minmax(0,1fr)] bg-editor-elevated/35">
+      <div className="image-preview-viewport grid min-h-0 place-items-center overflow-auto p-5">
+        <div className="image-preview-frame relative rounded-3xl bg-editor-surface p-4 shadow-sm">
           <canvas
             aria-label="转图预览"
             className="block max-h-[58svh] max-w-full rounded-xl border border-editor-border"
@@ -1448,8 +1120,8 @@ function PreviewPane({
           ) : null}
         </div>
       </div>
-      {status ? (
-        <div className="border-t border-editor-border px-5 py-3 text-xs font-bold leading-5 text-editor-text">
+      {status.startsWith('预览失败') ? (
+        <div role="alert" className="absolute bottom-2 left-2 right-2 rounded-lg bg-editor-surface p-2 text-xs text-editor-accent">
           {status}
         </div>
       ) : null}
@@ -1497,7 +1169,7 @@ function buildColorStats(
   editor.palette.forEach((color) => {
     codeByHex.set(
       color.hex.toLowerCase(),
-      getDisplayCode(color, editor.currentBrand),
+      boxLabel(color),
     )
   })
   return [...counts.entries()]
@@ -1582,6 +1254,7 @@ function rotatedImageCorner(
   placement: ImagePlacement,
   imageHeightRatio: number,
   corner: 'nw' | 'ne' | 'se' | 'sw',
+  boardAspect: number,
 ) {
   const center = {
     x: placement.x + placement.scale / 2,
@@ -1602,8 +1275,8 @@ function rotatedImageCorner(
   const dx = point.x - center.x
   const dy = point.y - center.y
   return {
-    x: center.x + dx * Math.cos(radians) - dy * Math.sin(radians),
-    y: center.y + dx * Math.sin(radians) + dy * Math.cos(radians),
+    x: center.x + dx * Math.cos(radians) - dy / boardAspect * Math.sin(radians),
+    y: center.y + dx * boardAspect * Math.sin(radians) + dy * Math.cos(radians),
   }
 }
 
@@ -1611,37 +1284,6 @@ function normalizeDegrees(value: number) {
   return ((value % 360) + 360) % 360
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
-
-function getBoundsInBoardRect(stageRect: DOMRect, boardRect: DOMRect) {
-  return {
-    minX: (stageRect.left - boardRect.left) / boardRect.width,
-    maxX: (stageRect.right - boardRect.left) / boardRect.width,
-    minY: (stageRect.top - boardRect.top) / boardRect.height,
-    maxY: (stageRect.bottom - boardRect.top) / boardRect.height,
-  }
-}
-
-function clampPlacementAxisToBounds(
-  value: number,
-  size: number,
-  minBound: number,
-  maxBound: number,
-) {
-  const lower = Math.min(minBound, maxBound - size)
-  const upper = Math.max(minBound, maxBound - size)
-  return clamp(value, lower, upper)
-}
-
-function getBoardPresetValue(cols: number, rows: number) {
-  return (
-    boardSizePresets.find(
-      (preset) => preset.cols === cols && preset.rows === rows,
-    )?.label ?? ''
-  )
-}
 
 function snapDegrees(value: number, step: number) {
   return Math.round(value / step) * step
@@ -1650,48 +1292,4 @@ function snapDegrees(value: number, step: number) {
 function formatDegrees(value: number) {
   const rounded = Math.round(normalizeDegrees(value))
   return `${rounded}°`
-}
-
-function NumberField(props: {
-  label: string
-  value: number
-  onChange: (value: number) => void
-}) {
-  return <NumberInput {...props} min={boardSizeMin} max={boardSizeMax} />
-}
-
-function NumberInput({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  onChange: (value: number) => void
-}) {
-  function commit(next: number) {
-    if (Number.isNaN(next)) return
-    onChange(clamp(Math.round(next), min, max))
-  }
-
-  return (
-    <label className="group flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-editor-border bg-editor-elevated/70 px-3 outline-none transition-without-transform focus-within:border-editor-accent hover:bg-editor-elevated">
-      <span className="shrink-0 text-xs font-black text-editor-text">
-        {label}
-      </span>
-      <input
-        className="number-input-clean min-w-0 flex-1 bg-transparent text-right font-mono text-sm font-black text-editor-strong outline-none"
-        type="number"
-        min={min}
-        max={max}
-        value={value}
-        onBlur={(event) => commit(Number(event.target.value))}
-        onChange={(event) => commit(Number(event.target.value))}
-      />
-    </label>
-  )
 }

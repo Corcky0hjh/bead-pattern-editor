@@ -1,3 +1,8 @@
+import mixiaowoData from './data/mixiaowo.json'
+import panpanData from './data/panpan.json'
+import manmanData from './data/manman.json'
+import cocoData from './data/coco.json'
+import artkalsData from './data/artkal-s.json'
 // 色板模块统一出口
 //
 // 数据层和工具集中在此处导出,UI/state 只依赖本模块,不直接 import data/*.json
@@ -18,6 +23,11 @@ export { getDisplayCode, groupColorsForBrand } from './display'
 export { findNearestBeadColors, type NearestBeadColor } from './nearest'
 
 const datasets: Record<BrandId, BeadColor[]> = {
+  'mixiaowo': mixiaowoData as BeadColor[],
+  'panpan': panpanData as BeadColor[],
+  'manman': manmanData as BeadColor[],
+  'coco': cocoData as BeadColor[],
+  'artkal-s': artkalsData as BeadColor[],
   mard: mardData as BeadColor[],
   'artkal-c': artkalCData as BeadColor[],
   'hama-midi': hamaMidiData as BeadColor[],

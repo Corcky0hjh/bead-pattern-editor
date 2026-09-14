@@ -1,3 +1,8 @@
+import { majorGridOffset } from '../../core/canvas/settings'
+import { matchesShortcut } from '../../features/editor/shortcuts'
+import { HeaderPopover, HeaderMenuButton } from '../../components/HeaderPopover'
+import { HeaderIconButton } from '../../components/HeaderIconButton'
+import { BoxQuickColors } from '../../features/editor/BeadBoxPanel'
 import { createPortal } from 'react-dom'
 import {
   useCallback,
@@ -24,7 +29,6 @@ import {
   Eyedropper,
   Eye,
   Eraser,
-  GearSix,
   GridFour,
   Hash,
   FlipHorizontal,
@@ -83,9 +87,9 @@ import type {
 import { getShapeCellIndexes } from '../../features/editor/useEditorState'
 
 type CanvasStageProps = {
+  headerHistory: HTMLDivElement | null
   headerControls: HTMLDivElement | null
   editor: EditorStateController
-  onOpenSettings: () => void
 }
 
 type StageTool = { value: EditorTool; label: string; icon: ToolButtonIcon }
@@ -188,10 +192,6 @@ const toolsWithOptions = new Set<EditorTool>([
   'fill',
   'shape',
 ])
-const toolbarSystemButtonInteractionClass =
-  'border border-transparent transition duration-150 active:scale-95'
-const toolbarButtonIdleClass =
-  'bg-editor-surface-soft text-editor-strong hover:border-editor-accent/25 hover:bg-editor-elevated'
 const symmetryOptions: Array<{
   value: SymmetryMode
   label: string
@@ -376,7 +376,7 @@ function getCodeTextColor(hex: string): string {
   return luminance > 150 ? '#2a211b' : '#ffffff'
 }
 
-export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasStageProps) {
+export function CanvasStage({ editor, headerControls, headerHistory }: CanvasStageProps) {
   const [painting, setPainting] = useState(false)
   const [openToolOptions, setOpenToolOptions] = useState<ToolOptionsTarget | null>(
     null,
@@ -501,6 +501,8 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     positionX: 0,
     positionY: 0,
   })
+  const displayButtonRef = useRef<HTMLButtonElement>(null)
+  const zoomButtonRef = useRef<HTMLButtonElement>(null)
   const utilityControlsRef = useRef<HTMLDivElement | null>(null)
   const [utilityDisplayOpen, setUtilityDisplayOpen] = useState(false)
   const [headerZoomOpen, setHeaderZoomOpen] = useState(false)
@@ -514,6 +516,8 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     ))
   }, [editor.isBeadingLayerPicker, hoveredBeadingColor, pattern.cells])
   useEffect(() => {
+    // Mode changes invalidate the pointer target even without a pointer event.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!editor.isBeadingLayerPicker) setHoveredBeadingColor(null)
   }, [editor.isBeadingLayerPicker, editor.activeBeadingProjectId])
   const visibleBeadingCells = useMemo(() => {
@@ -560,8 +564,9 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
           : color.hex.slice(1).toUpperCase())
       codes.set(color.hex.toLowerCase(), label)
     })
+    editor.beadBox.forEach(color => codes.set(color.hex.toLowerCase(), (color.brand ? color.codes[color.brand] : undefined) ?? color.nameZh ?? color.nameEn ?? color.hex.slice(1).toUpperCase()))
     return codes
-  }, [editor.currentBrand, editor.palette])
+  }, [editor.currentBrand, editor.palette, editor.beadBox])
   const renderBeadCodes =
     settings.showBeadCodes !== false && visualCellSize >= 18
   const rulerStep = visualCellSize >= 24 ? 1 : visualCellSize >= 10 ? 5 : 10
@@ -640,6 +645,8 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
   useEffect(() => stopContinuousZoom, [])
 
   useEffect(() => {
+    // Reset transient selections when the external editor mode changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedOptionsTarget(null)
     if (editor.editorMode !== 'bead') return
     floatingSelectionRef.current = null
@@ -687,6 +694,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     (displayedToolbarLayout.placement === 'floating' &&
       displayedToolbarLayout.y >
         (stageRef.current?.clientHeight ?? window.innerHeight) / 2)
+  const hasQuickColors = renderedOptionsTool === 'brush' || renderedOptionsTool === 'fill' || renderedOptionsTool === 'shape'
   const toolbarOptionsSide = displayedToolbarLayout.orientation === 'vertical'
   const toolbarDragOriginSide =
     toolbarDragSession?.origin.orientation === 'vertical'
@@ -709,12 +717,12 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
       : 'top-[calc(100%-36px)] -translate-x-1/2 !rounded-t-none'
   const toolbarOptionsInset =
     toolbarOptionsDirection === 'right'
-      ? 'pl-[44px]'
+      ? 'pl-[42px]'
       : toolbarOptionsDirection === 'left'
-        ? 'pr-[44px]'
+        ? 'pr-[42px]'
         : toolbarOptionsDirection === 'down'
-          ? 'pt-[44px]'
-          : 'pb-[44px]'
+          ? 'pt-[42px]'
+          : 'pb-[42px]'
 
   useEffect(() => {
     if (toolOptionsCloseTimerRef.current !== null) {
@@ -761,72 +769,42 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     )
       return
 
-    const toolbarRect = toolbar.getBoundingClientRect()
-    const toolbarSurfaceRect = toolbarSurface.getBoundingClientRect()
-    const stageRect = stage.getBoundingClientRect()
-    const popoverWidth = popover.offsetWidth
-    const popoverHeight = popover.offsetHeight
-    popover.style.marginLeft = '0px'
-    popover.style.marginTop = '0px'
-
-    if (toolbarOptionsSide) {
-      const minimum =
-        Math.max(stageRect.top, toolbarSurfaceRect.top) -
-        toolbarRect.top +
-        popoverHeight / 2
-      const maximum =
-        Math.min(stageRect.bottom, toolbarSurfaceRect.bottom) -
-        toolbarRect.top -
-        popoverHeight / 2
-      popover.style.top = `${Math.min(maximum, Math.max(minimum, toolOptionsAnchor.y))}px`
-    } else {
-      const minimum =
-        Math.max(stageRect.left, toolbarSurfaceRect.left) -
-        toolbarRect.left +
-        popoverWidth / 2
-      const maximum =
-        Math.min(stageRect.right, toolbarSurfaceRect.right) -
-        toolbarRect.left -
-        popoverWidth / 2
-      popover.style.left = `${Math.min(maximum, Math.max(minimum, toolOptionsAnchor.x))}px`
+    const updatePosition = () => {
+      const toolbarRect = toolbar.getBoundingClientRect()
+      const surfaceRect = toolbarSurface.getBoundingClientRect()
+      const stageRect = stage.getBoundingClientRect()
+      const content = getMainToolbarBounds(stage)
+      const left = stageRect.left + content.left
+      const top = stageRect.top + content.top
+      const right = stageRect.left + content.right
+      const bottom = stageRect.top + content.bottom
+      const width = popover.offsetWidth, height = popover.offsetHeight
+      const clampStart = (wanted: number, size: number, min: number, max: number) =>
+        Math.max(min, Math.min(Math.max(min, max - size), wanted))
+      popover.style.marginLeft = '0px'
+      popover.style.marginTop = '0px'
+      // Align with the chosen tool. Only constrain to the toolbar when the panel fits it.
+      if (toolbarOptionsSide) {
+        const min = Math.max(top, surfaceRect.top), max = Math.min(bottom, surfaceRect.bottom)
+        const y = clampStart(toolbarRect.top + toolOptionsAnchor.y - height / 2, height, max - min >= height ? min : top, max - min >= height ? max : bottom)
+        popover.style.top = `${y - toolbarRect.top + height / 2}px`
+      } else {
+        const min = Math.max(left, surfaceRect.left), max = Math.min(right, surfaceRect.right)
+        const x = clampStart(toolbarRect.left + toolOptionsAnchor.x - width / 2, width, max - min >= width ? min : left, max - min >= width ? max : right)
+        popover.style.left = `${x - toolbarRect.left + width / 2}px`
+      }
+      // offset geometry excludes the entrance animation transform.
+      const x = toolbarRect.left + popover.offsetLeft - (toolbarOptionsSide ? 0 : width / 2)
+      const y = toolbarRect.top + popover.offsetTop - (toolbarOptionsSide ? height / 2 : 0)
+      popover.style.marginLeft = `${clampStart(x, width, left, right) - x}px`
+      popover.style.marginTop = `${clampStart(y, height, top, bottom) - y}px`
     }
-
-    const positionedLeft =
-      toolbarRect.left +
-      popover.offsetLeft -
-      (toolbarOptionsSide ? 0 : popoverWidth / 2)
-    const positionedTop =
-      toolbarRect.top +
-      popover.offsetTop -
-      (toolbarOptionsSide ? popoverHeight / 2 : 0)
-    const positionedRight = positionedLeft + popoverWidth
-    const positionedBottom = positionedTop + popoverHeight
-    const minimumLeft = toolbarOptionsSide
-      ? stageRect.left
-      : Math.max(stageRect.left, toolbarSurfaceRect.left)
-    const maximumRight = toolbarOptionsSide
-      ? stageRect.right
-      : Math.min(stageRect.right, toolbarSurfaceRect.right)
-    const shiftX =
-      positionedLeft < minimumLeft
-        ? minimumLeft - positionedLeft
-        : positionedRight > maximumRight
-          ? maximumRight - positionedRight
-          : 0
-    const minimumTop = toolbarOptionsSide
-      ? Math.max(stageRect.top, toolbarSurfaceRect.top)
-      : stageRect.top
-    const maximumBottom = toolbarOptionsSide
-      ? Math.min(stageRect.bottom, toolbarSurfaceRect.bottom)
-      : stageRect.bottom
-    const shiftY =
-      positionedTop < minimumTop
-        ? minimumTop - positionedTop
-        : positionedBottom > maximumBottom
-          ? maximumBottom - positionedBottom
-          : 0
-    popover.style.marginLeft = `${shiftX}px`
-    popover.style.marginTop = `${shiftY}px`
+    updatePosition()
+    const observer = new ResizeObserver(updatePosition)
+    observer.observe(popover)
+    observer.observe(toolbarSurface)
+    observer.observe(stage)
+    return () => observer.disconnect()
   }, [
     renderedOptionsTool,
     viewportSize,
@@ -916,34 +894,33 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      const meta = event.ctrlKey || event.metaKey
-      const lower = event.key.toLowerCase()
       const target = event.target as HTMLElement | null
       const editingText = target?.matches(
         'input, textarea, select, [contenteditable="true"]',
       )
-      if (meta && !editingText && (event.key === '+' || event.key === '=')) {
+      if (event.defaultPrevented || editingText || target?.closest('[role="dialog"], [role="alertdialog"]')) return
+      if (matchesShortcut(event, 'zoomIn')) {
         event.preventDefault()
         canvasActionsRef.current.zoomViewportAt(
           Math.min(maxViewportZoom, zoomRef.current + 10),
         )
         return
       }
-      if (meta && !editingText && event.key === '-') {
+      if (matchesShortcut(event, 'zoomOut')) {
         event.preventDefault()
         canvasActionsRef.current.zoomViewportAt(
           Math.max(minViewportZoom, zoomRef.current - 10),
         )
         return
       }
-      if (meta && !editingText && event.key === '0') {
+      if (matchesShortcut(event, 'fit')) {
         event.preventDefault()
         canvasActionsRef.current.fitCanvasToViewport()
         return
       }
-      const undoShortcut = meta && lower === 'z' && !event.shiftKey
+      const undoShortcut = matchesShortcut(event, 'undo')
       const redoShortcut =
-        meta && (lower === 'y' || (lower === 'z' && event.shiftKey))
+        matchesShortcut(event, 'redo') || matchesShortcut(event, 'redoAlt')
       if ((undoShortcut || redoShortcut) && floatingSelectionRef.current) {
         event.preventDefault()
         event.stopImmediatePropagation()
@@ -951,12 +928,12 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         if (redoShortcut && editorRef.current.canRedo) editorRef.current.redo()
         return
       }
-      if (event.key === 'Enter' && floatingSelectionRef.current) {
+      if (matchesShortcut(event, 'confirm') && floatingSelectionRef.current) {
         event.preventDefault()
         commitFloatingSelection()
         return
       }
-      if (event.key === 'Escape') {
+      if (matchesShortcut(event, 'cancel')) {
 
         if (editorRef.current.isBeadingPreview) {
           event.preventDefault()
@@ -1136,11 +1113,11 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     function handleSelectionKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null
       if (
-        target?.matches('input, textarea, select, [contenteditable="true"]')
+        event.defaultPrevented || target?.closest('[role="dialog"], [role="alertdialog"]') || target?.matches('input, textarea, select, [contenteditable="true"]')
       ) {
         return
       }
-      if ((event.key === 'Delete' || event.key === 'Backspace') && selection) {
+      if ((matchesShortcut(event, 'delete') || matchesShortcut(event, 'deleteAlt')) && selection) {
         event.preventDefault()
         const floating = floatingSelectionRef.current
         if (floating?.kind === 'move') {
@@ -1179,10 +1156,10 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
       majorEvery > 0
         ? [
             ...verticalGridLines
-              .filter((_, index) => index % majorEvery === 0)
+              .filter((_, index) => (index - majorGridOffset(pattern.width, majorEvery, settings.majorGridAlignment)) % majorEvery === 0)
               .map((x) => `M${x} 0V${canvasHeight}`),
             ...horizontalGridLines
-              .filter((_, index) => index % majorEvery === 0)
+              .filter((_, index) => (index - majorGridOffset(pattern.height, majorEvery, settings.majorGridAlignment)) % majorEvery === 0)
               .map((y) => `M0 ${y}H${canvasWidth}`),
           ].join('')
         : ''
@@ -1194,6 +1171,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
     pattern.height,
     pattern.width,
     settings.majorGridEvery,
+    settings.majorGridAlignment,
   ])
   const cursorClass = pointerOutsideSelection
     ? 'cursor-not-allowed'
@@ -2901,7 +2879,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         {renderedOptionsTool && !toolbarDragSession ? (
           <div
             ref={toolOptionsPopoverRef}
-            className={`tool-options-popover absolute z-0 max-w-[calc(100vw-1.5rem)] overflow-visible rounded-[18px] border border-editor-border bg-editor-elevated/95 p-2 shadow-[0_14px_42px_rgba(31,24,18,0.16)] backdrop-blur-md ${toolbarOptionsPosition} ${toolbarOptionsInset}`}
+            className={`tool-options-popover absolute z-0 max-w-[calc(100vw-1.5rem)] overflow-visible rounded-[18px] border border-editor-border bg-editor-elevated/95 p-1.5 shadow-[0_14px_42px_rgba(31,24,18,0.16)] backdrop-blur-md ${toolbarOptionsPosition} ${toolbarOptionsInset}`}
             data-drawer-direction={toolbarOptionsDirection}
             data-closing={toolOptionsClosing ? 'true' : 'false'}
             style={
@@ -2917,9 +2895,10 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
               className={`flex items-center gap-1 md:gap-2 ${
                 toolbarOptionsSide
                   ? 'h-auto w-10 flex-col [&>div]:!h-auto [&>div]:!w-10 [&>div]:!flex-col [&>div]:!px-1 [&>div]:!py-1 [&_[data-toolbar-divider]]:!h-px [&_[data-toolbar-divider]]:!w-6'
-                  : 'h-10 w-max'
+                  : 'h-10 w-max max-w-[calc(100vw-48px)] flex-row [&>div]:shrink-0'
               }`}
             >
+              {hasQuickColors ? <BoxQuickColors editor={editor} vertical={toolbarOptionsSide} /> : null}
               {renderedOptionsTool === 'eraser' ? (
                 <EraserStrokePicker
                   mode={renderedEraserMode}
@@ -2961,7 +2940,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
               {renderedOptionsTool === 'eraser' ? (
                 <>
                   <ToolbarDivider horizontal={toolbarOptionsSide} />
-                  <div className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft px-1">
+                  <div className="flex h-10 items-center gap-1 px-1">
                     <button
                       type="button"
                       className="grid h-8 w-8 place-items-center rounded-xl text-editor-strong transition hover:bg-editor-elevated active:scale-95"
@@ -3151,40 +3130,13 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
         )}
       </div>
 
-      {headerControls ? createPortal(<div ref={utilityControlsRef} className="canvas-utility-controls relative z-50" role="toolbar" aria-label="画布通用控制">
-        {utilityDisplayOpen ? (
-          <HeaderControlPopover title="视图显示">
-            <DisplayOptions panel
-              showRulers={settings.showRulers !== false}
-              showPointerGuides={settings.showPointerGuides !== false}
-              showGrid={settings.showGrid}
-              showPointerCoordinates={settings.showPointerCoordinates !== false}
-              showBeadCodes={settings.showBeadCodes !== false}
-              onChange={editor.updateCanvasSettings}
-            />
-          </HeaderControlPopover>
-        ) : null}
-        {headerZoomOpen ? (
-          <HeaderControlPopover title="缩放与定位" compactOnly>
-            <div className="flex items-center justify-between rounded-xl bg-editor-surface-soft p-1">
-              <button type="button" aria-label="缩小画布" className="header-menu-step" disabled={editor.zoom <= minViewportZoom} onClick={() => stepZoom(-1)}><Minus size={18} /></button>
-              <span className="text-sm font-semibold tabular-nums text-editor-strong">{Math.round(editor.zoom)}%</span>
-              <button type="button" aria-label="放大画布" className="header-menu-step" disabled={editor.zoom >= maxViewportZoom} onClick={() => stepZoom(1)}><Plus size={18} /></button>
-            </div>
-            <div className="my-2 grid grid-cols-3 gap-1">
-              {[50,100,200].map((value) => <button key={value} type="button" aria-pressed={Math.round(editor.zoom) === value} className="header-menu-step text-xs tabular-nums" onClick={() => zoomViewportAt(value)}>{value}%</button>)}
-            </div>
-            <button type="button" className="header-menu-item" onClick={() => { fitCanvasToViewport(); setHeaderZoomOpen(false) }}><Crosshair size={17} /><span>适应画布并居中</span></button>
-          </HeaderControlPopover>
-        ) : null}
-        <div data-toolbar-row className="flex items-center gap-1" onPointerDownCapture={() => setOpenToolOptions(null)}>
+      {headerHistory ? createPortal(<>
               <div
                   data-toolbar-row
                   className="flex h-10 gap-1"
                   aria-label="历史操作"
                 >
-                  <button
-                    className={`grid h-10 w-10 place-items-center rounded-2xl ${toolbarSystemButtonInteractionClass} ${toolbarButtonIdleClass} disabled:scale-100 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-editor-surface-soft`}
+                  <HeaderIconButton
                     type="button"
                     disabled={
                       editor.editorMode === 'bead'
@@ -3203,9 +3155,8 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                     }}
                   >
                     <ArrowCounterClockwise size={18} weight="regular" />
-                  </button>
-                  <button
-                    className={`grid h-10 w-10 place-items-center rounded-2xl ${toolbarSystemButtonInteractionClass} ${toolbarButtonIdleClass} disabled:scale-100 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-editor-surface-soft`}
+                  </HeaderIconButton>
+                  <HeaderIconButton
                     type="button"
                     disabled={
                       editor.editorMode === 'bead'
@@ -3224,18 +3175,45 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                     }}
                   >
                     <ArrowClockwise size={18} weight="regular" />
-                  </button>
+                  </HeaderIconButton>
                 </div>
+      </>, headerHistory) : null}
+      {headerControls ? createPortal(<div ref={utilityControlsRef} className="canvas-utility-controls relative z-50" role="toolbar" aria-label="画布通用控制">
+        {utilityDisplayOpen ? (
+          <HeaderPopover label="视图显示" triggerRef={displayButtonRef}>
+            <DisplayOptions panel
+              showRulers={settings.showRulers !== false}
+              showPointerGuides={settings.showPointerGuides !== false}
+              showGrid={settings.showGrid}
+              showPointerCoordinates={settings.showPointerCoordinates !== false}
+              showBeadCodes={settings.showBeadCodes !== false}
+              onChange={editor.updateCanvasSettings}
+            />
+          </HeaderPopover>
+        ) : null}
+        {headerZoomOpen ? (
+          <HeaderPopover label="缩放与定位" triggerRef={zoomButtonRef} compactOnly>
+            <div className="flex items-center justify-between gap-1">
+              <HeaderMenuButton compact aria-label="缩小画布" disabled={editor.zoom <= minViewportZoom} onClick={() => stepZoom(-1)}><Minus size={17} /></HeaderMenuButton>
+              <span className="px-3 text-[13px] font-semibold tabular-nums text-editor-strong">{Math.round(editor.zoom)}%</span>
+              <HeaderMenuButton compact aria-label="放大画布" disabled={editor.zoom >= maxViewportZoom} onClick={() => stepZoom(1)}><Plus size={17} /></HeaderMenuButton>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {[50,100,200].map((value) => <HeaderMenuButton compact key={value} aria-pressed={Math.round(editor.zoom) === value} className="tabular-nums" onClick={() => zoomViewportAt(value)}>{value}%</HeaderMenuButton>)}
+            </div>
+            <HeaderMenuButton onClick={() => { fitCanvasToViewport(); setHeaderZoomOpen(false) }}><Crosshair size={17} /><span>适应画布并居中</span></HeaderMenuButton>
+          </HeaderPopover>
+        ) : null}
+        <div data-toolbar-row className="flex items-center gap-1" onPointerDownCapture={() => setOpenToolOptions(null)}>
                 <div className="header-zoom-container relative">
-                  <button type="button" className="header-zoom-toggle hidden h-8 rounded-lg px-2 text-xs font-semibold tabular-nums text-editor-strong" aria-label="缩放控制" aria-expanded={headerZoomOpen} onClick={() => { setUtilityDisplayOpen(false); setHeaderZoomOpen((open) => !open) }}>{Math.round(editor.zoom)}%</button>
+                  <HeaderIconButton ref={zoomButtonRef} type="button" contentWidth className="header-zoom-toggle hidden text-xs font-semibold tabular-nums" aria-label="缩放控制" aria-expanded={headerZoomOpen} onClick={() => { setUtilityDisplayOpen(false); setHeaderZoomOpen((open) => !open) }}>{Math.round(editor.zoom)}%</HeaderIconButton>
                 <div
                   data-toolbar-row
-                  className="flex h-10 items-center rounded-2xl bg-editor-surface-soft p-1"
+                  className="header-zoom-capsule flex h-8 items-center gap-1"
                   data-zoom-open={headerZoomOpen}
                   aria-label="画布缩放"
                 >
-                  <button
-                    className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
+                  <HeaderIconButton
                     type="button"
                     aria-label="缩小"
                     disabled={editor.zoom <= minViewportZoom}
@@ -3252,8 +3230,8 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                       stepZoom(-1)
                     }}
                   >
-                    <Minus size={15} weight="bold" />
-                  </button>
+                    <Minus size={18} weight="regular" />
+                  </HeaderIconButton>
                   <input
                     ref={zoomInputRef}
                     type="text"
@@ -3263,7 +3241,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                     defaultValue={Math.round(editor.zoom)}
                     aria-label="缩放比例"
                     title={`缩放比例，${minViewportZoom} 至 ${maxViewportZoom}`}
-                    className="h-8 w-8 appearance-none rounded-xl bg-transparent text-center text-[10px] font-bold tabular-nums text-editor-strong outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="h-8 w-8 appearance-none rounded-lg bg-transparent text-center text-xs font-semibold tabular-nums text-editor-strong outline-none focus-visible:ring-2 focus-visible:ring-editor-accent/50 [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     onFocus={(event) => event.currentTarget.select()}
                     onInput={(event) => {
                       event.currentTarget.value = event.currentTarget.value
@@ -3284,8 +3262,7 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                       }
                     }}
                   />
-                  <button
-                    className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated disabled:opacity-35"
+                  <HeaderIconButton
                     type="button"
                     aria-label="放大"
                     disabled={editor.zoom >= maxViewportZoom}
@@ -3302,40 +3279,29 @@ export function CanvasStage({ editor, onOpenSettings, headerControls }: CanvasSt
                       stepZoom(1)
                     }}
                   >
-                    <Plus size={15} weight="bold" />
-                  </button>
-                  <button
+                    <Plus size={18} weight="regular" />
+                  </HeaderIconButton>
+                  <HeaderIconButton
                     type="button"
-                    className="grid h-8 w-8 place-items-center rounded-xl text-editor-text transition hover:bg-editor-elevated"
                     aria-label="定位画布"
                     title="适应并定位画布"
                     onClick={fitCanvasToViewport}
                   >
-                    <Crosshair size={15} weight="bold" />
-                  </button>
+                    <Crosshair size={18} weight="regular" />
+                  </HeaderIconButton>
                 </div>
                 </div>
-                <ToolbarDivider horizontal={false} />
-                <button
+                <HeaderIconButton
                   type="button"
+                  ref={displayButtonRef}
                   aria-label="显示"
                   title="显示设置"
                   aria-expanded={utilityDisplayOpen}
-                  className="utility-display-button grid h-10 w-10 shrink-0 place-items-center rounded-xl text-editor-text transition"
                   onClick={() => { setHeaderZoomOpen(false); setUtilityDisplayOpen((open) => !open) }}
                 >
                   <Eye size={18} weight="regular" />
-                </button>
-                <button
-                  type="button"
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-editor-strong transition hover:bg-editor-elevated active:scale-95 disabled:opacity-35"
-                  disabled={editor.editorMode === 'bead'}
-                  aria-label="设置"
-                  title="画布与主题设置"
-                  onClick={onOpenSettings}
-                >
-                  <GearSix size={18} weight="regular" />
-                </button>
+                </HeaderIconButton>
+
               </div>
       </div>, headerControls) : null}
 
@@ -3815,7 +3781,7 @@ function ToolSizePicker({
   onChange: (value: number) => void
 }) {
   return (
-    <div className="flex h-10 items-center gap-0.5 rounded-2xl bg-editor-surface-soft px-1 md:gap-1">
+    <div className="flex h-10 items-center gap-0.5 px-1 md:gap-1">
       <SizeCycleButton label="画笔大小" value={value} onChange={onChange} />
     </div>
   )
@@ -3826,31 +3792,31 @@ function SizeCycleButton({
   value,
   active = true,
   onChange,
+  onActivate,
 }: {
   label: string
   value: number
   active?: boolean
   onChange: (value: number) => void
+  onActivate?: () => void
 }) {
   const next = sizeOptions[(sizeOptions.indexOf(value) + 1) % sizeOptions.length]
   return (
     <button
       type="button"
-      aria-label={`${label} ${value}，点击切换为 ${next}`}
-      title={`${label}：${value} · 点击切换为 ${next}（1–5 循环）`}
+      aria-label={active ? `${label} ${value}，点击切换为 ${next}` : `${label} ${value}，点击启用`}
+      aria-pressed={active}
+      title={active ? `${label}：${value} · 点击切换为 ${next}（1–5 循环）` : `${label}：${value} · 点击启用，保留当前大小`}
       className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl text-xs font-black tabular-nums transition active:scale-95 ${active ? 'bg-editor-accent text-white' : 'text-editor-strong hover:bg-editor-elevated'}`}
       onClick={(event) => {
         event.stopPropagation()
-        onChange(next)
+        if (active) onChange(next)
+        else onActivate?.()
       }}
     >
       {value}
     </button>
   )
-}
-
-function HeaderControlPopover({ title, children, compactOnly = false }: { title: string; children: ReactNode; compactOnly?: boolean }) {
-  return <div role="group" aria-label={title} className={`header-control-popover ${compactOnly ? "md:hidden" : ""}`}><p className="mb-2 px-2 text-[11px] font-semibold text-editor-text">{title}</p>{children}</div>
 }
 
 function ViewToggleStatus({ active }: { active: boolean }) {
@@ -3915,13 +3881,13 @@ function DisplayOptions({
 
   if (panel) return <div className="grid gap-1">{options.map((option) => {
     const Icon = option.icon
-    return <button key={option.label} type="button" className="header-menu-item" aria-pressed={option.active} onClick={() => onChange(option.partial)}>
+    return <HeaderMenuButton selectionStyle="indicator" key={option.label} aria-pressed={option.active} onClick={() => onChange(option.partial)}>
       <Icon size={17} /><span className="flex-1 text-left">{option.label}</span><ViewToggleStatus active={option.active} />
-    </button>
+    </HeaderMenuButton>
   })}</div>
   return (
     <div
-      className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft p-1"
+      className="flex h-10 items-center gap-1 p-1"
       onClick={(event) => event.stopPropagation()}
     >
       {options.map((option) => (
@@ -3957,18 +3923,7 @@ function SymmetryModePicker({
   value: SymmetryMode
   onChange: (value: SymmetryMode) => void
 }) {
-  return (
-    <div className="flex h-10 items-center gap-0.5 rounded-2xl bg-editor-surface-soft px-1 md:gap-1">
-      {symmetryOptions.map((option) => (
-        <SymmetryButton
-          key={option.value}
-          option={option}
-          active={option.value === value}
-          onClick={() => onChange(option.value)}
-        />
-      ))}
-    </div>
-  )
+  return <ToolModePicker value={value} onChange={onChange} label="对称方式" options={symmetryOptions} />
 }
 
 function FillModePicker({
@@ -3981,46 +3936,23 @@ function FillModePicker({
   return <ToolModePicker value={value} onChange={onChange} label="填色范围" options={fillModeOptions} />
 }
 
-function ToolModePicker<T extends string>({
-  value,
-  onChange,
-  label,
-  options,
-}: {
-  value: T
-  onChange: (value: T) => void
-  label: string
+function ModeCycleButton<T extends string>({ value, onChange, label, options }: {
+  value: T; onChange: (value: T) => void; label: string
   options: ReadonlyArray<{ value: T; label: string; icon: ToolButtonIcon }>
 }) {
-  return (
-    <div
-      className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft px-1"
-      role="group"
-      aria-label={label}
-    >
-      {options.map((option) => {
-        const Icon = option.icon
-        const active = value === option.value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            className={`grid h-8 w-8 place-items-center rounded-xl transition active:scale-95 ${
-              active
-                ? 'bg-editor-accent text-white shadow-sm'
-                : 'text-editor-strong hover:bg-editor-elevated'
-            }`}
-            aria-label={option.label}
-            aria-pressed={active}
-            title={option.label}
-            onClick={() => onChange(option.value)}
-          >
-            <Icon size={15} weight="regular" />
-          </button>
-        )
-      })}
-    </div>
-  )
+  const index = Math.max(0, options.findIndex(option => option.value === value))
+  const current = options[index], next = options[(index + 1) % options.length]
+  const Icon = current.icon
+  return <button type="button" className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-editor-accent text-white transition active:scale-95"
+    aria-label={`${label}：${current.label}，点击切换为${next.label}`}
+    title={`${label}：${current.label}（${index + 1}/${options.length}）· 下一项：${next.label}`}
+    onClick={event => { event.stopPropagation(); onChange(next.value) }}><Icon size={17} weight="regular" /></button>
+}
+function ToolModePicker<T extends string>(props: {
+  value: T; onChange: (value: T) => void; label: string
+  options: ReadonlyArray<{ value: T; label: string; icon: ToolButtonIcon }>
+}) {
+  return <div className="flex h-10 items-center px-1" role="group" aria-label={props.label}><ModeCycleButton {...props} /></div>
 }
 
 function EraserStrokePicker({
@@ -4036,7 +3968,7 @@ function EraserStrokePicker({
 }) {
   return (
     <div
-      className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft px-1"
+      className="flex h-10 items-center gap-1 px-1"
       role="group"
       aria-label="橡皮粗细"
     >
@@ -4044,10 +3976,8 @@ function EraserStrokePicker({
         label="橡皮粗细"
         value={size}
         active={mode === 'brush'}
-        onChange={(next) => {
-          onSizeChange(next)
-          onModeChange('brush')
-        }}
+        onChange={onSizeChange}
+        onActivate={() => onModeChange('brush')}
       />
       <button
         type="button"
@@ -4083,15 +4013,13 @@ function ShapeToolOptions({
   onStrokeSizeChange: (value: number) => void
 }) {
   return (
-    <div className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft px-1">
+    <div className="flex h-10 items-center gap-1 px-1">
       <SizeCycleButton
         label="笔画粗细"
         value={strokeSize}
         active={kind === 'line' || style === 'outline'}
-        onChange={(next) => {
-          onStrokeSizeChange(next)
-          if (kind !== 'line') onStyleChange('outline')
-        }}
+        onChange={onStrokeSizeChange}
+        onActivate={() => onStyleChange('outline')}
       />
       {kind !== 'line' ? (
         <button
@@ -4110,32 +4038,10 @@ function ShapeToolOptions({
         </button>
       ) : null}
       <ToolbarDivider />
-      {shapeKindOptions.map((option) => {
-        const Icon = option.icon
-        const active = kind === option.value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            className={`grid h-8 w-8 place-items-center rounded-xl transition active:scale-95 ${
-              active
-                ? 'bg-editor-accent text-white shadow-sm'
-                : 'text-editor-strong hover:bg-editor-elevated'
-            }`}
-            aria-label={option.label}
-            aria-pressed={active}
-            title={option.label}
-            onClick={() => {
-              if (option.value === 'line' && style === 'filled') {
-                onStyleChange('outline')
-              }
-              onKindChange(option.value)
-            }}
-          >
-            <Icon size={16} weight="regular" />
-          </button>
-        )
-      })}
+      <ModeCycleButton value={kind} label="形状" options={shapeKindOptions} onChange={next => {
+        if (next === 'line' && style === 'filled') onStyleChange('outline')
+        onKindChange(next)
+      }} />
     </div>
   )
 }
@@ -4162,30 +4068,8 @@ function SelectionToolOptions({
   canRotate: boolean
 }) {
   return (
-    <div className="flex h-10 items-center gap-1 rounded-2xl bg-editor-surface-soft px-1">
-      {selectionModeOptions.map((option) => {
-        const Icon = option.icon
-        const active = mode === option.value
-        const disabled = option.value !== 'select' && !selection
-        return (
-          <button
-            key={option.value}
-            type="button"
-            className={`grid h-8 w-8 place-items-center rounded-xl transition active:scale-95 disabled:opacity-35 disabled:active:scale-100 ${
-              active
-                ? 'bg-editor-accent text-white shadow-sm'
-                : 'text-editor-strong hover:bg-editor-elevated'
-            }`}
-            aria-label={option.label}
-            aria-pressed={active}
-            title={option.label}
-            disabled={disabled}
-            onClick={() => onModeChange(option.value)}
-          >
-            <Icon size={16} weight="regular" />
-          </button>
-        )
-      })}
+    <div className="flex h-10 items-center gap-1 px-1">
+      <ModeCycleButton value={mode} label="选区模式" options={selectionModeOptions} onChange={onModeChange} />
       <SelectionActionButton
         icon={SelectionSlash}
         label="取消选择"
@@ -4254,34 +4138,6 @@ function SelectionActionButton({
       onClick={onClick}
     >
       <Icon size={16} weight="regular" />
-    </button>
-  )
-}
-
-function SymmetryButton({
-  option,
-  active,
-  onClick,
-}: {
-  option: (typeof symmetryOptions)[number]
-  active: boolean
-  onClick: () => void
-}) {
-  const Icon = option.icon
-  return (
-    <button
-      className={`grid h-8 w-7 place-items-center rounded-full text-xs font-black transition md:w-8 ${
-        active
-          ? 'bg-editor-accent text-white'
-          : 'text-editor-strong hover:bg-editor-elevated'
-      }`}
-      type="button"
-      aria-pressed={active}
-      aria-label={option.label}
-      title={option.label}
-      onClick={onClick}
-    >
-      <Icon size={17} weight="regular" />
     </button>
   )
 }

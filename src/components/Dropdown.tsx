@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+import { Check } from '@phosphor-icons/react'
 // 通用下拉选择器,替代原生 <select>。
 //
 // 设计:
@@ -8,9 +10,10 @@
 // - 列表 max-h 限高 + 滚动,适配 16 项以内场景
 // - 视觉与现有 Tailwind 主题对齐:rounded-2xl / editor-border / editor-surface
 //
-// 不打算覆盖的能力:多选、搜索过滤、虚拟滚动、portal 渲染。需要时再升级。
+// 不打算覆盖的能力:搜索过滤、虚拟滚动。需要时再升级。
 import {
   useCallback,
+  useLayoutEffect,
   useEffect,
   useId,
   useMemo,
@@ -28,6 +31,7 @@ export type DropdownOption<V extends string = string> = {
 
 type DropdownProps<V extends string> = {
   value: V
+  selectedValues?: V[]
   options: DropdownOption<V>[]
   onChange: (value: V) => void
   /** 当前未选中时的占位文案 */
@@ -39,6 +43,7 @@ type DropdownProps<V extends string> = {
 
 export function Dropdown<V extends string>({
   value,
+  selectedValues,
   options,
   onChange,
   placeholder = '请选择',
@@ -51,10 +56,36 @@ export function Dropdown<V extends string>({
   const listRef = useRef<HTMLUListElement | null>(null)
   const listId = useId()
 
+  useLayoutEffect(() => {
+    if (!open) return
+    const position = () => {
+      const button = buttonRef.current, list = listRef.current
+      if (!button || !list) return
+      const r = button.getBoundingClientRect(), v = window.visualViewport
+      const left = (v?.offsetLeft ?? 0) + 8, top = (v?.offsetTop ?? 0) + 8
+      const right = left + (v?.width ?? innerWidth) - 16, bottom = top + (v?.height ?? innerHeight) - 16
+      const below = bottom - r.bottom - 4, above = r.top - top - 4
+      const up = below < Math.min(288, list.scrollHeight) && above > below
+      list.style.width = Math.min(r.width, right-left) + 'px'
+      list.style.maxHeight = Math.max(40, Math.min(288, up ? above : below)) + 'px'
+      list.style.left = Math.max(left, Math.min(r.left, right-list.offsetWidth)) + 'px'
+      list.style.top = (up ? r.top - list.offsetHeight - 4 : r.bottom + 4) + 'px'
+    }
+    position()
+    const observer = new ResizeObserver(position)
+    if (buttonRef.current) observer.observe(buttonRef.current)
+    if (listRef.current) observer.observe(listRef.current)
+    window.addEventListener('resize',position)
+    window.addEventListener('scroll',position,true)
+    window.visualViewport?.addEventListener('resize',position)
+    return () => { observer.disconnect();window.removeEventListener('resize',position);window.removeEventListener('scroll',position,true);window.visualViewport?.removeEventListener('resize',position) }
+  }, [open])
+
   const selected = useMemo(
     () => options.find((o) => o.value === value) ?? null,
     [options, value],
   )
+  const selectedOptions = selectedValues ? options.filter(option => selectedValues.includes(option.value)) : []
 
   // 点击外部关闭
   useEffect(() => {
@@ -73,10 +104,9 @@ export function Dropdown<V extends string>({
   const commit = useCallback(
     (next: V) => {
       onChange(next)
-      setOpen(false)
-      buttonRef.current?.focus()
+      if (!selectedValues) { setOpen(false); buttonRef.current?.focus() }
     },
-    [onChange],
+    [onChange, selectedValues],
   )
 
   function openMenu() {
@@ -96,7 +126,9 @@ export function Dropdown<V extends string>({
   }
 
   function handleListKey(event: React.KeyboardEvent<HTMLUListElement>) {
+    if (event.key === 'Tab') { setOpen(false); buttonRef.current?.focus(); return }
     if (event.key === 'Escape') {
+      event.stopPropagation()
       event.preventDefault()
       setOpen(false)
       buttonRef.current?.focus()
@@ -140,26 +172,31 @@ export function Dropdown<V extends string>({
           'flex h-11 w-full items-center justify-between gap-2 rounded-2xl border border-editor-border bg-editor-elevated/70 px-3 text-sm font-bold text-editor-strong outline-none transition hover:bg-editor-elevated'
         }
       >
-        <span className="truncate text-left">
-          {selected ? selected.label : placeholder}
+        <span className="min-w-0 flex-1 truncate text-left" title={selectedValues ? selectedOptions.map(option => option.label).join('、') : undefined}>
+          {selectedValues ? selectedOptions[0]?.label || placeholder : selected ? selected.label : placeholder}
         </span>
+        {selectedValues && selectedOptions.length > 1 ? <span className="shrink-0 rounded-md bg-editor-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-editor-accent">+{selectedOptions.length - 1}</span> : null}
         <ChevronDown open={open} />
       </button>
-      {open ? (
+      {open ? createPortal(
         <ul
           ref={listRef}
           id={listId}
           role="listbox"
+          aria-multiselectable={selectedValues ? true : undefined}
+          aria-label={ariaLabel}
+          onMouseDown={event=>event.stopPropagation()}
+          onPointerDown={event=>event.stopPropagation()}
           tabIndex={-1}
           aria-activedescendant={
             focusIndex >= 0 ? `${listId}-option-${focusIndex}` : undefined
           }
           onKeyDown={handleListKey}
-          className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-72 overflow-auto rounded-2xl border border-editor-border bg-editor-elevated p-1 shadow-lg outline-none"
+          className="fixed z-[100] m-0 max-h-72 space-y-1 overflow-auto rounded-2xl border border-editor-border bg-editor-elevated p-1.5 shadow-lg outline-none"
         >
           {options.map((option, index) => {
             const active = index === focusIndex
-            const selectedItem = option.value === value
+            const selectedItem = selectedValues ? selectedValues.includes(option.value) : option.value === value
             return (
               <li
                 key={option.value}
@@ -172,21 +209,21 @@ export function Dropdown<V extends string>({
                   if (option.disabled) return
                   commit(option.value)
                 }}
-                className={`grid cursor-pointer gap-0.5 rounded-xl px-3 py-2 text-sm transition ${
+                className={`grid min-h-10 cursor-pointer content-center gap-0.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors ${
                   option.disabled
                     ? 'cursor-not-allowed text-editor-text/40'
                     : selectedItem
-                      ? 'bg-editor-accent text-white'
+                      ? active ? 'bg-editor-accent-soft text-editor-accent' : 'text-editor-accent'
                       : active
                         ? 'bg-editor-surface-soft text-editor-strong'
                         : 'text-editor-strong'
                 }`}
               >
-                <span className="font-bold">{option.label}</span>
+                <span className="flex items-center justify-between gap-3 font-medium"><span className="min-w-0">{option.label}</span>{selectedValues ? <span aria-hidden="true" className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${selectedItem ? 'border-editor-accent bg-editor-accent text-white' : 'border-editor-border'}`}>{selectedItem ? <Check size={11} weight="bold"/> : null}</span> : selectedItem ? <Check size={15} className="shrink-0" aria-hidden="true"/> : null}</span>
                 {option.hint ? (
                   <span
                     className={`text-[11px] leading-4 ${
-                      selectedItem ? 'text-white/80' : 'text-editor-text/70'
+                      selectedItem ? 'text-editor-accent/80' : 'text-editor-text/70'
                     }`}
                   >
                     {option.hint}
@@ -195,7 +232,7 @@ export function Dropdown<V extends string>({
               </li>
             )
           })}
-        </ul>
+        </ul>, document.body
       ) : null}
     </div>
   )

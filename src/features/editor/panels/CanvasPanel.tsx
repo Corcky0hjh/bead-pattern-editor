@@ -1,11 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Check, Warning } from '@phosphor-icons/react'
+import { type ReactNode } from 'react'
+import { Check, GridFour, PaintBrush, Palette, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { MAJOR_GRID_OPTIONS } from '../../../core/canvas/settings'
-import { MAX_PATTERN_SIDE, MIN_PATTERN_SIDE } from '../../../core/pattern/grid'
-import { canvasPresets } from '../../../core/pattern/presets'
-import { THEMES } from '../../../core/theme/themes'
+import { DEFAULT_THEME_ID, THEMES } from '../../../core/theme/themes'
 import { ColorPickerPopover } from '../../../components/ColorPickerPopover'
-import { appToast } from '../../../components/toastApi'
 import { Dropdown } from '../../../components/Dropdown'
 import { Slider } from '../../../components/Slider'
 import type { EditorStateController } from '../useEditorState'
@@ -17,134 +14,16 @@ type CanvasPanelProps = {
 }
 
 export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
-  const [resizeConfirmation, setResizeConfirmation] = useState<{
-    rows: number
-    cols: number
-    croppedBeads: number
-  } | null>(null)
-  const resizeCancelRef = useRef<HTMLButtonElement | null>(null)
-
-  useEffect(() => {
-    if (resizeConfirmation) resizeCancelRef.current?.focus()
-  }, [resizeConfirmation])
-  const currentPresetValue =
-    canvasPresets.find(
-      (preset) =>
-        preset.value !== 'custom' &&
-        preset.rows === editor.rows &&
-        preset.cols === editor.cols,
-    )?.value ?? 'custom'
   const { canvasSettings: s, updateCanvasSettings: update } = editor
-  const sizeChanged =
-    editor.rows !== editor.pattern.height ||
-    editor.cols !== editor.pattern.width
-
-  function applySizeWithPreflight() {
-    const rows = Math.min(
-      MAX_PATTERN_SIDE,
-      Math.max(MIN_PATTERN_SIDE, Math.round(editor.rows)),
-    )
-    const cols = Math.min(
-      MAX_PATTERN_SIDE,
-      Math.max(MIN_PATTERN_SIDE, Math.round(editor.cols)),
-    )
-    let croppedBeads = 0
-    if (cols < editor.pattern.width || rows < editor.pattern.height) {
-      for (let y = 0; y < editor.pattern.height; y += 1) {
-        const croppedRow = y >= rows
-        const startX = croppedRow ? 0 : cols
-        for (let x = startX; x < editor.pattern.width; x += 1) {
-          const cell = editor.pattern.cells[y * editor.pattern.width + x]
-          if (cell.color !== null && !cell.isExternal) croppedBeads += 1
-        }
-      }
-    }
-
-    if (croppedBeads > 0) {
-      setResizeConfirmation({ rows, cols, croppedBeads })
-      return
-    }
-    editor.applyCanvasSize(rows, cols)
-    editor.requestViewportFit()
-    appToast.success('画布尺寸已更新', `${cols} × ${rows} 颗`)
-  }
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-8">
+    <div className="mx-auto grid w-full max-w-4xl gap-6">
+
       {view !== 'theme' ? (
         <>
+          <CanvasAppearancePreview editor={editor} />
           <SettingsSection
-            title="尺寸"
-            description={`当前画布为 ${editor.pattern.width} × ${editor.pattern.height} 颗`}
-          >
-            <div className="grid gap-4 py-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <DimensionInput
-                  label="宽"
-                  value={editor.cols}
-                  onChange={editor.setCols}
-                />
-                <span className="text-xs font-bold text-editor-text">×</span>
-                <DimensionInput
-                  label="高"
-                  value={editor.rows}
-                  onChange={editor.setRows}
-                />
-                <button
-                  className="ml-auto h-10 rounded-xl bg-editor-accent px-5 text-xs font-bold text-white transition hover:brightness-105 disabled:cursor-default disabled:opacity-35"
-                  type="button"
-                  disabled={!sizeChanged}
-                  onClick={applySizeWithPreflight}
-                >
-                  应用尺寸
-                </button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-1 text-[11px] font-bold text-editor-text">
-                  预设
-                </span>
-                {canvasPresets
-                  .filter((preset) => preset.value !== 'custom')
-                  .map((preset) => {
-                    const active = currentPresetValue === preset.value
-                    return (
-                      <button
-                        key={preset.value}
-                        type="button"
-                        className={`h-8 rounded-lg px-3 text-[11px] font-bold transition ${
-                          active
-                            ? 'bg-editor-surface-soft text-editor-accent outline outline-1 outline-editor-accent/35'
-                            : 'text-editor-text hover:bg-editor-surface-soft hover:text-editor-strong'
-                        }`}
-                        onClick={() => {
-                          editor.setRows(preset.rows)
-                          editor.setCols(preset.cols)
-                        }}
-                      >
-                        {preset.cols} × {preset.rows}
-                      </button>
-                    )
-                  })}
-                {currentPresetValue === 'custom' ? (
-                  <span className="rounded-lg bg-editor-surface-soft px-3 py-2 text-[11px] font-bold text-editor-text">
-                    自定义
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="flex items-center justify-between gap-4 border-t border-editor-border pt-3 text-[11px] text-editor-text">
-                <span>尺寸范围 4–512 颗</span>
-                {sizeChanged ? (
-                  <span className="font-bold text-editor-accent">
-                    放大补充空格，缩小可能裁切内容
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </SettingsSection>
-
-          <SettingsSection
+            icon={<PaintBrush size={19}/>}
             title="画布外观"
             description="调整工作区与纸面的显示方式"
           >
@@ -165,7 +44,7 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
               />
             </SettingRow>
             <SettingRow label="纸面透明度">
-              <div className="w-full sm:w-64">
+              <div className="w-full max-w-64">
                 <Slider
                   label="纸面透明度"
                   value={s.paperAlpha}
@@ -179,11 +58,12 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
             </SettingRow>
           </SettingsSection>
 
-          <SettingsSection title="网格" description="控制辅助线与大网格的显示">
+          <SettingsSection icon={<GridFour size={19}/>} title="网格" description="精细线条与分区辅助">
             <SettingRow label="显示网格">
               <label className="relative inline-flex cursor-pointer items-center">
                 <input
                   type="checkbox"
+                  aria-label="显示网格"
                   className="peer sr-only"
                   checked={s.showGrid}
                   onChange={(event) =>
@@ -203,7 +83,7 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
               />
             </SettingRow>
             <SettingRow label="网格线粗细">
-              <div className="w-full sm:w-64">
+              <div className="w-full max-w-64">
                 <Slider
                   label="网格线粗细"
                   value={s.gridWidth}
@@ -216,7 +96,7 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
               </div>
             </SettingRow>
             <SettingRow label="大网格间隔">
-              <div className="w-full sm:w-52">
+              <div className="w-full max-w-52">
                 <Dropdown
                   ariaLabel="大网格间隔"
                   value={String(s.majorGridEvery)}
@@ -230,6 +110,9 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
                 />
               </div>
             </SettingRow>
+            <SettingRow label="分区对齐">
+              <div className="w-full max-w-52"><Dropdown ariaLabel="分区对齐" value={s.majorGridAlignment} onChange={value => update({ majorGridAlignment: value })} options={[{value:'origin',label:'原点对齐'},{value:'center',label:'居中对齐'}]}/></div>
+            </SettingRow>
           </SettingsSection>
 
         </>
@@ -237,10 +120,12 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
 
       {view !== 'canvas' ? (
         <SettingsSection
+          divided={false}
+          icon={<Palette size={19}/>}
           title="界面主题"
-          description="选择适合当前环境的编辑器外观"
+          description="预览工作区配色，点击即可应用"
         >
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 p-0.5 lg:grid-cols-3">
             {THEMES.map((theme) => {
               const active = theme.id === editor.currentTheme
               const cardBg = theme.vars['--color-editor-surface']
@@ -252,7 +137,8 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
                   type="button"
                   onClick={() => editor.setCurrentTheme(theme.id)}
                   title={theme.description}
-                  className="relative grid min-h-28 overflow-hidden rounded-[14px] p-3 text-left transition hover:scale-[1.015]"
+                  aria-pressed={active}
+                  className="relative grid gap-3 overflow-hidden rounded-2xl p-3 text-left transition hover:-translate-y-0.5 focus-visible:outline-2"
                   style={{
                     background: cardBg,
                     color: cardText,
@@ -261,33 +147,11 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
                     }`,
                   }}
                 >
-                  <span className="grid grid-cols-[1fr_1.6fr] gap-2">
-                    <span
-                      className="rounded-lg"
-                      style={{ background: theme.vars['--color-editor-bg'] }}
-                    />
-                    <span className="grid gap-1.5">
-                      <span
-                        className="rounded-md"
-                        style={{
-                          background: theme.vars['--color-editor-surface-soft'],
-                        }}
-                      />
-                      <span className="flex gap-1.5">
-                        <span
-                          className="flex-1 rounded-md"
-                          style={{ background: accent }}
-                        />
-                        <span
-                          className="flex-1 rounded-md"
-                          style={{
-                            background: theme.vars['--color-editor-elevated'],
-                          }}
-                        />
-                      </span>
-                    </span>
+                  <span aria-hidden="true" className="block overflow-hidden rounded-xl p-2" style={{background:theme.vars['--color-editor-bg']}}>
+                    <span className="mb-2 flex items-center justify-between"><span className="h-2 w-8 rounded-full" style={{background:accent}}/><span className="flex gap-1">{[0,1,2].map(i=><span key={i} className="h-1.5 w-1.5 rounded-full opacity-50" style={{background:cardText}}/>)}</span></span>
+                    <span className="flex h-16 gap-2"><span className="grid w-5 content-start gap-1 rounded-lg p-1" style={{background:cardBg}}>{[0,1,2].map(i=><span key={i} className="h-2 rounded" style={{background:i===0?accent:theme.vars['--color-editor-surface-soft']}}/>)}</span><span className="grid flex-1 grid-cols-6 gap-px rounded-lg p-1.5" style={{background:theme.vars['--color-editor-surface-soft']}}>{Array.from({length:24},(_,i)=><span key={i} className="rounded-[2px]" style={{background:[8,9,13,14,15,16,20,21].includes(i)?accent:cardBg}}/>)}</span></span>
                   </span>
-                  <span className="mt-3 flex items-center justify-between gap-2">
+                  <span className="flex min-h-5 items-center justify-between gap-2">
                     <span className="truncate text-xs font-bold">
                       {theme.label}
                     </span>
@@ -304,110 +168,50 @@ export function CanvasPanel({ editor, view = 'all' }: CanvasPanelProps) {
               )
             })}
           </div>
-          <div className="flex justify-end pt-2">
-            <button
-              className="h-10 rounded-xl border border-editor-border px-4 text-xs font-bold text-editor-text transition hover:bg-editor-surface-soft hover:text-editor-strong"
-              type="button"
-              onClick={editor.resetCanvasSettings}
-            >
-              恢复默认外观
-            </button>
-          </div>
+
         </SettingsSection>
       ) : null}
 
-      {resizeConfirmation ? (
-        <div
-          className="fixed inset-0 z-[90] grid place-items-center bg-black/45 p-4 backdrop-blur-[2px]"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget)
-              setResizeConfirmation(null)
-          }}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-transparent px-2 text-xs text-editor-text/70 transition hover:bg-editor-accent-soft/50 hover:text-editor-accent focus-visible:outline-2 focus-visible:outline-editor-accent"
+          onClick={view === 'theme' ? () => editor.setCurrentTheme(DEFAULT_THEME_ID) : editor.resetCanvasSettings}
         >
-          <section
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="resize-warning-title"
-            aria-describedby="resize-warning-description"
-            className="w-full max-w-sm rounded-[18px] border border-editor-border bg-editor-surface p-5 shadow-[0_24px_70px_rgba(0,0,0,0.38)]"
-            onKeyDown={(event) => {
-              if (event.key !== 'Escape') return
-              event.preventDefault()
-              event.stopPropagation()
-              setResizeConfirmation(null)
-            }}
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-editor-accent/12 text-editor-accent">
-              <Warning size={20} weight="bold" />
-            </span>
-            <h3
-              id="resize-warning-title"
-              className="mt-4 text-base font-black text-editor-strong"
-            >
-              缩小画布会裁切内容
-            </h3>
-            <p
-              id="resize-warning-description"
-              className="mt-2 text-xs leading-5 text-editor-text"
-            >
-              调整为 {resizeConfirmation.cols} × {resizeConfirmation.rows}{' '}
-              后，将裁掉右侧或底部的 {resizeConfirmation.croppedBeads}{' '}
-              颗拼豆。此操作可以撤销。
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button
-                ref={resizeCancelRef}
-                type="button"
-                className="h-10 rounded-xl border border-editor-border text-xs font-bold text-editor-strong transition hover:bg-editor-surface-soft"
-                onClick={() => setResizeConfirmation(null)}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                className="h-10 rounded-xl bg-editor-accent text-xs font-bold text-white transition hover:brightness-105"
-                onClick={() => {
-                  editor.applyCanvasSize(
-                    resizeConfirmation.rows,
-                    resizeConfirmation.cols,
-                  )
-                  editor.requestViewportFit()
-                  appToast.success(
-                    '画布尺寸已更新',
-                    `${resizeConfirmation.cols} × ${resizeConfirmation.rows} 颗`,
-                  )
-                  setResizeConfirmation(null)
-                }}
-              >
-                继续裁切
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+          <ArrowCounterClockwise size={16} />
+          {view === 'theme' ? '恢复默认主题' : '恢复默认设置'}
+        </button>
+      </div>
+
     </div>
   )
 }
 
 function SettingsSection({
+  icon,
+  divided = true,
   title,
   description,
   children,
 }: {
+  icon?: ReactNode
+  divided?: boolean
   title: string
   description?: string
   children: ReactNode
 }) {
   return (
-    <section className="grid gap-4">
-      <header>
+    <section className="grid gap-3">
+      <header className="flex items-center gap-3">
+        {icon ? <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-editor-accent-soft text-editor-accent">{icon}</span> : null}
+        <div>
         <h3 className="text-sm font-black text-editor-strong">{title}</h3>
         {description ? (
           <p className="mt-1 text-xs text-editor-text">{description}</p>
         ) : null}
+        </div>
       </header>
-      <div className="divide-y divide-editor-border border-y border-editor-border">
+      <div className={divided ? "grid gap-1 rounded-2xl bg-editor-elevated/60 p-3 sm:p-4" : "grid gap-3"}>
         {children}
       </div>
     </section>
@@ -424,69 +228,26 @@ function SettingRow({
   children: ReactNode
 }) {
   return (
-    <div className="grid min-h-16 gap-3 py-3 sm:grid-cols-[minmax(180px,1fr)_minmax(260px,auto)] sm:items-center sm:gap-6">
+    <div className="grid min-h-14 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3 rounded-xl px-1 py-2.5">
       <div>
         <p className="text-xs font-bold text-editor-strong">{label}</p>
         {description ? (
           <p className="mt-1 text-[11px] text-editor-text">{description}</p>
         ) : null}
       </div>
-      <div className="flex justify-start sm:justify-end">{children}</div>
+      <div className="flex min-w-0 justify-end">{children}</div>
     </div>
   )
 }
 
-function DimensionInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: number
-  onChange: (value: number) => void
-}) {
-  const [draft, setDraft] = useState<string | null>(null)
 
-  function commitDraft() {
-    const currentDraft = draft ?? String(value)
-    if (currentDraft.trim() === '') {
-      setDraft(null)
-      return
-    }
-    const parsed = Number(currentDraft)
-    if (!Number.isFinite(parsed)) {
-      setDraft(null)
-      return
-    }
-    const normalized = Math.min(
-      MAX_PATTERN_SIDE,
-      Math.max(MIN_PATTERN_SIDE, Math.round(parsed)),
-    )
-    setDraft(null)
-    onChange(normalized)
-  }
-
-  return (
-    <label className="flex h-10 items-center gap-2 rounded-xl border border-editor-border bg-editor-elevated/70 px-3">
-      <span className="text-[11px] font-bold text-editor-text">{label}</span>
-      <input
-        className="w-14 bg-transparent text-right text-sm font-bold text-editor-strong outline-none"
-        min={MIN_PATTERN_SIDE}
-        max={MAX_PATTERN_SIDE}
-        type="text"
-        inputMode="numeric"
-        maxLength={3}
-        value={draft ?? String(value)}
-        onChange={(event) => {
-          const next = event.target.value.replace(/\D/g, '').slice(0, 3)
-          setDraft(next)
-          if (next !== '') onChange(Number(next))
-        }}
-        onBlur={commitDraft}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') event.currentTarget.blur()
-        }}
-      />
-    </label>
-  )
+function CanvasAppearancePreview({ editor }: { editor: EditorStateController }) {
+  const s = editor.canvasSettings
+  return <div aria-label="画布外观预览" className="relative flex h-36 items-center justify-center overflow-hidden rounded-2xl p-5" style={{background:s.bgColor}}>
+    <span className="absolute left-3 top-3 rounded-full bg-editor-elevated/90 px-2 py-1 text-[10px] text-editor-text">实时预览</span>
+    <div className="relative grid h-24 w-36 grid-cols-9 overflow-hidden rounded-lg shadow-sm">
+      <div className="absolute inset-0" style={{background:s.paperColor,opacity:s.paperAlpha}}/>
+      {Array.from({length:54},(_,i)=><span key={i} className="relative" style={{backgroundColor:[12,14,20,21,22,23,24,30,31,32,40].includes(i)?'var(--color-editor-accent)':'transparent',borderRight:s.showGrid?s.gridWidth+'px solid '+s.gridColor:undefined,borderBottom:s.showGrid?s.gridWidth+'px solid '+s.gridColor:undefined}}/>)}
+    </div>
+  </div>
 }
