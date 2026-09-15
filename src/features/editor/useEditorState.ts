@@ -434,6 +434,16 @@ export function useEditorState() {
   // A second touch turns the current pointer action into a viewport gesture.
   function captureTouchRollback() {
     return () => {
+      // Stroke previews bypass history, so restore their pixels explicitly.
+      const draft = strokeDraftRef.current
+      if (draft) {
+        const restored: Array<{ index: number; color: string | null }> = []
+        draft.cells.forEach((cell, index) => {
+          const color = history.present.cells[index]?.color ?? null
+          if (cell.color !== color) restored.push({ index, color })
+        })
+        strokePreviewListenerRef.current?.(restored)
+      }
       strokeBaselineRef.current = null
       strokeDraftRef.current = null
       strokeChangedRef.current = false
