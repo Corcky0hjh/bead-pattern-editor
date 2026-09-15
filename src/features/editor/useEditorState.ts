@@ -431,6 +431,24 @@ export function useEditorState() {
   // Preserve automatically discovered colors before committing this render.
   if (beadBox.length !== workBox.length) setWorkBox(beadBox)
   const boxDirty = JSON.stringify(beadBox) !== JSON.stringify(includeUsedColors(beadingProjects.find(w => w.id === activeWorkId)?.beadBox ?? [], history.present, boxCatalog))
+  // A second touch turns the current pointer action into a viewport gesture.
+  function captureTouchRollback() {
+    return () => {
+      strokeBaselineRef.current = null
+      strokeDraftRef.current = null
+      strokeChangedRef.current = false
+      beadingStrokeBaselineRef.current = null
+      beadingStrokeChangedRef.current = false
+      setHistory(history)
+      setWorkBox(workBox)
+      setExcludedColorHexes(excludedColorHexes)
+      setCurrentColor(currentColor)
+      setBeadingHistory(beadingHistory)
+      setBeadingColor(beadingColor)
+      setActiveBeadingLayerAnchor(activeBeadingLayerAnchor)
+      setBeadingProjects(beadingProjects)
+    }
+  }
   function addBoxColor(color: BoxColor) {
     setWorkBox(previous => previous.some(item => item.hex.toLowerCase() === color.hex.toLowerCase()) ? previous : [...previous, color])
     setCurrentColor(color.hex)
@@ -1941,6 +1959,7 @@ export function useEditorState() {
     canvasSizeDialog,
     setCanvasSizeDialog,
     discardWorkChanges,
+    captureTouchRollback,
     renameWork,
     requestRenameWork,
     startBeadingWork,

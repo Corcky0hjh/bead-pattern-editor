@@ -705,7 +705,7 @@ function PlacementStage({
 
   return (
     <div className="image-placement-frame relative grid gap-3 rounded-3xl bg-editor-elevated/55 p-3">
-      <button type="button" aria-label="重置构图" title="重置构图" onClick={onReset} disabled={!imageSize} className="absolute right-1 top-1 z-30 grid h-7 w-7 place-items-center rounded-lg bg-editor-surface/90 text-editor-text transition hover:bg-editor-accent-soft hover:text-editor-accent disabled:opacity-40"><ArrowCounterClockwise size={16}/></button>
+      <button type="button" aria-label="重置构图" title="重置构图" onClick={onReset} disabled={!imageSize} className="touch-hit-target absolute right-1 top-1 z-30 grid h-7 w-7 place-items-center rounded-lg bg-editor-surface/90 text-editor-text transition hover:bg-editor-accent-soft hover:text-editor-accent disabled:opacity-40"><ArrowCounterClockwise size={16}/></button>
       <div
         ref={stageRef}
         tabIndex={0}
@@ -807,7 +807,7 @@ function PlacementStage({
               }}
             />
             <button
-              className="absolute z-20 grid h-7 w-7 touch-none place-items-center rounded-full border border-editor-strong/20 bg-white/80 text-[13px] font-black text-editor-strong shadow-[0_4px_14px_rgba(31,24,18,0.18)] backdrop-blur transition hover:bg-white active:scale-95"
+              className="touch-hit-target absolute z-20 grid h-7 w-7 touch-none place-items-center rounded-full border border-editor-strong/20 bg-white/80 text-[13px] font-black text-editor-strong shadow-[0_4px_14px_rgba(31,24,18,0.18)] backdrop-blur transition hover:bg-white active:scale-95"
               type="button"
               aria-label="缩放图片"
               title="拖拽缩放"
@@ -826,7 +826,7 @@ function PlacementStage({
               ⤢
             </button>
             <button
-              className="absolute z-20 grid h-7 w-7 touch-none place-items-center rounded-full border border-editor-strong/20 bg-white/80 text-[13px] font-black text-editor-strong shadow-[0_4px_14px_rgba(31,24,18,0.18)] backdrop-blur transition hover:bg-white active:scale-95"
+              className="touch-hit-target absolute z-20 grid h-7 w-7 touch-none place-items-center rounded-full border border-editor-strong/20 bg-white/80 text-[13px] font-black text-editor-strong shadow-[0_4px_14px_rgba(31,24,18,0.18)] backdrop-blur transition hover:bg-white active:scale-95"
               type="button"
               aria-label="旋转图片"
               title="拖拽旋转，按 Shift 吸附 15°"
@@ -856,7 +856,7 @@ function PlacementStage({
               </span>
             ) : null}
             <button
-              className={`absolute z-20 grid h-7 w-7 place-items-center rounded-full border text-[13px] font-black shadow-[0_4px_14px_rgba(31,24,18,0.18)] backdrop-blur transition hover:bg-white active:scale-95 ${
+              className={`touch-hit-target absolute z-20 grid h-7 w-7 place-items-center rounded-full border text-[13px] font-black shadow-[0_4px_14px_rgba(31,24,18,0.18)] backdrop-blur transition hover:bg-white active:scale-95 ${
                 placement.flipX || placement.flipY
                   ? 'border-editor-accent bg-editor-accent text-white hover:bg-editor-accent'
                   : 'border-editor-strong/20 bg-white/80 text-editor-strong'

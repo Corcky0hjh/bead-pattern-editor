@@ -1,3 +1,4 @@
+import { usePointerValueDrag } from './usePointerValueDrag'
 // 自定义取色器弹层,替代 <input type="color">。
 //
 // 结构(与主流 picker 一致):
@@ -51,7 +52,9 @@ export function ColorPickerPopover({
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
 
+  const [preferredHue, setPreferredHue] = useState(() => hexToHsv(color).h)
   const hsv = hexToHsv(draft)
+  if (hsv.s === 0 || hsv.v === 0) hsv.h = preferredHue
 
   function openPopover() {
     setDraft(color)
@@ -160,7 +163,7 @@ export function ColorPickerPopover({
           onKeyDown={event => { if (!inline && event.key === 'Escape') { event.stopPropagation(); setOpen(false); buttonRef.current?.focus() } }}
           role={inline ? "group" : "dialog"}
           aria-label={ariaLabel ?? '颜色选择器'}
-          className={inline ? "space-y-3" : "fixed z-[100] w-64 overflow-y-auto overscroll-contain space-y-3 rounded-2xl border border-editor-border bg-editor-elevated p-3 shadow-xl"}
+          className={inline ? "space-y-3" : "color-picker-popover fixed z-[100] w-64 overflow-y-auto overscroll-contain space-y-3 rounded-2xl border border-editor-border bg-editor-elevated p-3 shadow-xl"}
         >
           <SvSquare
             hue={hsv.h}
@@ -171,8 +174,8 @@ export function ColorPickerPopover({
           />
           <HueBar
             hue={hsv.h}
-            onPreview={(h) => preview(hsvToHex(h, hsv.s, hsv.v))}
-            onCommit={(h) => commit(hsvToHex(h, hsv.s, hsv.v))}
+            onPreview={(h) => { setPreferredHue(h); preview(hsvToHex(h, hsv.s, hsv.v)) }}
+            onCommit={(h) => { setPreferredHue(h); commit(hsvToHex(h, hsv.s, hsv.v)) }}
           />
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-editor-text">HEX</span>
@@ -292,34 +295,12 @@ function SvSquare({
     return { s: nx, v: 1 - ny }
   }
 
-  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    event.preventDefault()
-    const el = ref.current
-    if (!el) return
-    el.setPointerCapture(event.pointerId)
-    const initial = calc(event)
-    latestRef.current = initial
-    onPreview(initial.s, initial.v)
-
-    function onMove(e: PointerEvent) {
-      const next = calc(e)
-      latestRef.current = next
-      onPreview(next.s, next.v)
-    }
-    function onUp(e: PointerEvent) {
-      el?.releasePointerCapture(e.pointerId)
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      onCommit(latestRef.current.s, latestRef.current.v)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-  }
+  const dragHandlers = usePointerValueDrag(calc, next => onPreview(next.s, next.v), next => onCommit(next.s, next.v))
 
   return (
     <div
       ref={ref}
-      onPointerDown={onPointerDown}
+      {...dragHandlers}
       className="relative h-32 w-full cursor-crosshair select-none touch-none overflow-hidden rounded-lg"
       style={{ backgroundColor: `hsl(${hue}, 100%, 50%)` }}
     >
@@ -370,35 +351,14 @@ function HueBar({
     return nx * 360
   }
 
-  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    event.preventDefault()
-    const el = ref.current
-    if (!el) return
-    el.setPointerCapture(event.pointerId)
-    const initial = calc(event)
-    latestRef.current = initial
-    onPreview(initial)
-
-    function onMove(e: PointerEvent) {
-      const next = calc(e)
-      latestRef.current = next
-      onPreview(next)
-    }
-    function onUp(e: PointerEvent) {
-      el?.releasePointerCapture(e.pointerId)
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      onCommit(latestRef.current)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-  }
+  const dragHandlers = usePointerValueDrag(calc, onPreview, onCommit)
 
   return (
     <div
       ref={ref}
-      onPointerDown={onPointerDown}
-      className="relative h-3 w-full cursor-crosshair select-none touch-none rounded-full"
+      {...dragHandlers}
+      aria-label="色相"
+      className="color-hue-hit relative h-8 w-full cursor-crosshair select-none touch-none rounded-full"
       style={{
         background:
           'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)',

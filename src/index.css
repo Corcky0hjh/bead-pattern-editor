@@ -1622,3 +1622,15 @@
 .modal-close-button:active:not(:disabled) { transform: scale(.94); }
 .modal-close-button:disabled { opacity: .35; cursor: not-allowed; }
 .modal-close-button:focus-visible { outline: 2px solid var(--color-editor-accent); outline-offset: 2px; }
+
+/* Keep forms reachable when the visual viewport shrinks for the keyboard. */
+.app-modal-backdrop > section { max-height: 100%; }
+.app-modal-backdrop > section:not(.canvas-settings-dialog) { overflow-y: auto; overscroll-behavior: contain; }
+@media (pointer: coarse) {
+  .app-modal-backdrop input:not([type='checkbox']):not([type='range']),
+  .app-modal-backdrop textarea, .color-picker-popover input { font-size: 16px; }
+  .color-hue-hit { min-height: 40px; }
+  .modal-close-button::after, .touch-hit-target::after { content: ''; position: absolute; inset: -6px; }
+  .modal-close-button { position: relative; }
+  .modal-close-button.absolute { position: absolute; }
+}

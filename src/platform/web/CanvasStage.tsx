@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -494,6 +495,10 @@ export function CanvasStage({ editor, headerControls, headerHistory }: CanvasSta
   const beadingStrokeValueRef = useRef(true)
   const lastBeadingIndexRef = useRef<number | null>(null)
   const beadingPaintingRef = useRef(false)
+  const touchPointsRef = useRef(new Map<number, { x: number; y: number }>())
+  const pinchRef = useRef<{ distance: number; x: number; y: number } | null>(null)
+  const touchGestureRef = useRef(false)
+  const touchRollbackRef = useRef<(() => void) | null>(null)
   const activePointerIdRef = useRef<number | null>(null)
   const panStartRef = useRef({
     x: 0,
@@ -2146,6 +2151,98 @@ export function CanvasStage({ editor, headerControls, headerHistory }: CanvasSta
     editorRef.current.setZoom(normalizedZoom)
   }
 
+  function interruptTouch() {
+    if (!touchPointsRef.current.size) return
+    touchRollbackRef.current?.()
+    touchRollbackRef.current = null
+    touchPointsRef.current.clear()
+    pinchRef.current = null
+    touchGestureRef.current = false
+    panningRef.current = false
+    activePointerIdRef.current = null
+    setPainting(false)
+    beadingPaintingRef.current = false
+    lastBeadingIndexRef.current = null
+    lastPaintedIndexRef.current = null
+    cancelShape()
+    const drag = selectionDragRef.current
+    if (drag && drag.kind !== 'create') setSelection(drag.origin)
+    else if (drag) setSelection(null)
+    selectionDragRef.current = null
+  }
+  const interruptTouchOnBlur = useEffectEvent(interruptTouch)
+  useEffect(() => {
+    const blur = () => interruptTouchOnBlur()
+    const visibility = () => { if (document.hidden) interruptTouchOnBlur() }
+    window.addEventListener('blur', blur)
+    document.addEventListener('visibilitychange', visibility)
+    return () => { window.removeEventListener('blur', blur); document.removeEventListener('visibilitychange', visibility) }
+  }, [])
+
+  function touchPair() {
+    const [a, b] = [...touchPointsRef.current.values()]
+    return a && b ? { distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : null
+  }
+
+  function beginTouch(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('button'))) return
+    if (!touchPointsRef.current.size) touchRollbackRef.current = editor.captureTouchRollback()
+    touchPointsRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (touchPointsRef.current.size < 2 && !touchGestureRef.current) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (!touchGestureRef.current) {
+      touchGestureRef.current = true
+      touchRollbackRef.current?.()
+      touchRollbackRef.current = null
+      beadingPaintingRef.current = false
+      lastBeadingIndexRef.current = null
+      setPainting(false)
+      lastPaintedIndexRef.current = null
+      cancelShape()
+      const drag = selectionDragRef.current
+      if (drag && drag.kind !== 'create') setSelection(drag.origin)
+      else if (drag) setSelection(null)
+      selectionDragRef.current = null
+      panningRef.current = false
+      activePointerIdRef.current = null
+      setHoveredCell(null)
+      setHoveredBeadingColor(null)
+    }
+    for (const id of touchPointsRef.current.keys()) event.currentTarget.setPointerCapture(id)
+    pinchRef.current = touchPair()
+  }
+
+  function moveTouch(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'touch' || !touchPointsRef.current.has(event.pointerId)) return
+    touchPointsRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (!touchGestureRef.current) return
+    event.preventDefault()
+    event.stopPropagation()
+    const next = touchPair(), previous = pinchRef.current
+    if (next && previous) {
+      zoomViewportAt(zoomRef.current * next.distance / previous.distance, previous.x, previous.y)
+      const position = viewPositionRef.current
+      updateViewPosition({ x: position.x + next.x - previous.x, y: position.y + next.y - previous.y })
+    }
+    pinchRef.current = next
+  }
+
+  function finishTouch(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'touch') return
+    touchPointsRef.current.delete(event.pointerId)
+    if (touchGestureRef.current) {
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    pinchRef.current = touchPair()
+    if (!touchPointsRef.current.size) {
+      touchGestureRef.current = false
+      touchRollbackRef.current = null
+    }
+  }
+
   function stepZoom(direction: -1 | 1) {
     zoomViewportAt(zoomRef.current + direction * 10)
   }
@@ -3307,7 +3404,12 @@ export function CanvasStage({ editor, headerControls, headerHistory }: CanvasSta
 
       <div
         ref={attachViewport}
-        className={`relative col-start-2 row-start-2 min-h-0 min-w-0 overflow-hidden rounded-[18px] [clip-path:inset(0_round_18px)] [touch-action:none] [overscroll-behavior:contain] ${cursorClass}`}
+        onContextMenu={event => event.preventDefault()}
+        onPointerDownCapture={beginTouch}
+        onPointerMoveCapture={moveTouch}
+        onPointerUpCapture={finishTouch}
+        onPointerCancelCapture={event => { if (event.pointerType === 'touch') { event.preventDefault(); event.stopPropagation(); interruptTouch() } }}
+        className={`relative col-start-2 row-start-2 min-h-0 min-w-0 overflow-hidden rounded-[18px] [clip-path:inset(0_round_18px)] [touch-action:none] [-webkit-touch-callout:none] select-none [overscroll-behavior:contain] ${cursorClass}`}
         style={{ backgroundColor: settings.bgColor }}
         onPointerDown={(event) => {
           setOpenToolOptions(null)
